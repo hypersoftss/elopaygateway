@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-type Language = 'zh' | 'en';
+export type Language = 'zh' | 'en';
 
 interface I18nState {
   language: Language;
@@ -17,6 +17,12 @@ export const useI18nStore = create<I18nState>()(
     { name: 'paygate-language' }
   )
 );
+
+// Alias for components
+export const useI18n = () => {
+  const { language, setLanguage } = useI18nStore();
+  return { language, setLanguage };
+};
 
 const translations: Record<Language, Record<string, string>> = {
   zh: {

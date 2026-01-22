@@ -7,9 +7,7 @@ import React, { useEffect } from "react";
 import { useAuthStore, initializeAuth } from "@/lib/auth";
 
 // Pages
-import Landing from "./pages/Landing";
-import AdminLogin from "./pages/AdminLogin";
-import MerchantLogin from "./pages/MerchantLogin";
+import Index from "./pages/Index";
 import SetupAdmin from "./pages/SetupAdmin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminMerchants from "./pages/admin/AdminMerchants";
@@ -59,14 +57,14 @@ const AppRoutes = () => {
   return (
     <Routes>
       {/* Public Routes */}
-      <Route path="/" element={<Landing />} />
-      <Route path="/admin-login" element={<AdminLogin />} />
-      <Route path="/merchant-login" element={<MerchantLogin />} />
-      <Route path="/login" element={<Navigate to="/" replace />} />
+      <Route path="/" element={<Index />} />
       <Route path="/setup-admin" element={<SetupAdmin />} />
+      <Route path="/admin-login" element={<Navigate to="/" replace />} />
+      <Route path="/merchant-login" element={<Navigate to="/" replace />} />
       
       {/* Admin Routes */}
       <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
+      <Route path="/admin/dashboard" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
       <Route path="/admin/merchants" element={<ProtectedRoute requiredRole="admin"><AdminMerchants /></ProtectedRoute>} />
       <Route path="/admin/payin" element={<ProtectedRoute requiredRole="admin"><AdminPayinOrders /></ProtectedRoute>} />
       <Route path="/admin/payout" element={<ProtectedRoute requiredRole="admin"><AdminPayoutOrders /></ProtectedRoute>} />
@@ -75,6 +73,7 @@ const AppRoutes = () => {
       
       {/* Merchant Routes */}
       <Route path="/merchant" element={<ProtectedRoute requiredRole="merchant"><MerchantDashboard /></ProtectedRoute>} />
+      <Route path="/merchant/dashboard" element={<ProtectedRoute requiredRole="merchant"><MerchantDashboard /></ProtectedRoute>} />
       <Route path="/merchant/analytics" element={<ProtectedRoute requiredRole="merchant"><MerchantAnalytics /></ProtectedRoute>} />
       <Route path="/merchant/documentation" element={<ProtectedRoute requiredRole="merchant"><MerchantDocumentation /></ProtectedRoute>} />
       <Route path="/merchant/payment-links" element={<ProtectedRoute requiredRole="merchant"><MerchantPaymentLinks /></ProtectedRoute>} />

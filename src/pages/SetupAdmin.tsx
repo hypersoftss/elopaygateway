@@ -11,7 +11,7 @@ import { useTranslation } from '@/lib/i18n';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
-const SETUP_KEY = 'PAYGATE_ADMIN_SETUP_2026';
+const SETUP_KEY = 'PAYGATE2024';
 
 const SetupAdmin = () => {
   const { t } = useTranslation();
@@ -93,7 +93,7 @@ const SetupAdmin = () => {
           description: 'Admin account created successfully',
         });
 
-        navigate('/login');
+        navigate('/admin-login');
       }
     } catch (error: any) {
       toast({
