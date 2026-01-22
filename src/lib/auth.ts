@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { supabase } from '@/integrations/supabase/client';
 
 export type UserRole = 'admin' | 'merchant';
+export type Language = 'zh' | 'en';
 
 export interface User {
   id: string;
@@ -115,3 +116,6 @@ async function fetchUserData(userId: string, email: string): Promise<User | null
     return null;
   }
 }
+
+// Alias for useAuthStore to match component usage
+export const useAuth = useAuthStore;

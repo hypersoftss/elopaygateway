@@ -1,1 +1,19 @@
 project_id = "ttywuskboaranphxxgtr"
+
+[functions.setup-admin]
+verify_jwt = false
+
+[functions.create-merchant]
+verify_jwt = false
+
+[functions.payin]
+verify_jwt = false
+
+[functions.payout]
+verify_jwt = false
+
+[functions.get-payment-link-merchant]
+verify_jwt = false
+
+[functions.callback-handler]
+verify_jwt = false
