@@ -31,6 +31,7 @@ import MerchantPayinOrders from "./pages/merchant/MerchantPayinOrders";
 import MerchantPayoutOrders from "./pages/merchant/MerchantPayoutOrders";
 import MerchantSettlementHistory from "./pages/merchant/MerchantSettlementHistory";
 import MerchantApiTesting from "./pages/merchant/MerchantApiTesting";
+import PaymentPage from "./pages/PaymentPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -69,6 +70,7 @@ const AppRoutes = () => {
       <Route path="/setup-admin" element={<SetupAdmin />} />
       <Route path="/admin-login" element={<AdminLogin />} />
       <Route path="/merchant-login" element={<MerchantLogin />} />
+      <Route path="/pay/:linkCode" element={<PaymentPage />} />
       
       {/* Admin Routes */}
       <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
