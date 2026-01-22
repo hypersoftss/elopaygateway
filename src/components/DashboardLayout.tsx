@@ -82,6 +82,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
   const merchantNavItems: NavItem[] = [
     { label: t('sidebar.dashboard'), icon: <LayoutDashboard className="h-5 w-5" />, href: '/merchant' },
+    { label: t('sidebar.analytics'), icon: <BarChart3 className="h-5 w-5" />, href: '/merchant/analytics' },
     { 
       label: language === 'zh' ? '商户管理' : 'Merchants',
       icon: <Users className="h-5 w-5" />,
@@ -104,9 +105,11 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       icon: <Wallet className="h-5 w-5" />,
       children: [
         { label: t('sidebar.withdrawal'), icon: <Wallet className="h-4 w-4" />, href: '/merchant/withdrawal' },
+        { label: language === 'zh' ? '结算历史' : 'History', icon: <History className="h-4 w-4" />, href: '/merchant/settlement-history' },
       ]
     },
     { label: t('sidebar.paymentLinks'), icon: <LinkIcon className="h-5 w-5" />, href: '/merchant/payment-links' },
+    { label: t('sidebar.apiTesting'), icon: <TestTube className="h-5 w-5" />, href: '/merchant/api-testing' },
     { label: t('sidebar.documentation'), icon: <FileText className="h-5 w-5" />, href: '/merchant/documentation' },
   ];
 
@@ -114,7 +117,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
   const handleLogout = async () => {
     await logout();
-    navigate('/login');
+    // Note: logout function handles the redirect internally based on user role
   };
 
   const isChildActive = (item: NavItem) => {
