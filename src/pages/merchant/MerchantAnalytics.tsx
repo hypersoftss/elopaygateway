@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { useTranslation } from '@/lib/i18n';
 import { useAuthStore } from '@/lib/auth';
@@ -48,7 +48,7 @@ const MerchantAnalytics = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [period, setPeriod] = useState('7');
   const [dailyStats, setDailyStats] = useState<DailyStats[]>([]);
-  const [isLive, setIsLive] = useState(true);
+  const [isLive, setIsLive] = useState(false); // Default to OFF to prevent flickering
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [totals, setTotals] = useState({
     totalPayin: 0,
@@ -60,6 +60,10 @@ const MerchantAnalytics = () => {
     successRate: 0,
     pendingCount: 0,
   });
+  
+  // Use ref to track if initial load is complete
+  const initialLoadRef = useRef(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const processTransactions = useCallback((transactions: Transaction[], days: number) => {
     const statsMap = new Map<string, DailyStats>();
@@ -111,10 +115,13 @@ const MerchantAnalytics = () => {
     });
   }, []);
 
-  const fetchAnalytics = useCallback(async () => {
+  const fetchAnalytics = useCallback(async (showLoading = true) => {
     if (!user?.merchantId) return;
     
-    setIsLoading(true);
+    if (showLoading && !initialLoadRef.current) {
+      setIsLoading(true);
+    }
+    
     try {
       const days = parseInt(period);
       const startDate = startOfDay(subDays(new Date(), days - 1));
@@ -130,6 +137,7 @@ const MerchantAnalytics = () => {
 
       setRecentTransactions((transactions || []).slice(0, 10) as Transaction[]);
       processTransactions(transactions as Transaction[] || [], days);
+      initialLoadRef.current = true;
     } catch (error) {
       console.error('Error fetching analytics:', error);
       toast({
@@ -142,12 +150,22 @@ const MerchantAnalytics = () => {
     }
   }, [user?.merchantId, period, processTransactions, t, toast]);
 
-  // Real-time subscription
+  // Debounced fetch for realtime updates
+  const debouncedFetch = useCallback(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    debounceRef.current = setTimeout(() => {
+      fetchAnalytics(false);
+    }, 1000); // 1 second debounce
+  }, [fetchAnalytics]);
+
+  // Real-time subscription with debouncing
   useEffect(() => {
     if (!user?.merchantId || !isLive) return;
 
     const channel = supabase
-      .channel('merchant-analytics')
+      .channel('merchant-analytics-live')
       .on(
         'postgres_changes',
         {
@@ -157,19 +175,24 @@ const MerchantAnalytics = () => {
           filter: `merchant_id=eq.${user.merchantId}`,
         },
         () => {
-          fetchAnalytics();
+          debouncedFetch();
         }
       )
       .subscribe();
 
     return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
       supabase.removeChannel(channel);
     };
-  }, [user?.merchantId, isLive, fetchAnalytics]);
+  }, [user?.merchantId, isLive, debouncedFetch]);
 
+  // Initial fetch and period change
   useEffect(() => {
-    fetchAnalytics();
-  }, [fetchAnalytics]);
+    initialLoadRef.current = false;
+    fetchAnalytics(true);
+  }, [user?.merchantId, period]);
 
   const pieData = [
     { name: t('merchant.payin'), value: totals.totalPayin, color: 'hsl(var(--success))' },
@@ -207,15 +230,15 @@ const MerchantAnalytics = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-[hsl(var(--success))]/20 to-[hsl(var(--success))]/5">
+            <div className="p-3 rounded-xl bg-gradient-to-br from-[hsl(var(--success))]/20 to-[hsl(var(--success))]/5 shadow-lg">
               <BarChart3 className="h-6 w-6 text-[hsl(var(--success))]" />
             </div>
             <div>
               <h1 className="text-2xl font-bold flex items-center gap-2">
                 {t('merchant.analytics')}
                 {isLive && (
-                  <Badge variant="outline" className="bg-[hsl(var(--success))]/10 text-[hsl(var(--success))] border-[hsl(var(--success))]/30">
-                    <Activity className="h-3 w-3 mr-1 animate-pulse" />
+                  <Badge variant="outline" className="bg-[hsl(var(--success))]/10 text-[hsl(var(--success))] border-[hsl(var(--success))]/30 animate-pulse">
+                    <Activity className="h-3 w-3 mr-1" />
                     {language === 'zh' ? '实时' : 'Live'}
                   </Badge>
                 )}
@@ -228,7 +251,7 @@ const MerchantAnalytics = () => {
               variant={isLive ? 'default' : 'outline'}
               size="sm"
               onClick={() => setIsLive(!isLive)}
-              className={isLive ? 'btn-gradient-success' : ''}
+              className={isLive ? 'bg-[hsl(var(--success))] hover:bg-[hsl(var(--success))]/90' : ''}
             >
               <Zap className={`h-4 w-4 mr-1 ${isLive ? 'animate-pulse' : ''}`} />
               {isLive ? (language === 'zh' ? '实时开启' : 'Live ON') : (language === 'zh' ? '实时关闭' : 'Live OFF')}
@@ -243,11 +266,11 @@ const MerchantAnalytics = () => {
                 <SelectItem value="30">{t('common.last30Days')}</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline" onClick={fetchAnalytics} size="sm">
+            <Button variant="outline" onClick={() => fetchAnalytics(true)} size="sm">
               <RefreshCw className="h-4 w-4 mr-1" />
               {t('common.refresh')}
             </Button>
-            <Button onClick={exportReport} size="sm" className="btn-gradient-success">
+            <Button onClick={exportReport} size="sm" className="bg-[hsl(var(--success))] hover:bg-[hsl(var(--success))]/90">
               <Download className="h-4 w-4 mr-1" />
               {t('common.export')}
             </Button>
@@ -256,7 +279,7 @@ const MerchantAnalytics = () => {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="stat-card border-l-4 border-l-[hsl(var(--success))]">
+          <Card className="premium-card border-l-4 border-l-[hsl(var(--success))]">
             <CardContent className="pt-6">
               {isLoading ? (
                 <Skeleton className="h-16 w-full" />
@@ -275,7 +298,7 @@ const MerchantAnalytics = () => {
             </CardContent>
           </Card>
           
-          <Card className="stat-card border-l-4 border-l-[hsl(var(--warning))]">
+          <Card className="premium-card border-l-4 border-l-[hsl(var(--warning))]">
             <CardContent className="pt-6">
               {isLoading ? (
                 <Skeleton className="h-16 w-full" />
@@ -294,7 +317,7 @@ const MerchantAnalytics = () => {
             </CardContent>
           </Card>
           
-          <Card className="stat-card border-l-4 border-l-primary">
+          <Card className="premium-card border-l-4 border-l-primary">
             <CardContent className="pt-6">
               {isLoading ? (
                 <Skeleton className="h-16 w-full" />
@@ -313,7 +336,7 @@ const MerchantAnalytics = () => {
             </CardContent>
           </Card>
           
-          <Card className="stat-card border-l-4 border-l-purple-500">
+          <Card className="premium-card border-l-4 border-l-purple-500">
             <CardContent className="pt-6">
               {isLoading ? (
                 <Skeleton className="h-16 w-full" />
@@ -336,7 +359,7 @@ const MerchantAnalytics = () => {
         {/* Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Area Chart - Transaction Volume */}
-          <Card className="lg:col-span-2">
+          <Card className="lg:col-span-2 premium-card">
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
                 <BarChart3 className="h-4 w-4" />
@@ -387,7 +410,7 @@ const MerchantAnalytics = () => {
           </Card>
 
           {/* Pie Chart - Distribution */}
-          <Card>
+          <Card className="premium-card">
             <CardHeader className="pb-2">
               <CardTitle className="text-base">{t('merchant.distribution')}</CardTitle>
             </CardHeader>
@@ -429,7 +452,7 @@ const MerchantAnalytics = () => {
 
         {/* Transaction Count Chart & Recent Activity */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
+          <Card className="premium-card">
             <CardHeader className="pb-2">
               <CardTitle className="text-base">{t('merchant.transactionCount')}</CardTitle>
             </CardHeader>
@@ -454,55 +477,57 @@ const MerchantAnalytics = () => {
             </CardContent>
           </Card>
 
-          {/* Recent Activity */}
-          <Card>
+          {/* Recent Transactions */}
+          <Card className="premium-card">
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
                 <Activity className="h-4 w-4" />
-                {language === 'zh' ? '最近交易' : 'Recent Activity'}
-                {isLive && <span className="w-2 h-2 bg-[hsl(var(--success))] rounded-full animate-pulse" />}
+                {t('merchant.recentActivity')}
               </CardTitle>
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {Array.from({ length: 5 }).map((_, i) => (
-                    <Skeleton key={i} className="h-10 w-full" />
+                    <Skeleton key={i} className="h-12 w-full" />
                   ))}
                 </div>
               ) : recentTransactions.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">{language === 'zh' ? '暂无交易' : 'No transactions'}</p>
+                <div className="text-center py-8 text-muted-foreground">
+                  {t('common.noData')}
+                </div>
               ) : (
-                <div className="space-y-2 max-h-[180px] overflow-y-auto">
+                <div className="space-y-2 max-h-[200px] overflow-y-auto">
                   {recentTransactions.map((tx) => (
-                    <div key={tx.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-                      <div className="flex items-center gap-2">
-                        {tx.transaction_type === 'payin' ? (
-                          <ArrowDownToLine className="h-4 w-4 text-[hsl(var(--success))]" />
-                        ) : (
-                          <ArrowUpFromLine className="h-4 w-4 text-[hsl(var(--warning))]" />
-                        )}
+                    <div key={tx.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-full ${tx.transaction_type === 'payin' ? 'bg-[hsl(var(--success))]/10' : 'bg-[hsl(var(--warning))]/10'}`}>
+                          {tx.transaction_type === 'payin' ? (
+                            <ArrowDownToLine className="h-4 w-4 text-[hsl(var(--success))]" />
+                          ) : (
+                            <ArrowUpFromLine className="h-4 w-4 text-[hsl(var(--warning))]" />
+                          )}
+                        </div>
                         <div>
-                          <p className="text-sm font-medium">
-                            ₹{tx.amount.toLocaleString()}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {format(new Date(tx.created_at), 'HH:mm')}
-                          </p>
+                          <p className="text-sm font-medium capitalize">{tx.transaction_type}</p>
+                          <p className="text-xs text-muted-foreground">{format(new Date(tx.created_at), 'MMM dd, HH:mm')}</p>
                         </div>
                       </div>
-                      <Badge 
-                        variant="outline"
-                        className={
-                          tx.status === 'success' 
-                            ? 'bg-[hsl(var(--success))]/10 text-[hsl(var(--success))] border-[hsl(var(--success))]/30' 
-                            : tx.status === 'pending'
-                            ? 'bg-[hsl(var(--warning))]/10 text-[hsl(var(--warning))] border-[hsl(var(--warning))]/30'
-                            : 'bg-destructive/10 text-destructive border-destructive/30'
-                        }
-                      >
-                        {tx.status}
-                      </Badge>
+                      <div className="text-right">
+                        <p className={`font-semibold ${tx.transaction_type === 'payin' ? 'text-[hsl(var(--success))]' : 'text-[hsl(var(--warning))]'}`}>
+                          {tx.transaction_type === 'payin' ? '+' : '-'}₹{tx.amount.toLocaleString()}
+                        </p>
+                        <Badge 
+                          variant="outline" 
+                          className={`text-xs ${
+                            tx.status === 'success' ? 'border-[hsl(var(--success))] text-[hsl(var(--success))]' :
+                            tx.status === 'pending' ? 'border-[hsl(var(--warning))] text-[hsl(var(--warning))]' :
+                            'border-destructive text-destructive'
+                          }`}
+                        >
+                          {tx.status}
+                        </Badge>
+                      </div>
                     </div>
                   ))}
                 </div>

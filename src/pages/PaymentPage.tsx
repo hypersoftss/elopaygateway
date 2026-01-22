@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, CreditCard, AlertCircle, CheckCircle2, Clock, Shield, Sparkles, Globe, Sun, Moon } from 'lucide-react';
+import { Loader2, CreditCard, AlertCircle, CheckCircle2, Clock, Shield, Sparkles, Globe, Sun, Moon, Lock, ArrowRight } from 'lucide-react';
 import { format } from 'date-fns';
 
 type Language = 'zh' | 'en';
@@ -43,13 +43,14 @@ const translations = {
     payTo: '支付给',
     amountToPay: '支付金额',
     description: '描述',
-    linkCode: '链接代码',
+    linkCode: '订单编号',
     status: '状态',
-    active: '活跃',
-    expires: '过期时间',
+    active: '有效',
+    expires: '有效期至',
     payNow: '立即支付',
     processing: '处理中...',
-    securedBy: '安全加密支付',
+    securedBy: '安全加密',
+    paymentDetails: '支付详情',
   },
   en: {
     loading: 'Loading payment details...',
@@ -64,13 +65,14 @@ const translations = {
     payTo: 'Pay to',
     amountToPay: 'Amount to Pay',
     description: 'Description',
-    linkCode: 'Link Code',
+    linkCode: 'Order ID',
     status: 'Status',
     active: 'Active',
-    expires: 'Expires',
+    expires: 'Valid Until',
     payNow: 'Pay Now',
     processing: 'Processing...',
-    securedBy: 'Secured & Encrypted by',
+    securedBy: 'Secured & Encrypted',
+    paymentDetails: 'Payment Details',
   },
 };
 
@@ -205,16 +207,16 @@ const PaymentPage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 cinematic-bg">
+      <div className="min-h-screen flex items-center justify-center cinematic-bg">
         <div className="fixed inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-[100px] animate-pulse" />
-          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[hsl(var(--success))]/20 rounded-full blur-[100px] animate-pulse" />
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[hsl(var(--success))]/20 rounded-full blur-[100px] animate-pulse" />
+          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-primary/15 rounded-full blur-[100px] animate-pulse" />
         </div>
         <div className="flex flex-col items-center gap-4 relative z-10">
           <div className="relative">
-            <div className="absolute inset-0 rounded-full bg-primary/30 animate-ping" />
-            <div className="p-4 rounded-full bg-gradient-to-br from-primary to-primary/60 shadow-lg animate-glow">
-              <Loader2 className="h-8 w-8 animate-spin text-primary-foreground" />
+            <div className="absolute inset-0 rounded-full bg-[hsl(var(--success))]/30 animate-ping" />
+            <div className="p-5 rounded-full bg-gradient-to-br from-[hsl(var(--success))] to-[hsl(var(--success))]/60 shadow-xl">
+              <Loader2 className="h-8 w-8 animate-spin text-white" />
             </div>
           </div>
           <p className="text-muted-foreground font-medium">{t.loading}</p>
@@ -225,7 +227,7 @@ const PaymentPage = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-destructive/5 p-4 cinematic-bg">
+      <div className="min-h-screen flex items-center justify-center cinematic-bg p-4">
         <div className="fixed inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-1/3 right-1/3 w-80 h-80 bg-destructive/10 rounded-full blur-[100px]" />
         </div>
@@ -240,17 +242,19 @@ const PaymentPage = () => {
           </Button>
         </div>
 
-        <Card className="w-full max-w-md premium-card border-0 relative z-10">
-          <CardContent className="flex flex-col items-center justify-center py-12 gap-6">
-            <div className="p-5 rounded-full bg-destructive/10 animate-pulse">
-              <AlertCircle className="h-14 w-14 text-destructive" />
+        <Card className="w-full max-w-md premium-card border-0 relative z-10 overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-destructive" />
+          <CardContent className="flex flex-col items-center justify-center py-16 gap-6">
+            <div className="p-6 rounded-full bg-destructive/10">
+              <AlertCircle className="h-16 w-16 text-destructive" />
             </div>
             <div className="text-center space-y-2">
-              <h2 className="text-xl font-bold">{t.paymentError}</h2>
+              <h2 className="text-2xl font-bold">{t.paymentError}</h2>
               <p className="text-muted-foreground">{error}</p>
             </div>
-            <Button variant="outline" onClick={() => navigate('/')} className="mt-4">
+            <Button variant="outline" onClick={() => navigate('/')} className="mt-4 gap-2">
               {t.goHome}
+              <ArrowRight className="h-4 w-4" />
             </Button>
           </CardContent>
         </Card>
@@ -259,17 +263,17 @@ const PaymentPage = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 cinematic-bg bg-gradient-to-br from-background via-background to-primary/5">
-      {/* Cinematic Background Elements */}
+    <div className="min-h-screen flex items-center justify-center p-4 cinematic-bg">
+      {/* Cinematic Background Effects */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-primary/20 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] bg-[hsl(var(--success))]/15 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[150px]" />
+        <div className="absolute -top-40 -right-40 w-[600px] h-[600px] bg-[hsl(var(--success))]/15 rounded-full blur-[150px] animate-pulse" />
+        <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-[hsl(var(--success))]/5 rounded-full blur-[180px]" />
       </div>
 
       {/* Controls */}
       <div className="fixed top-4 right-4 flex gap-2 z-50">
-        <Button variant="outline" size="sm" onClick={toggleLanguage} className="glass-card border-0 gap-2">
+        <Button variant="outline" size="sm" onClick={toggleLanguage} className="glass-card border-0 gap-2 font-medium">
           <Globe className="h-4 w-4" />
           {language === 'zh' ? 'EN' : '中文'}
         </Button>
@@ -278,53 +282,62 @@ const PaymentPage = () => {
         </Button>
       </div>
 
-      <Card className="w-full max-w-md premium-card border-0 relative overflow-hidden animate-scale-in">
-        {/* Decorative gradient line */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-[hsl(var(--success))] to-primary" />
+      {/* Gateway Branding */}
+      <div className="fixed top-4 left-4 z-50 flex items-center gap-3">
+        {gateway?.logo_url ? (
+          <img src={gateway.logo_url} alt={gateway.gateway_name || 'Gateway'} className="h-10 w-10 object-contain rounded-xl shadow-lg" />
+        ) : (
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[hsl(var(--success))] to-[hsl(var(--success))]/70 flex items-center justify-center shadow-lg">
+            <CreditCard className="h-5 w-5 text-white" />
+          </div>
+        )}
+        <span className="font-bold text-lg hidden sm:block">{gateway?.gateway_name || 'PayGate'}</span>
+      </div>
+
+      <Card className="w-full max-w-lg premium-card border-0 relative overflow-hidden animate-scale-in shadow-2xl">
+        {/* Gradient top border */}
+        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[hsl(var(--success))] via-primary to-[hsl(var(--success))]" />
         
-        {/* Header with Branding */}
-        <CardHeader className="text-center border-b border-border/50 pb-6 pt-8 bg-gradient-to-b from-muted/30 to-transparent">
-          {gateway?.logo_url ? (
-            <img 
-              src={gateway.logo_url} 
-              alt={gateway.gateway_name || 'Payment Gateway'} 
-              className="h-16 mx-auto mb-4 object-contain drop-shadow-lg"
-            />
-          ) : (
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <div className="p-4 rounded-2xl bg-gradient-to-br from-primary to-primary/80 shadow-lg animate-glow">
-                <CreditCard className="h-8 w-8 text-primary-foreground" />
+        {/* Header */}
+        <CardHeader className="text-center border-b border-border/30 pb-6 pt-10 bg-gradient-to-b from-muted/50 to-transparent">
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <div className="relative">
+              <div className="absolute inset-0 rounded-2xl bg-[hsl(var(--success))]/30 blur-xl animate-pulse" />
+              <div className="relative p-5 rounded-2xl bg-gradient-to-br from-[hsl(var(--success))] to-[hsl(var(--success))]/80 shadow-xl">
+                <CreditCard className="h-10 w-10 text-white" />
               </div>
+              <Sparkles className="absolute -top-1 -right-1 h-5 w-5 text-[hsl(var(--success))] animate-pulse" />
             </div>
-          )}
-          <CardTitle className="text-2xl font-bold">
-            {gateway?.gateway_name || 'PayGate'}
-          </CardTitle>
-          <CardDescription className="flex items-center justify-center gap-2 mt-3">
-            <Shield className="h-4 w-4 text-[hsl(var(--success))]" />
+          </div>
+          <div className="flex items-center justify-center gap-2 text-sm text-[hsl(var(--success))]">
+            <Shield className="h-4 w-4" />
             <span className="font-medium">{t.securePayment}</span>
-          </CardDescription>
+          </div>
           {merchant?.merchant_name && (
-            <p className="text-sm text-muted-foreground mt-2">
+            <p className="text-muted-foreground mt-2">
               {t.payTo}: <span className="font-semibold text-foreground">{merchant.merchant_name}</span>
             </p>
           )}
         </CardHeader>
         
-        <CardContent className="pt-6 space-y-6">
+        <CardContent className="pt-8 pb-6 space-y-6">
           {/* Amount Display */}
-          <div className="text-center py-10 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent rounded-2xl border border-primary/20 relative overflow-hidden group hover:border-primary/40 transition-all duration-500">
-            <Sparkles className="absolute top-4 right-4 h-5 w-5 text-primary/40 animate-pulse" />
-            <Sparkles className="absolute bottom-4 left-4 h-4 w-4 text-primary/30 animate-pulse" style={{ animationDelay: '0.5s' }} />
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <p className="text-sm text-muted-foreground mb-3 font-medium">{t.amountToPay}</p>
-            <p className="text-5xl font-bold text-gradient relative z-10">
+          <div className="text-center py-12 bg-gradient-to-br from-[hsl(var(--success))]/10 via-[hsl(var(--success))]/5 to-transparent rounded-2xl border border-[hsl(var(--success))]/20 relative overflow-hidden group hover:border-[hsl(var(--success))]/40 transition-all duration-500">
+            <Sparkles className="absolute top-4 right-4 h-5 w-5 text-[hsl(var(--success))]/40 animate-pulse" />
+            <Sparkles className="absolute bottom-4 left-4 h-4 w-4 text-[hsl(var(--success))]/30 animate-pulse" style={{ animationDelay: '0.5s' }} />
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[hsl(var(--success))]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <p className="text-sm text-muted-foreground mb-4 font-medium">{t.amountToPay}</p>
+            <p className="text-6xl font-bold text-gradient relative z-10">
               ₹{paymentLink?.amount.toLocaleString()}
             </p>
           </div>
 
-          {/* Details */}
+          {/* Payment Details */}
           <div className="space-y-4 p-5 bg-muted/20 dark:bg-muted/10 rounded-xl border border-border/50">
+            <h3 className="font-semibold text-sm flex items-center gap-2">
+              <Lock className="h-4 w-4 text-muted-foreground" />
+              {t.paymentDetails}
+            </h3>
             {paymentLink?.description && (
               <div className="flex justify-between items-start">
                 <span className="text-muted-foreground text-sm">{t.description}</span>
@@ -337,8 +350,8 @@ const PaymentPage = () => {
             </div>
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground text-sm">{t.status}</span>
-              <Badge className="bg-[hsl(var(--success))] hover:bg-[hsl(var(--success))] shadow-sm">
-                <CheckCircle2 className="h-3 w-3 mr-1" />
+              <Badge className="bg-[hsl(var(--success))] hover:bg-[hsl(var(--success))] shadow-sm gap-1">
+                <CheckCircle2 className="h-3 w-3" />
                 {t.active}
               </Badge>
             </div>
@@ -354,26 +367,27 @@ const PaymentPage = () => {
           </div>
         </CardContent>
 
-        <CardFooter className="flex flex-col gap-4 border-t border-border/50 pt-6 pb-8">
+        <CardFooter className="flex flex-col gap-4 border-t border-border/30 pt-6 pb-8 bg-gradient-to-t from-muted/30 to-transparent">
           <Button 
-            className="w-full h-14 text-lg font-semibold btn-gradient-success shadow-lg hover:shadow-xl transition-all duration-300 animate-glow" 
+            className="w-full h-14 text-lg font-semibold bg-[hsl(var(--success))] hover:bg-[hsl(var(--success))]/90 text-white shadow-lg hover:shadow-xl transition-all duration-300 gap-2" 
             onClick={handlePay}
             disabled={isProcessing}
           >
             {isProcessing ? (
               <>
-                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                <Loader2 className="h-5 w-5 animate-spin" />
                 {t.processing}
               </>
             ) : (
               <>
-                <CreditCard className="h-5 w-5 mr-2" />
+                <Lock className="h-5 w-5" />
                 {t.payNow} ₹{paymentLink?.amount.toLocaleString()}
+                <ArrowRight className="h-5 w-5" />
               </>
             )}
           </Button>
           <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-            <Shield className="h-3.5 w-3.5" />
+            <Shield className="h-3.5 w-3.5 text-[hsl(var(--success))]" />
             <span>{t.securedBy} {gateway?.gateway_name || 'PayGate'}</span>
           </div>
         </CardFooter>
