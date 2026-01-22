@@ -56,13 +56,16 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const navigate = useNavigate();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [ordersOpen, setOrdersOpen] = useState(
-    location.pathname.includes('/payin') || location.pathname.includes('/payout')
-  );
-  const [accountOpen, setAccountOpen] = useState(
+  const [merchantsOpen, setMerchantsOpen] = useState(
     location.pathname.includes('/info') || 
     location.pathname.includes('/channel-price') || 
     location.pathname.includes('/security')
+  );
+  const [ordersOpen, setOrdersOpen] = useState(
+    location.pathname.includes('/payin') || location.pathname.includes('/payout')
+  );
+  const [settlementOpen, setSettlementOpen] = useState(
+    location.pathname.includes('/withdrawal')
   );
 
   const isAdmin = user?.role === 'admin';
@@ -79,7 +82,15 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
   const merchantNavItems: NavItem[] = [
     { label: t('sidebar.dashboard'), icon: <LayoutDashboard className="h-5 w-5" />, href: '/merchant' },
-    { label: t('sidebar.analytics'), icon: <BarChart3 className="h-5 w-5" />, href: '/merchant/analytics' },
+    { 
+      label: language === 'zh' ? '商户管理' : 'Merchants',
+      icon: <Users className="h-5 w-5" />,
+      children: [
+        { label: language === 'zh' ? '基本信息' : 'Basic Information', icon: <User className="h-4 w-4" />, href: '/merchant/info' },
+        { label: t('sidebar.channelPrice'), icon: <DollarSign className="h-4 w-4" />, href: '/merchant/channel-price' },
+        { label: language === 'zh' ? '重置密码' : 'Reset Password', icon: <Shield className="h-4 w-4" />, href: '/merchant/security' },
+      ]
+    },
     { 
       label: language === 'zh' ? '订单管理' : 'Orders',
       icon: <ClipboardList className="h-5 w-5" />,
@@ -88,19 +99,15 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         { label: t('sidebar.payoutOrders'), icon: <ArrowUpFromLine className="h-4 w-4" />, href: '/merchant/payout' },
       ]
     },
-    { label: t('sidebar.documentation'), icon: <FileText className="h-5 w-5" />, href: '/merchant/documentation' },
-    { label: t('sidebar.paymentLinks'), icon: <LinkIcon className="h-5 w-5" />, href: '/merchant/payment-links' },
-    { label: t('sidebar.withdrawal'), icon: <Wallet className="h-5 w-5" />, href: '/merchant/withdrawal' },
-    { label: language === 'zh' ? '结算记录' : 'Settlement History', icon: <History className="h-5 w-5" />, href: '/merchant/settlement-history' },
-    {
-      label: language === 'zh' ? '账户设置' : 'Account Settings',
-      icon: <UserCog className="h-5 w-5" />,
+    { 
+      label: language === 'zh' ? '结算管理' : 'Settlement',
+      icon: <Wallet className="h-5 w-5" />,
       children: [
-        { label: t('sidebar.accountInfo'), icon: <User className="h-4 w-4" />, href: '/merchant/info' },
-        { label: t('sidebar.channelPrice'), icon: <DollarSign className="h-4 w-4" />, href: '/merchant/channel-price' },
-        { label: t('sidebar.security'), icon: <Shield className="h-4 w-4" />, href: '/merchant/security' },
+        { label: t('sidebar.withdrawal'), icon: <Wallet className="h-4 w-4" />, href: '/merchant/withdrawal' },
       ]
     },
+    { label: t('sidebar.paymentLinks'), icon: <LinkIcon className="h-5 w-5" />, href: '/merchant/payment-links' },
+    { label: t('sidebar.documentation'), icon: <FileText className="h-5 w-5" />, href: '/merchant/documentation' },
   ];
 
   const navItems = isAdmin ? adminNavItems : merchantNavItems;
@@ -119,9 +126,11 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
   const renderNavItem = (item: NavItem, collapsed: boolean) => {
     if (item.children) {
+      const isMerchants = item.label.includes('商户') || item.label.includes('Merchants');
       const isOrders = item.label.includes('订单') || item.label.includes('Orders');
-      const isOpen = isOrders ? ordersOpen : accountOpen;
-      const setOpen = isOrders ? setOrdersOpen : setAccountOpen;
+      const isSettlement = item.label.includes('结算') || item.label.includes('Settlement');
+      const isOpen = isMerchants ? merchantsOpen : isOrders ? ordersOpen : settlementOpen;
+      const setOpen = isMerchants ? setMerchantsOpen : isOrders ? setOrdersOpen : setSettlementOpen;
       const hasActiveChild = isChildActive(item);
 
       return (

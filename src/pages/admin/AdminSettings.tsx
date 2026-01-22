@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, Settings, CreditCard, Percent, Eye, EyeOff, Upload, AlertTriangle, Globe, Mail, Image } from 'lucide-react';
+import { Save, Settings, CreditCard, Percent, Eye, EyeOff, Upload, AlertTriangle, Globe, Mail, Image, Bell } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +24,9 @@ interface AdminSettings {
   gateway_domain: string | null;
   logo_url: string | null;
   support_email: string | null;
+  large_payin_threshold: number;
+  large_payout_threshold: number;
+  large_withdrawal_threshold: number;
 }
 
 const AdminSettingsPage = () => {
@@ -46,7 +49,12 @@ const AdminSettingsPage = () => {
         .limit(1);
 
       if (data && data.length > 0) {
-        setSettings(data[0] as AdminSettings);
+        setSettings({
+          ...data[0],
+          large_payin_threshold: data[0].large_payin_threshold || 10000,
+          large_payout_threshold: data[0].large_payout_threshold || 5000,
+          large_withdrawal_threshold: data[0].large_withdrawal_threshold || 10000,
+        } as AdminSettings);
         setLogoPreview(data[0].logo_url);
       }
     } catch (error) {
@@ -104,6 +112,9 @@ const AdminSettingsPage = () => {
           gateway_domain: settings.gateway_domain,
           logo_url: logoUrl,
           support_email: settings.support_email,
+          large_payin_threshold: settings.large_payin_threshold,
+          large_payout_threshold: settings.large_payout_threshold,
+          large_withdrawal_threshold: settings.large_withdrawal_threshold,
         })
         .eq('id', settings.id);
 
@@ -160,18 +171,22 @@ const AdminSettingsPage = () => {
 
         {/* Tabs */}
         <Tabs defaultValue="branding" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="branding" className="flex items-center gap-2">
               <Globe className="h-4 w-4" />
-              {language === 'zh' ? '网关品牌' : 'Gateway Branding'}
+              {language === 'zh' ? '网关品牌' : 'Branding'}
             </TabsTrigger>
             <TabsTrigger value="api" className="flex items-center gap-2">
               <CreditCard className="h-4 w-4" />
-              {language === 'zh' ? 'BondPay API' : 'BondPay API'}
+              {language === 'zh' ? 'API' : 'API'}
             </TabsTrigger>
             <TabsTrigger value="fees" className="flex items-center gap-2">
               <Percent className="h-4 w-4" />
-              {language === 'zh' ? '默认费率' : 'Default Fees'}
+              {language === 'zh' ? '费率' : 'Fees'}
+            </TabsTrigger>
+            <TabsTrigger value="alerts" className="flex items-center gap-2">
+              <Bell className="h-4 w-4" />
+              {language === 'zh' ? '通知' : 'Alerts'}
             </TabsTrigger>
           </TabsList>
 
@@ -450,6 +465,109 @@ const AdminSettingsPage = () => {
                       : "These fees will be applied to new merchants. You can customize fees for individual merchants in their edit page."}
                   </AlertDescription>
                 </Alert>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Notification Thresholds Tab */}
+          <TabsContent value="alerts">
+            <Card>
+              <CardHeader className="bg-amber-500/5 border-b">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-amber-500/10 rounded-lg flex items-center justify-center">
+                    <Bell className="h-5 w-5 text-amber-500" />
+                  </div>
+                  <div>
+                    <CardTitle>{language === 'zh' ? '通知阈值配置' : 'Notification Threshold Configuration'}</CardTitle>
+                    <CardDescription>
+                      {language === 'zh' ? '设置大额交易通知的触发阈值' : 'Set thresholds for large transaction alerts'}
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-6 space-y-6">
+                <Alert>
+                  <Bell className="h-4 w-4" />
+                  <AlertDescription>
+                    {language === 'zh' 
+                      ? '当交易金额超过设定阈值时，系统将自动发送通知提醒。'
+                      : 'When transaction amounts exceed these thresholds, you will receive automatic notifications.'}
+                  </AlertDescription>
+                </Alert>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <Card className="border-2 border-[hsl(var(--success))]/20">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-[hsl(var(--success))] rounded-lg flex items-center justify-center text-white text-xs font-bold">IN</div>
+                        <div>
+                          <CardTitle className="text-base">{language === 'zh' ? '大额Pay-In' : 'Large Pay-In'}</CardTitle>
+                          <CardDescription className="text-xs">
+                            {language === 'zh' ? '收款超过此金额通知' : 'Notify when pay-in exceeds this amount'}
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <Label>{language === 'zh' ? '阈值 (₹)' : 'Threshold (₹)'}</Label>
+                      <Input
+                        type="number"
+                        value={settings?.large_payin_threshold || 10000}
+                        onChange={(e) => setSettings(s => s ? { ...s, large_payin_threshold: parseFloat(e.target.value) } : null)}
+                        className="mt-2"
+                        placeholder="10000"
+                      />
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-2 border-[hsl(var(--warning))]/20">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-[hsl(var(--warning))] rounded-lg flex items-center justify-center text-white text-xs font-bold">OUT</div>
+                        <div>
+                          <CardTitle className="text-base">{language === 'zh' ? '大额Pay-Out' : 'Large Pay-Out'}</CardTitle>
+                          <CardDescription className="text-xs">
+                            {language === 'zh' ? '付款超过此金额通知' : 'Notify when payout exceeds this amount'}
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <Label>{language === 'zh' ? '阈值 (₹)' : 'Threshold (₹)'}</Label>
+                      <Input
+                        type="number"
+                        value={settings?.large_payout_threshold || 5000}
+                        onChange={(e) => setSettings(s => s ? { ...s, large_payout_threshold: parseFloat(e.target.value) } : null)}
+                        className="mt-2"
+                        placeholder="5000"
+                      />
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-2 border-destructive/20">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-destructive rounded-lg flex items-center justify-center text-white text-xs font-bold">WD</div>
+                        <div>
+                          <CardTitle className="text-base">{language === 'zh' ? '大额提现' : 'Large Withdrawal'}</CardTitle>
+                          <CardDescription className="text-xs">
+                            {language === 'zh' ? '提现超过此金额通知' : 'Notify when withdrawal exceeds this amount'}
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <Label>{language === 'zh' ? '阈值 (₹)' : 'Threshold (₹)'}</Label>
+                      <Input
+                        type="number"
+                        value={settings?.large_withdrawal_threshold || 10000}
+                        onChange={(e) => setSettings(s => s ? { ...s, large_withdrawal_threshold: parseFloat(e.target.value) } : null)}
+                        className="mt-2"
+                        placeholder="10000"
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
