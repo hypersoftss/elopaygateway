@@ -13,7 +13,6 @@ function generateOrderNo(): string {
 }
 
 function verifySignature(params: Record<string, string>, payoutKey: string, signature: string): boolean {
-  // Signature = md5(account_number + amount + bank_name + callback_url + ifsc + merchant_id + name + transaction_id + payout_key)
   const signStr = `${params.account_number}${params.amount}${params.bank_name}${params.callback_url}${params.ifsc}${params.merchant_id}${params.name}${params.transaction_id}${payoutKey}`
   const hash = new Md5()
   hash.update(signStr)
@@ -39,6 +38,30 @@ function generateBondPayPayoutSignature(
   return hash.toString()
 }
 
+async function createNotification(
+  supabaseAdmin: any,
+  type: string,
+  title: string,
+  message: string,
+  amount: number,
+  merchantId: string,
+  transactionId?: string
+) {
+  try {
+    await supabaseAdmin.from('admin_notifications').insert({
+      notification_type: type,
+      title,
+      message,
+      amount,
+      merchant_id: merchantId,
+      transaction_id: transactionId || null,
+    })
+    console.log('Notification created:', title)
+  } catch (error) {
+    console.error('Failed to create notification:', error)
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -60,7 +83,6 @@ Deno.serve(async (req) => {
 
     console.log('Payout request received:', { merchant_id, amount, transaction_id })
 
-    // Validate required fields
     if (!merchant_id || !amount || !transaction_id || !account_number || !ifsc || !name || !bank_name || !sign) {
       return new Response(
         JSON.stringify({ code: 400, message: 'Missing required parameters' }),
@@ -74,10 +96,10 @@ Deno.serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
-    // Get merchant by account number
+    // Get merchant
     const { data: merchants, error: merchantError } = await supabaseAdmin
       .from('merchants')
-      .select('id, payout_key, payout_fee, is_active, balance, frozen_balance')
+      .select('id, payout_key, payout_fee, is_active, balance, frozen_balance, merchant_name')
       .eq('account_number', merchant_id)
       .limit(1)
 
@@ -98,7 +120,7 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Verify signature using merchant's own payout key
+    // Verify signature
     const isValidSign = verifySignature(
       { 
         account_number, 
@@ -122,7 +144,6 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Calculate fee and net amount
     const amountNum = parseFloat(amount)
     const fee = amountNum * (merchant.payout_fee / 100)
     const totalDeduction = amountNum + fee
@@ -135,10 +156,10 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Get admin settings for BondPay master credentials
+    // Get admin settings
     const { data: settings, error: settingsError } = await supabaseAdmin
       .from('admin_settings')
-      .select('master_merchant_id, master_payout_key, bondpay_base_url')
+      .select('master_merchant_id, master_payout_key, bondpay_base_url, large_payout_threshold')
       .limit(1)
 
     if (settingsError || !settings || settings.length === 0) {
@@ -150,14 +171,10 @@ Deno.serve(async (req) => {
     }
 
     const adminSettings = settings[0]
-
-    // Generate order number
     const orderNo = generateOrderNo()
-
-    // Create internal callback URL for BondPay
     const internalCallbackUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/callback-handler`
 
-    // Generate signature for BondPay using master credentials
+    // Generate BondPay signature
     const bondPaySignature = generateBondPayPayoutSignature(
       account_number,
       amount.toString(),
@@ -170,9 +187,9 @@ Deno.serve(async (req) => {
       adminSettings.master_payout_key
     )
 
-    console.log('Calling BondPay Payout API with master credentials...')
+    console.log('Calling BondPay Payout API...')
 
-    // Call BondPay Payout API with master credentials
+    // Call BondPay API
     const formData = new URLSearchParams()
     formData.append('merchant_id', adminSettings.master_merchant_id)
     formData.append('amount', amount.toString())
@@ -193,8 +210,8 @@ Deno.serve(async (req) => {
     const bondPayData = await bondPayResponse.json()
     console.log('BondPay Payout response:', bondPayData)
 
-    // Create transaction record
-    const { error: txError } = await supabaseAdmin
+    // Create transaction
+    const { data: txData, error: txError } = await supabaseAdmin
       .from('transactions')
       .insert({
         merchant_id: merchant.id,
@@ -214,6 +231,8 @@ Deno.serve(async (req) => {
           merchant_callback: callback_url
         })
       })
+      .select('id')
+      .single()
 
     if (txError) {
       console.error('Transaction creation error:', txError)
@@ -234,6 +253,19 @@ Deno.serve(async (req) => {
 
     if (balanceError) {
       console.error('Balance update error:', balanceError)
+    }
+
+    // Check for large transaction and create notification
+    if (amountNum >= (adminSettings.large_payout_threshold || 5000)) {
+      await createNotification(
+        supabaseAdmin,
+        'large_payout',
+        `Large Pay-out: ₹${amountNum.toLocaleString()}`,
+        `Merchant ${merchant.merchant_name} (${merchant_id}) requested a pay-out of ₹${amountNum.toLocaleString()} to ${bank_name}`,
+        amountNum,
+        merchant.id,
+        txData?.id
+      )
     }
 
     console.log('Payout order created successfully:', orderNo)

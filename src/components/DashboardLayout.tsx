@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { LanguageSwitch } from '@/components/LanguageSwitch';
+import { AdminNotifications } from '@/components/AdminNotifications';
 import { useTranslation } from '@/lib/i18n';
 import { useAuthStore } from '@/lib/auth';
 import { useGatewaySettings } from '@/hooks/useGatewaySettings';
@@ -193,7 +194,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         {settings.logoUrl ? (
           <img src={settings.logoUrl} alt="Logo" className="h-8 w-8 object-contain rounded" />
         ) : (
-          <div className="h-8 w-8 rounded bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-white font-bold text-sm">
+          <div className="h-8 w-8 rounded bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-primary-foreground font-bold text-sm">
             {settings.gatewayName?.charAt(0) || 'P'}
           </div>
         )}
@@ -271,7 +272,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
               {settings.logoUrl ? (
                 <img src={settings.logoUrl} alt="Logo" className="h-6 w-6 object-contain rounded" />
               ) : (
-                <div className="h-6 w-6 rounded bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-white font-bold text-xs">
+                <div className="h-6 w-6 rounded bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-primary-foreground font-bold text-xs">
                   {settings.gatewayName?.charAt(0) || 'P'}
                 </div>
               )}
@@ -283,6 +284,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             <span className="text-sm text-muted-foreground hidden sm:block truncate max-w-[150px]">
               {user?.email}
             </span>
+            {isAdmin && <AdminNotifications />}
             <ThemeToggle />
             <LanguageSwitch />
           </div>
