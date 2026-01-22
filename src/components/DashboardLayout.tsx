@@ -109,7 +109,6 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       ]
     },
     { label: t('sidebar.paymentLinks'), icon: <LinkIcon className="h-5 w-5" />, href: '/merchant/payment-links' },
-    { label: t('sidebar.apiTesting'), icon: <TestTube className="h-5 w-5" />, href: '/merchant/api-testing' },
     { label: t('sidebar.documentation'), icon: <FileText className="h-5 w-5" />, href: '/merchant/documentation' },
   ];
 
