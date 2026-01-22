@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, ShieldCheck, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,9 +9,6 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { LanguageSwitch } from '@/components/LanguageSwitch';
 import { useTranslation } from '@/lib/i18n';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-
-const SETUP_KEY = 'PAYGATE2024';
 
 const SetupAdmin = () => {
   const { t } = useTranslation();
@@ -26,75 +23,37 @@ const SetupAdmin = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (setupKey !== SETUP_KEY) {
-      toast({
-        title: t('common.error'),
-        description: 'Invalid setup key',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
-      // Create auth user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-        },
+      // Call the edge function to setup admin
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/setup-admin`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email,
+            password,
+            setupKey,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Setup failed');
+      }
+
+      toast({
+        title: t('common.success'),
+        description: 'Admin account created successfully!',
       });
 
-      if (authError) throw authError;
-
-      if (authData.user) {
-        // Create admin role
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .insert({
-            user_id: authData.user.id,
-            role: 'admin',
-          });
-
-        if (roleError) throw roleError;
-
-        // Create admin profile
-        const { error: profileError } = await supabase
-          .from('admin_profiles')
-          .insert({
-            user_id: authData.user.id,
-          });
-
-        if (profileError) throw profileError;
-
-        // Create initial admin settings if not exists
-        const { data: existingSettings } = await supabase
-          .from('admin_settings')
-          .select('id')
-          .limit(1);
-
-        if (!existingSettings?.length) {
-          const { error: settingsError } = await supabase
-            .from('admin_settings')
-            .insert({
-              master_merchant_id: '100888140',
-              master_api_key: 'ab76fe01039a5a5aff089d193da40a40',
-              master_payout_key: 'D7EF0E76DE29CD13E6128D722C1F6270',
-            });
-
-          if (settingsError) throw settingsError;
-        }
-
-        toast({
-          title: t('common.success'),
-          description: 'Admin account created successfully',
-        });
-
-        navigate('/admin-login');
-      }
+      navigate('/admin-login');
     } catch (error: any) {
       toast({
         title: t('common.error'),
@@ -136,9 +95,10 @@ const SetupAdmin = () => {
                   type="password"
                   value={setupKey}
                   onChange={(e) => setSetupKey(e.target.value)}
-                  placeholder="Enter setup key"
+                  placeholder="PAYGATE2024"
                   required
                 />
+                <p className="text-xs text-muted-foreground">Default: PAYGATE2024</p>
               </div>
 
               <div className="space-y-2">
@@ -177,7 +137,14 @@ const SetupAdmin = () => {
               </div>
 
               <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? t('common.loading') : t('auth.createAdmin')}
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    {t('common.loading')}
+                  </>
+                ) : (
+                  t('auth.createAdmin')
+                )}
               </Button>
             </form>
           </CardContent>
