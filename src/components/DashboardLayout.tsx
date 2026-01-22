@@ -20,6 +20,7 @@ import {
   ChevronRight,
   ClipboardList,
   History,
+  UserCog,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -47,7 +48,7 @@ interface NavItem {
 }
 
 export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const { user, logout } = useAuthStore();
   const { settings } = useGatewaySettings();
   const location = useLocation();
@@ -56,6 +57,11 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [ordersOpen, setOrdersOpen] = useState(
     location.pathname.includes('/payin') || location.pathname.includes('/payout')
+  );
+  const [accountOpen, setAccountOpen] = useState(
+    location.pathname.includes('/info') || 
+    location.pathname.includes('/channel-price') || 
+    location.pathname.includes('/security')
   );
 
   const isAdmin = user?.role === 'admin';
@@ -74,7 +80,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { label: t('sidebar.dashboard'), icon: <LayoutDashboard className="h-5 w-5" />, href: '/merchant' },
     { label: t('sidebar.analytics'), icon: <BarChart3 className="h-5 w-5" />, href: '/merchant/analytics' },
     { 
-      label: t('sidebar.orders') || '订单管理',
+      label: language === 'zh' ? '订单管理' : 'Orders',
       icon: <ClipboardList className="h-5 w-5" />,
       children: [
         { label: t('sidebar.payinOrders'), icon: <ArrowDownToLine className="h-4 w-4" />, href: '/merchant/payin' },
@@ -82,13 +88,18 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       ]
     },
     { label: t('sidebar.documentation'), icon: <FileText className="h-5 w-5" />, href: '/merchant/documentation' },
-    { label: t('sidebar.apiTesting'), icon: <TestTube className="h-5 w-5" />, href: '/merchant/api-testing' },
     { label: t('sidebar.paymentLinks'), icon: <LinkIcon className="h-5 w-5" />, href: '/merchant/payment-links' },
-    { label: t('sidebar.channelPrice'), icon: <DollarSign className="h-5 w-5" />, href: '/merchant/channel-price' },
-    { label: t('sidebar.accountInfo'), icon: <User className="h-5 w-5" />, href: '/merchant/info' },
     { label: t('sidebar.withdrawal'), icon: <Wallet className="h-5 w-5" />, href: '/merchant/withdrawal' },
-    { label: t('sidebar.settlementHistory') || '结算记录', icon: <History className="h-5 w-5" />, href: '/merchant/settlement-history' },
-    { label: t('sidebar.security'), icon: <Shield className="h-5 w-5" />, href: '/merchant/security' },
+    { label: language === 'zh' ? '结算记录' : 'Settlement History', icon: <History className="h-5 w-5" />, href: '/merchant/settlement-history' },
+    {
+      label: language === 'zh' ? '账户设置' : 'Account Settings',
+      icon: <UserCog className="h-5 w-5" />,
+      children: [
+        { label: t('sidebar.accountInfo'), icon: <User className="h-4 w-4" />, href: '/merchant/info' },
+        { label: t('sidebar.channelPrice'), icon: <DollarSign className="h-4 w-4" />, href: '/merchant/channel-price' },
+        { label: t('sidebar.security'), icon: <Shield className="h-4 w-4" />, href: '/merchant/security' },
+      ]
+    },
   ];
 
   const navItems = isAdmin ? adminNavItems : merchantNavItems;
@@ -98,39 +109,51 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     navigate('/login');
   };
 
+  const isChildActive = (item: NavItem) => {
+    if (item.children) {
+      return item.children.some(child => location.pathname === child.href);
+    }
+    return false;
+  };
+
   const renderNavItem = (item: NavItem, collapsed: boolean) => {
     if (item.children) {
+      const isOrders = item.label.includes('订单') || item.label.includes('Orders');
+      const isOpen = isOrders ? ordersOpen : accountOpen;
+      const setOpen = isOrders ? setOrdersOpen : setAccountOpen;
+      const hasActiveChild = isChildActive(item);
+
       return (
-        <Collapsible key={item.label} open={ordersOpen} onOpenChange={setOrdersOpen}>
+        <Collapsible key={item.label} open={isOpen || hasActiveChild} onOpenChange={setOpen}>
           <CollapsibleTrigger asChild>
             <button
               className={cn(
-                'flex items-center gap-3 px-3 py-2 rounded-md transition-colors w-full text-left',
-                'hover:bg-muted',
-                ordersOpen && 'bg-muted/50'
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all w-full text-left',
+                'hover:bg-accent/50',
+                (isOpen || hasActiveChild) && 'bg-accent/30'
               )}
             >
               {item.icon}
               {!collapsed && (
                 <>
-                  <span className="flex-1">{item.label}</span>
-                  {ordersOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                  <span className="flex-1 text-sm font-medium">{item.label}</span>
+                  {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                 </>
               )}
             </button>
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <ul className="ml-4 mt-1 space-y-1 border-l border-border pl-4">
+            <ul className="ml-4 mt-1 space-y-1 border-l-2 border-border pl-4">
               {item.children.map((child) => (
                 <li key={child.href}>
                   <Link
                     to={child.href!}
                     onClick={() => setIsMobileOpen(false)}
                     className={cn(
-                      'flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm',
+                      'flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-sm',
                       location.pathname === child.href
-                        ? 'bg-primary text-primary-foreground'
-                        : 'hover:bg-muted'
+                        ? 'bg-primary text-primary-foreground font-medium'
+                        : 'hover:bg-accent/50 text-muted-foreground hover:text-foreground'
                     )}
                   >
                     {child.icon}
@@ -150,14 +173,14 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           to={item.href!}
           onClick={() => setIsMobileOpen(false)}
           className={cn(
-            'flex items-center gap-3 px-3 py-2 rounded-md transition-colors',
+            'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all',
             location.pathname === item.href
-              ? 'bg-primary text-primary-foreground'
-              : 'hover:bg-muted'
+              ? 'bg-primary text-primary-foreground font-medium shadow-sm'
+              : 'hover:bg-accent/50 text-muted-foreground hover:text-foreground'
           )}
         >
           {item.icon}
-          {!collapsed && <span>{item.label}</span>}
+          {!collapsed && <span className="text-sm">{item.label}</span>}
         </Link>
       </li>
     );
@@ -165,27 +188,41 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
   const NavContent = ({ collapsed = false }: { collapsed?: boolean }) => (
     <nav className="flex flex-col h-full">
-      <div className="flex items-center gap-2 p-4 border-b">
-        {settings.logoUrl && (
-          <img src={settings.logoUrl} alt="Logo" className="h-8 w-8 object-contain" />
+      {/* Logo */}
+      <div className="flex items-center gap-3 p-4 border-b border-border">
+        {settings.logoUrl ? (
+          <img src={settings.logoUrl} alt="Logo" className="h-8 w-8 object-contain rounded" />
+        ) : (
+          <div className="h-8 w-8 rounded bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-white font-bold text-sm">
+            {settings.gatewayName?.charAt(0) || 'P'}
+          </div>
         )}
         {!collapsed && (
-          <span className="font-bold text-lg">{settings.gatewayName}</span>
+          <div>
+            <span className="font-bold text-lg">{settings.gatewayName}</span>
+            <p className="text-xs text-muted-foreground">
+              {isAdmin ? (language === 'zh' ? '管理后台' : 'Admin Panel') : (language === 'zh' ? '商户中心' : 'Merchant Portal')}
+            </p>
+          </div>
         )}
       </div>
-      <div className="flex-1 overflow-y-auto py-4">
-        <ul className="space-y-1 px-2">
+      
+      {/* Navigation */}
+      <div className="flex-1 overflow-y-auto py-4 px-3">
+        <ul className="space-y-1">
           {navItems.map((item) => renderNavItem(item, collapsed))}
         </ul>
       </div>
-      <div className="p-4 border-t">
+      
+      {/* Logout */}
+      <div className="p-3 border-t border-border">
         <Button
           variant="ghost"
-          className="w-full justify-start gap-3"
+          className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground hover:bg-destructive/10"
           onClick={handleLogout}
         >
           <LogOut className="h-5 w-5" />
-          {!collapsed && <span>{t('auth.logout')}</span>}
+          {!collapsed && <span className="text-sm">{t('auth.logout')}</span>}
         </Button>
       </div>
     </nav>
@@ -196,7 +233,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       {/* Desktop Sidebar */}
       <aside
         className={cn(
-          'hidden lg:flex flex-col border-r bg-card transition-all duration-300',
+          'hidden lg:flex flex-col border-r border-border bg-card/50 backdrop-blur-sm transition-all duration-300',
           isCollapsed ? 'w-16' : 'w-64'
         )}
       >
@@ -206,7 +243,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="h-16 border-b bg-card flex items-center justify-between px-4">
+        <header className="h-14 border-b border-border bg-card/80 backdrop-blur-sm flex items-center justify-between px-4">
           <div className="flex items-center gap-2">
             {/* Mobile Menu */}
             <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
@@ -231,15 +268,19 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             </Button>
 
             <div className="flex items-center gap-2 lg:hidden">
-              {settings.logoUrl && (
-                <img src={settings.logoUrl} alt="Logo" className="h-6 w-6 object-contain" />
+              {settings.logoUrl ? (
+                <img src={settings.logoUrl} alt="Logo" className="h-6 w-6 object-contain rounded" />
+              ) : (
+                <div className="h-6 w-6 rounded bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-white font-bold text-xs">
+                  {settings.gatewayName?.charAt(0) || 'P'}
+                </div>
               )}
-              <span className="font-bold">{settings.gatewayName}</span>
+              <span className="font-bold text-sm">{settings.gatewayName}</span>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground hidden sm:block">
+            <span className="text-sm text-muted-foreground hidden sm:block truncate max-w-[150px]">
               {user?.email}
             </span>
             <ThemeToggle />
@@ -248,7 +289,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-gradient-to-b from-background to-muted/20">
           {children}
         </main>
       </div>
