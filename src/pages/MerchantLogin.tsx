@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Eye, EyeOff, ShieldCheck, Store, Smartphone } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Eye, EyeOff, Store, Smartphone, Sparkles, Shield, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -125,7 +125,7 @@ const MerchantLogin = () => {
     try {
       // Verify the 2FA code
       const totp = new OTPAuth.TOTP({
-        issuer: 'PayGate',
+        issuer: settings.gatewayName || 'PayGate',
         label: email,
         algorithm: 'SHA1',
         digits: 6,
@@ -181,22 +181,29 @@ const MerchantLogin = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-background cinematic-bg">
         <div className="animate-pulse text-muted-foreground">{t('common.loading')}</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-[hsl(var(--success)/0.05)] via-background to-[hsl(var(--success)/0.1)]">
+    <div className="min-h-screen flex flex-col cinematic-bg relative overflow-hidden">
+      {/* Cinematic Background Effects */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-[600px] h-[600px] bg-[hsl(var(--success))]/15 rounded-full blur-[150px] animate-pulse" />
+        <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[hsl(var(--success))]/5 rounded-full blur-[200px]" />
+      </div>
+
       {/* Header */}
-      <header className="flex items-center justify-between p-4 md:p-6">
+      <header className="flex items-center justify-between p-4 md:p-6 relative z-10">
         <div className="flex items-center gap-3">
           {settings.logoUrl ? (
-            <img src={settings.logoUrl} alt="Logo" className="h-10 w-10 object-contain rounded-xl" />
+            <img src={settings.logoUrl} alt="Logo" className="h-12 w-12 object-contain rounded-xl shadow-lg" />
           ) : (
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[hsl(var(--success))] to-[hsl(var(--success)/0.7)] flex items-center justify-center">
-              <Store className="h-6 w-6 text-white" />
+            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-[hsl(var(--success))] to-[hsl(var(--success))]/70 flex items-center justify-center shadow-lg">
+              <Store className="h-7 w-7 text-white" />
             </div>
           )}
           <div>
@@ -213,33 +220,42 @@ const MerchantLogin = () => {
       </header>
 
       {/* Login Form */}
-      <div className="flex-1 flex items-center justify-center p-4">
+      <div className="flex-1 flex items-center justify-center p-4 relative z-10">
         <div className="w-full max-w-md animate-fade-in">
-          <Card className="login-card">
-            <CardHeader className="text-center pb-2">
-              <div className="mx-auto mb-4 h-16 w-16 rounded-2xl bg-gradient-to-br from-[hsl(var(--success))] to-[hsl(var(--success)/0.7)] flex items-center justify-center">
-                {show2FAStep ? (
-                  <Smartphone className="h-8 w-8 text-white" />
-                ) : (
-                  <Store className="h-8 w-8 text-white" />
-                )}
+          <Card className="premium-card border-0 shadow-2xl backdrop-blur-xl bg-background/80 dark:bg-background/60 overflow-hidden">
+            {/* Gradient top border */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[hsl(var(--success))] via-primary to-[hsl(var(--success))]" />
+            
+            <CardHeader className="text-center pb-2 pt-8">
+              <div className="mx-auto mb-4 relative">
+                <div className="absolute inset-0 rounded-2xl bg-[hsl(var(--success))]/30 blur-xl animate-pulse" />
+                <div className="relative h-20 w-20 rounded-2xl bg-gradient-to-br from-[hsl(var(--success))] to-[hsl(var(--success))]/70 flex items-center justify-center shadow-xl">
+                  {show2FAStep ? (
+                    <Smartphone className="h-10 w-10 text-white" />
+                  ) : (
+                    <Store className="h-10 w-10 text-white" />
+                  )}
+                  <Sparkles className="absolute -top-1 -right-1 h-5 w-5 text-[hsl(var(--success))] animate-pulse" />
+                </div>
               </div>
               <CardTitle className="text-2xl font-bold">
                 {show2FAStep
                   ? (language === 'zh' ? '双重认证' : 'Two-Factor Authentication')
                   : (language === 'zh' ? '商户登录' : 'Merchant Login')}
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-muted-foreground">
                 {show2FAStep
                   ? (language === 'zh' ? '请输入Google Authenticator中的验证码' : 'Enter the code from your Google Authenticator app')
                   : (language === 'zh' ? '使用商户账户登录系统' : 'Sign in with your merchant account')}
               </CardDescription>
             </CardHeader>
-            <CardContent className="pt-4">
+            <CardContent className="pt-4 px-6 pb-8">
               {show2FAStep ? (
                 <div className="space-y-5">
                   <div className="space-y-2">
-                    <Label htmlFor="2fa-code">{language === 'zh' ? '验证码' : 'Authentication Code'}</Label>
+                    <Label htmlFor="2fa-code" className="text-sm font-medium">
+                      {language === 'zh' ? '验证码' : 'Authentication Code'}
+                    </Label>
                     <Input
                       id="2fa-code"
                       type="text"
@@ -249,17 +265,17 @@ const MerchantLogin = () => {
                       value={twoFACode}
                       onChange={(e) => setTwoFACode(e.target.value.replace(/\D/g, ''))}
                       placeholder="000000"
-                      className="h-14 text-center text-2xl tracking-widest font-mono"
+                      className="h-16 text-center text-3xl tracking-[0.5em] font-mono bg-muted/30 border-border/50 focus:border-[hsl(var(--success))]"
                       autoFocus
                     />
-                    <p className="text-xs text-muted-foreground text-center">
+                    <p className="text-xs text-muted-foreground text-center mt-2">
                       {language === 'zh' ? '打开Google Authenticator应用获取6位验证码' : 'Open your Google Authenticator app to get the 6-digit code'}
                     </p>
                   </div>
 
                   <Button
                     onClick={handle2FAVerify}
-                    className="w-full h-11 btn-gradient-success font-medium"
+                    className="w-full h-12 bg-[hsl(var(--success))] hover:bg-[hsl(var(--success))]/90 text-white font-semibold"
                     disabled={isSubmitting || twoFACode.length !== 6}
                   >
                     {isSubmitting ? t('common.loading') : (language === 'zh' ? '验证并登录' : 'Verify & Login')}
@@ -275,88 +291,90 @@ const MerchantLogin = () => {
                   </Button>
                 </div>
               ) : (
-                <>
-                  <form onSubmit={handleSubmit} className="space-y-5">
-                    <div className="space-y-2">
-                      <Label htmlFor="email">{t('auth.email')}</Label>
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-sm font-medium">{t('auth.email')}</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="merchant@example.com"
+                      className="h-12 bg-muted/30 border-border/50 focus:border-[hsl(var(--success))]"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="password" className="text-sm font-medium">{t('auth.password')}</Label>
+                    <div className="relative">
                       <Input
-                        id="email"
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="merchant@example.com"
-                        className="h-11"
+                        id="password"
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="h-12 pr-12 bg-muted/30 border-border/50 focus:border-[hsl(var(--success))]"
                         required
                       />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
+                      </Button>
                     </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="password">{t('auth.password')}</Label>
-                      <div className="relative">
-                        <Input
-                          id="password"
-                          type={showPassword ? 'text' : 'password'}
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          className="h-11 pr-10"
-                          required
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                          onClick={() => setShowPassword(!showPassword)}
-                        >
-                          {showPassword ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>{t('auth.captcha')}</Label>
-                      <Captcha
-                        value={captchaValue}
-                        onChange={setCaptchaValue}
-                        onVerify={setIsCaptchaValid}
-                      />
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="rememberMe"
-                        checked={rememberMe}
-                        onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-                      />
-                      <Label htmlFor="rememberMe" className="text-sm cursor-pointer">
-                        {t('auth.rememberMe')}
-                      </Label>
-                    </div>
-
-                    <Button 
-                      type="submit" 
-                      className="w-full h-11 btn-gradient-success font-medium" 
-                      disabled={isSubmitting}
-                    >
-                      {isSubmitting ? t('common.loading') : t('auth.login')}
-                    </Button>
-                  </form>
-
-                  <div className="mt-6 pt-6 border-t text-center">
-                    <p className="text-sm text-muted-foreground mb-3">
-                      {language === 'zh' ? '是管理员？' : 'Are you an admin?'}
-                    </p>
-                    <Button asChild variant="outline" className="w-full">
-                      <Link to="/admin-login">
-                        <ShieldCheck className="h-4 w-4 mr-2" />
-                        {language === 'zh' ? '管理员登录' : 'Admin Login'}
-                      </Link>
-                    </Button>
                   </div>
-                </>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">{t('auth.captcha')}</Label>
+                    <Captcha
+                      value={captchaValue}
+                      onChange={setCaptchaValue}
+                      onVerify={setIsCaptchaValid}
+                    />
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="rememberMe"
+                      checked={rememberMe}
+                      onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                    />
+                    <Label htmlFor="rememberMe" className="text-sm cursor-pointer text-muted-foreground">
+                      {t('auth.rememberMe')}
+                    </Label>
+                  </div>
+
+                  <Button 
+                    type="submit" 
+                    className="w-full h-12 bg-[hsl(var(--success))] hover:bg-[hsl(var(--success))]/90 text-white font-semibold shadow-lg" 
+                    disabled={isSubmitting}
+                  >
+                    <Lock className="h-4 w-4 mr-2" />
+                    {isSubmitting ? t('common.loading') : t('auth.login')}
+                  </Button>
+                </form>
               )}
+
+              {/* Security Badge */}
+              <div className="mt-6 pt-6 border-t border-border/50 text-center">
+                <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                  <Shield className="h-4 w-4 text-[hsl(var(--success))]" />
+                  <span>{language === 'zh' ? '安全加密登录' : 'Secure Encrypted Login'}</span>
+                </div>
+              </div>
             </CardContent>
           </Card>
+
+          {/* Footer Branding */}
+          <div className="text-center mt-6">
+            <p className="text-xs text-muted-foreground">
+              {language === 'zh' ? '由' : 'Powered by'} <span className="font-semibold">{settings.gatewayName}</span>
+            </p>
+          </div>
         </div>
       </div>
     </div>
