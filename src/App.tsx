@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import React, { useEffect } from "react";
 import { useAuthStore, initializeAuth } from "@/lib/auth";
+import { Require2FA } from "@/components/Require2FA";
 
 // Pages
 import Index from "./pages/Index";
@@ -29,6 +30,7 @@ import MerchantSecurity from "./pages/merchant/MerchantSecurity";
 import MerchantPayinOrders from "./pages/merchant/MerchantPayinOrders";
 import MerchantPayoutOrders from "./pages/merchant/MerchantPayoutOrders";
 import MerchantSettlementHistory from "./pages/merchant/MerchantSettlementHistory";
+import MerchantApiTesting from "./pages/merchant/MerchantApiTesting";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -78,19 +80,20 @@ const AppRoutes = () => {
       <Route path="/admin/api-testing" element={<ProtectedRoute requiredRole="admin"><AdminApiTesting /></ProtectedRoute>} />
       <Route path="/admin/settings" element={<ProtectedRoute requiredRole="admin"><AdminSettings /></ProtectedRoute>} />
       
-      {/* Merchant Routes */}
-      <Route path="/merchant" element={<ProtectedRoute requiredRole="merchant"><MerchantDashboard /></ProtectedRoute>} />
-      <Route path="/merchant/dashboard" element={<ProtectedRoute requiredRole="merchant"><MerchantDashboard /></ProtectedRoute>} />
-      <Route path="/merchant/analytics" element={<ProtectedRoute requiredRole="merchant"><MerchantAnalytics /></ProtectedRoute>} />
-      <Route path="/merchant/documentation" element={<ProtectedRoute requiredRole="merchant"><MerchantDocumentation /></ProtectedRoute>} />
-      <Route path="/merchant/payment-links" element={<ProtectedRoute requiredRole="merchant"><MerchantPaymentLinks /></ProtectedRoute>} />
-      <Route path="/merchant/channel-price" element={<ProtectedRoute requiredRole="merchant"><MerchantChannelPrice /></ProtectedRoute>} />
-      <Route path="/merchant/info" element={<ProtectedRoute requiredRole="merchant"><MerchantAccountInfo /></ProtectedRoute>} />
-      <Route path="/merchant/withdrawal" element={<ProtectedRoute requiredRole="merchant"><MerchantWithdrawal /></ProtectedRoute>} />
+      {/* Merchant Routes - Protected with 2FA requirement */}
+      <Route path="/merchant" element={<ProtectedRoute requiredRole="merchant"><Require2FA><MerchantDashboard /></Require2FA></ProtectedRoute>} />
+      <Route path="/merchant/dashboard" element={<ProtectedRoute requiredRole="merchant"><Require2FA><MerchantDashboard /></Require2FA></ProtectedRoute>} />
+      <Route path="/merchant/analytics" element={<ProtectedRoute requiredRole="merchant"><Require2FA><MerchantAnalytics /></Require2FA></ProtectedRoute>} />
+      <Route path="/merchant/documentation" element={<ProtectedRoute requiredRole="merchant"><Require2FA><MerchantDocumentation /></Require2FA></ProtectedRoute>} />
+      <Route path="/merchant/payment-links" element={<ProtectedRoute requiredRole="merchant"><Require2FA><MerchantPaymentLinks /></Require2FA></ProtectedRoute>} />
+      <Route path="/merchant/channel-price" element={<ProtectedRoute requiredRole="merchant"><Require2FA><MerchantChannelPrice /></Require2FA></ProtectedRoute>} />
+      <Route path="/merchant/info" element={<ProtectedRoute requiredRole="merchant"><Require2FA><MerchantAccountInfo /></Require2FA></ProtectedRoute>} />
+      <Route path="/merchant/withdrawal" element={<ProtectedRoute requiredRole="merchant"><Require2FA><MerchantWithdrawal /></Require2FA></ProtectedRoute>} />
       <Route path="/merchant/security" element={<ProtectedRoute requiredRole="merchant"><MerchantSecurity /></ProtectedRoute>} />
-      <Route path="/merchant/payin" element={<ProtectedRoute requiredRole="merchant"><MerchantPayinOrders /></ProtectedRoute>} />
-      <Route path="/merchant/payout" element={<ProtectedRoute requiredRole="merchant"><MerchantPayoutOrders /></ProtectedRoute>} />
-      <Route path="/merchant/settlement-history" element={<ProtectedRoute requiredRole="merchant"><MerchantSettlementHistory /></ProtectedRoute>} />
+      <Route path="/merchant/payin" element={<ProtectedRoute requiredRole="merchant"><Require2FA><MerchantPayinOrders /></Require2FA></ProtectedRoute>} />
+      <Route path="/merchant/payout" element={<ProtectedRoute requiredRole="merchant"><Require2FA><MerchantPayoutOrders /></Require2FA></ProtectedRoute>} />
+      <Route path="/merchant/settlement-history" element={<ProtectedRoute requiredRole="merchant"><Require2FA><MerchantSettlementHistory /></Require2FA></ProtectedRoute>} />
+      <Route path="/merchant/api-testing" element={<ProtectedRoute requiredRole="merchant"><Require2FA><MerchantApiTesting /></Require2FA></ProtectedRoute>} />
       
       {/* Catch-all */}
       <Route path="*" element={<NotFound />} />
