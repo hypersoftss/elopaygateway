@@ -9,6 +9,8 @@ import { useAuthStore, initializeAuth } from "@/lib/auth";
 // Pages
 import Index from "./pages/Index";
 import SetupAdmin from "./pages/SetupAdmin";
+import AdminLogin from "./pages/AdminLogin";
+import MerchantLogin from "./pages/MerchantLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminMerchants from "./pages/admin/AdminMerchants";
 import AdminSettings from "./pages/admin/AdminSettings";
@@ -62,8 +64,8 @@ const AppRoutes = () => {
       {/* Public Routes */}
       <Route path="/" element={<Index />} />
       <Route path="/setup-admin" element={<SetupAdmin />} />
-      <Route path="/admin-login" element={<Navigate to="/" replace />} />
-      <Route path="/merchant-login" element={<Navigate to="/" replace />} />
+      <Route path="/admin-login" element={<AdminLogin />} />
+      <Route path="/merchant-login" element={<MerchantLogin />} />
       
       {/* Admin Routes */}
       <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
