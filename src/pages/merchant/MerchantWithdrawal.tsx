@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Wallet, Banknote, Bitcoin } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Wallet, Banknote, Bitcoin, Copy, Shield } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,14 +26,12 @@ const MerchantWithdrawal = () => {
     accountNumber: '',
     ifscCode: '',
     accountHolder: '',
-    withdrawalPassword: '',
   });
 
   // USDT form
   const [usdtForm, setUsdtForm] = useState({
     amount: '',
     usdtAddress: '',
-    withdrawalPassword: '',
   });
 
   useEffect(() => {
@@ -55,36 +53,25 @@ const MerchantWithdrawal = () => {
     fetchMerchantData();
   }, [user?.merchantId]);
 
-  const calculateFee = (amount: string) => {
-    const numAmount = parseFloat(amount) || 0;
-    return (numAmount * payoutFee) / 100;
-  };
-
-  const calculateNetAmount = (amount: string) => {
-    const numAmount = parseFloat(amount) || 0;
-    const fee = calculateFee(amount);
-    return numAmount - fee;
-  };
-
   const handleBankWithdrawal = async () => {
     if (!user?.merchantId) return;
 
     const amount = parseFloat(bankForm.amount);
     if (amount <= 0) {
-      toast({ title: t('common.error'), description: 'Invalid amount', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Invalid amount', variant: 'destructive' });
       return;
     }
 
     if (amount > balance) {
-      toast({ title: t('common.error'), description: 'Insufficient balance', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Insufficient balance', variant: 'destructive' });
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const fee = calculateFee(bankForm.amount);
-      const netAmount = calculateNetAmount(bankForm.amount);
+      const fee = (amount * payoutFee) / 100;
+      const netAmount = amount - fee;
       const orderNo = `WD_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
       const { error } = await supabase.from('transactions').insert({
@@ -113,8 +100,8 @@ const MerchantWithdrawal = () => {
         .eq('id', user.merchantId);
 
       toast({
-        title: t('common.success'),
-        description: language === 'zh' ? '提现申请已提交' : 'Withdrawal request submitted',
+        title: 'Success',
+        description: 'Withdrawal request submitted',
       });
 
       setBankForm({
@@ -123,10 +110,10 @@ const MerchantWithdrawal = () => {
         accountNumber: '',
         ifscCode: '',
         accountHolder: '',
-        withdrawalPassword: '',
       });
+      setBalance(balance - amount);
     } catch (err: any) {
-      toast({ title: t('common.error'), description: err.message, variant: 'destructive' });
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
@@ -137,20 +124,20 @@ const MerchantWithdrawal = () => {
 
     const amount = parseFloat(usdtForm.amount);
     if (amount <= 0) {
-      toast({ title: t('common.error'), description: 'Invalid amount', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Invalid amount', variant: 'destructive' });
       return;
     }
 
     if (amount > balance) {
-      toast({ title: t('common.error'), description: 'Insufficient balance', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Insufficient balance', variant: 'destructive' });
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const fee = calculateFee(usdtForm.amount);
-      const netAmount = calculateNetAmount(usdtForm.amount);
+      const fee = (amount * payoutFee) / 100;
+      const netAmount = amount - fee;
       const orderNo = `WD_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
       const { error } = await supabase.from('transactions').insert({
@@ -176,17 +163,17 @@ const MerchantWithdrawal = () => {
         .eq('id', user.merchantId);
 
       toast({
-        title: t('common.success'),
-        description: language === 'zh' ? '提现申请已提交' : 'Withdrawal request submitted',
+        title: 'Success',
+        description: 'Withdrawal request submitted',
       });
 
       setUsdtForm({
         amount: '',
         usdtAddress: '',
-        withdrawalPassword: '',
       });
+      setBalance(balance - amount);
     } catch (err: any) {
-      toast({ title: t('common.error'), description: err.message, variant: 'destructive' });
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
@@ -194,155 +181,188 @@ const MerchantWithdrawal = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <h1 className="text-2xl font-bold">{t('withdrawal.title')}</h1>
-
+      <div className="space-y-6 max-w-3xl mx-auto">
         {/* Balance Card */}
-        <Card className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Wallet className="h-5 w-5" />
-              {t('dashboard.availableBalance')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">₹{balance.toFixed(2)}</p>
+        <Card className="bg-gradient-to-br from-[hsl(174_62%_47%)] to-[hsl(174_62%_35%)] border-0 text-white overflow-hidden">
+          <CardContent className="p-6">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-white/80 text-sm font-medium">Available Balance</p>
+                <p className="text-4xl font-bold mt-1">₹{balance.toFixed(2)}</p>
+                <p className="text-white/60 text-sm mt-2">Fee: {payoutFee}% per withdrawal</p>
+              </div>
+              <Button 
+                size="icon" 
+                variant="ghost" 
+                className="text-white/80 hover:text-white hover:bg-white/10"
+              >
+                <Copy className="h-5 w-5" />
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
-        {/* Withdrawal Forms */}
-        <Card>
-          <CardContent className="pt-6">
-            <Tabs defaultValue="bank">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="bank" className="flex items-center gap-2">
-                  <Banknote className="h-4 w-4" />
-                  {t('withdrawal.bankTransfer')}
+        {/* Secure Withdrawal Notice */}
+        <Card className="bg-card border-border">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-muted">
+                <Shield className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="font-medium text-sm">Secure Withdrawal</p>
+                <p className="text-xs text-muted-foreground">
+                  All withdrawals require Google Authenticator verification and withdrawal password for your security.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Withdrawal Form */}
+        <Card className="bg-card border-border">
+          <CardContent className="p-0">
+            <Tabs defaultValue="bank" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 rounded-none border-b border-border bg-transparent h-auto p-0">
+                <TabsTrigger 
+                  value="bank" 
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-[hsl(var(--success))] data-[state=active]:bg-[hsl(var(--success))] data-[state=active]:text-white py-3"
+                >
+                  <Banknote className="h-4 w-4 mr-2" />
+                  Bank Withdrawal
                 </TabsTrigger>
-                <TabsTrigger value="usdt" className="flex items-center gap-2">
-                  <Bitcoin className="h-4 w-4" />
-                  {t('withdrawal.usdt')}
+                <TabsTrigger 
+                  value="usdt" 
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-[hsl(var(--success))] data-[state=active]:bg-[hsl(var(--success))] data-[state=active]:text-white py-3"
+                >
+                  <Bitcoin className="h-4 w-4 mr-2" />
+                  USDT Withdrawal
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="bank" className="space-y-4 mt-4">
+              <TabsContent value="bank" className="p-6 space-y-6">
+                <div className="flex items-center gap-3">
+                  <Banknote className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="font-semibold">Bank Withdrawal</p>
+                    <p className="text-sm text-muted-foreground">Withdraw funds to your bank account</p>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>{t('withdrawal.amount')}</Label>
+                    <Label className="text-muted-foreground text-xs">Account Holder</Label>
+                    <Input
+                      value={bankForm.accountHolder}
+                      onChange={(e) => setBankForm({ ...bankForm, accountHolder: e.target.value })}
+                      placeholder="Full Name"
+                      className="bg-muted/50 border-border"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground text-xs">Bank Name</Label>
+                    <Input
+                      value={bankForm.bankName}
+                      onChange={(e) => setBankForm({ ...bankForm, bankName: e.target.value })}
+                      placeholder="Bank Name"
+                      className="bg-muted/50 border-border"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground text-xs">Account Number</Label>
+                    <Input
+                      value={bankForm.accountNumber}
+                      onChange={(e) => setBankForm({ ...bankForm, accountNumber: e.target.value })}
+                      placeholder="XXXXXXXXXXXX"
+                      className="bg-muted/50 border-border"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground text-xs">IFSC Code</Label>
+                    <Input
+                      value={bankForm.ifscCode}
+                      onChange={(e) => setBankForm({ ...bankForm, ifscCode: e.target.value })}
+                      placeholder="ABCD0001234"
+                      className="bg-muted/50 border-border"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground text-xs">Amount</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₹</span>
                     <Input
                       type="number"
                       value={bankForm.amount}
                       onChange={(e) => setBankForm({ ...bankForm, amount: e.target.value })}
                       placeholder="0.00"
-                    />
-                    {bankForm.amount && (
-                      <div className="text-sm text-muted-foreground">
-                        <p>{t('withdrawal.fee')}: ₹{calculateFee(bankForm.amount).toFixed(2)} ({payoutFee}%)</p>
-                        <p>{t('withdrawal.netAmount')}: ₹{calculateNetAmount(bankForm.amount).toFixed(2)}</p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>{t('withdrawal.bankName')}</Label>
-                    <Input
-                      value={bankForm.bankName}
-                      onChange={(e) => setBankForm({ ...bankForm, bankName: e.target.value })}
-                      placeholder="HDFC Bank"
+                      className="pl-7 bg-muted/50 border-border"
                     />
                   </div>
-
-                  <div className="space-y-2">
-                    <Label>{t('withdrawal.accountNumber')}</Label>
-                    <Input
-                      value={bankForm.accountNumber}
-                      onChange={(e) => setBankForm({ ...bankForm, accountNumber: e.target.value })}
-                      placeholder="1234567890"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>{t('withdrawal.ifscCode')}</Label>
-                    <Input
-                      value={bankForm.ifscCode}
-                      onChange={(e) => setBankForm({ ...bankForm, ifscCode: e.target.value })}
-                      placeholder="HDFC0001234"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>{t('withdrawal.accountHolder')}</Label>
-                    <Input
-                      value={bankForm.accountHolder}
-                      onChange={(e) => setBankForm({ ...bankForm, accountHolder: e.target.value })}
-                      placeholder="Name as per bank account"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>{t('withdrawal.password')}</Label>
-                    <Input
-                      type="password"
-                      value={bankForm.withdrawalPassword}
-                      onChange={(e) => setBankForm({ ...bankForm, withdrawalPassword: e.target.value })}
-                      placeholder="Enter withdrawal password"
-                    />
-                  </div>
+                  <p className="text-xs text-muted-foreground">Available Balance: ₹{balance.toFixed(2)}</p>
                 </div>
 
                 <Button
-                  className="w-full"
+                  className="w-full bg-[hsl(var(--success))] hover:bg-[hsl(var(--success))]/90"
                   onClick={handleBankWithdrawal}
                   disabled={isLoading || !bankForm.amount || !bankForm.bankName || !bankForm.accountNumber || !bankForm.ifscCode || !bankForm.accountHolder}
                 >
-                  {isLoading ? t('common.loading') : t('withdrawal.submit')}
+                  <Banknote className="h-4 w-4 mr-2" />
+                  {isLoading ? 'Processing...' : 'Withdrawal'}
                 </Button>
               </TabsContent>
 
-              <TabsContent value="usdt" className="space-y-4 mt-4">
+              <TabsContent value="usdt" className="p-6 space-y-6">
+                <div className="flex items-center gap-3">
+                  <Bitcoin className="h-5 w-5 text-[hsl(var(--warning))]" />
+                  <div>
+                    <p className="font-semibold">USDT Withdrawal</p>
+                    <p className="text-sm text-muted-foreground">Withdraw funds as USDT (TRC20)</p>
+                  </div>
+                </div>
+
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label>{t('withdrawal.amount')}</Label>
-                    <Input
-                      type="number"
-                      value={usdtForm.amount}
-                      onChange={(e) => setUsdtForm({ ...usdtForm, amount: e.target.value })}
-                      placeholder="0.00"
-                    />
-                    {usdtForm.amount && (
-                      <div className="text-sm text-muted-foreground">
-                        <p>{t('withdrawal.fee')}: ₹{calculateFee(usdtForm.amount).toFixed(2)} ({payoutFee}%)</p>
-                        <p>{t('withdrawal.netAmount')}: ₹{calculateNetAmount(usdtForm.amount).toFixed(2)}</p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>{t('withdrawal.usdtAddress')}</Label>
+                    <Label className="text-muted-foreground text-xs">USDT Address (TRC20)</Label>
                     <Input
                       value={usdtForm.usdtAddress}
                       onChange={(e) => setUsdtForm({ ...usdtForm, usdtAddress: e.target.value })}
-                      placeholder="TRC20 USDT Address"
+                      placeholder="T..."
+                      className="bg-muted/50 border-border"
                     />
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-muted-foreground"></span>
+                      Only TRC20 addresses are supported
+                    </p>
                   </div>
 
                   <div className="space-y-2">
-                    <Label>{t('withdrawal.password')}</Label>
-                    <Input
-                      type="password"
-                      value={usdtForm.withdrawalPassword}
-                      onChange={(e) => setUsdtForm({ ...usdtForm, withdrawalPassword: e.target.value })}
-                      placeholder="Enter withdrawal password"
-                    />
+                    <Label className="text-muted-foreground text-xs">Amount</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₹</span>
+                      <Input
+                        type="number"
+                        value={usdtForm.amount}
+                        onChange={(e) => setUsdtForm({ ...usdtForm, amount: e.target.value })}
+                        placeholder="0.00"
+                        className="pl-7 bg-muted/50 border-border"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">Available Balance: ₹{balance.toFixed(2)}</p>
                   </div>
                 </div>
 
                 <Button
-                  className="w-full"
+                  className="w-full bg-[hsl(var(--success))] hover:bg-[hsl(var(--success))]/90"
                   onClick={handleUsdtWithdrawal}
                   disabled={isLoading || !usdtForm.amount || !usdtForm.usdtAddress}
                 >
-                  {isLoading ? t('common.loading') : t('withdrawal.submit')}
+                  <Bitcoin className="h-4 w-4 mr-2" />
+                  {isLoading ? 'Processing...' : 'Withdrawal'}
                 </Button>
               </TabsContent>
             </Tabs>

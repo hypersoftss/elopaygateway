@@ -24,6 +24,8 @@ import MerchantPaymentLinks from "./pages/merchant/MerchantPaymentLinks";
 import MerchantChannelPrice from "./pages/merchant/MerchantChannelPrice";
 import MerchantAccountInfo from "./pages/merchant/MerchantAccountInfo";
 import MerchantSecurity from "./pages/merchant/MerchantSecurity";
+import MerchantPayinOrders from "./pages/merchant/MerchantPayinOrders";
+import MerchantPayoutOrders from "./pages/merchant/MerchantPayoutOrders";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -83,6 +85,8 @@ const AppRoutes = () => {
       <Route path="/merchant/info" element={<ProtectedRoute requiredRole="merchant"><MerchantAccountInfo /></ProtectedRoute>} />
       <Route path="/merchant/withdrawal" element={<ProtectedRoute requiredRole="merchant"><MerchantWithdrawal /></ProtectedRoute>} />
       <Route path="/merchant/security" element={<ProtectedRoute requiredRole="merchant"><MerchantSecurity /></ProtectedRoute>} />
+      <Route path="/merchant/payin" element={<ProtectedRoute requiredRole="merchant"><MerchantPayinOrders /></ProtectedRoute>} />
+      <Route path="/merchant/payout" element={<ProtectedRoute requiredRole="merchant"><MerchantPayoutOrders /></ProtectedRoute>} />
       
       {/* Catch-all */}
       <Route path="*" element={<NotFound />} />
