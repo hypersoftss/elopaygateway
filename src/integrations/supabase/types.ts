@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_notifications: {
+        Row: {
+          amount: number | null
+          created_at: string
+          id: string
+          is_read: boolean | null
+          merchant_id: string | null
+          message: string
+          notification_type: string
+          title: string
+          transaction_id: string | null
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          merchant_id?: string | null
+          message: string
+          notification_type: string
+          title: string
+          transaction_id?: string | null
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          merchant_id?: string | null
+          message?: string
+          notification_type?: string
+          title?: string
+          transaction_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_notifications_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_notifications_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_profiles: {
         Row: {
           created_at: string | null
@@ -46,6 +97,9 @@ export type Database = {
           gateway_domain: string | null
           gateway_name: string | null
           id: string
+          large_payin_threshold: number | null
+          large_payout_threshold: number | null
+          large_withdrawal_threshold: number | null
           logo_url: string | null
           master_api_key: string
           master_merchant_id: string
@@ -60,6 +114,9 @@ export type Database = {
           gateway_domain?: string | null
           gateway_name?: string | null
           id?: string
+          large_payin_threshold?: number | null
+          large_payout_threshold?: number | null
+          large_withdrawal_threshold?: number | null
           logo_url?: string | null
           master_api_key?: string
           master_merchant_id?: string
@@ -74,6 +131,9 @@ export type Database = {
           gateway_domain?: string | null
           gateway_name?: string | null
           id?: string
+          large_payin_threshold?: number | null
+          large_payout_threshold?: number | null
+          large_withdrawal_threshold?: number | null
           logo_url?: string | null
           master_api_key?: string
           master_merchant_id?: string
