@@ -10,10 +10,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Skeleton } from '@/components/ui/skeleton';
+
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { Plus, Copy, ExternalLink } from 'lucide-react';
+import { Plus, Copy, ExternalLink, Link as LinkIcon, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -36,7 +36,7 @@ interface PaymentLink {
 }
 
 const MerchantPaymentLinks = () => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const { user } = useAuthStore();
   const { toast } = useToast();
   const [links, setLinks] = useState<PaymentLink[]>([]);
@@ -126,70 +126,90 @@ const MerchantPaymentLinks = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 animate-fade-in">
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Payment Links</h1>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-[hsl(var(--success))] hover:bg-[hsl(var(--success))]/90">
-                <Plus className="h-4 w-4 mr-2" />
-                Create Payment Link
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create Payment Link</DialogTitle>
-                <DialogDescription>Create a new payment link for your customers</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label>Amount *</Label>
-                  <Input
-                    type="number"
-                    placeholder="1000"
-                    value={newLink.amount}
-                    onChange={(e) => setNewLink({ ...newLink, amount: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Description</Label>
-                  <Textarea
-                    placeholder="Payment for..."
-                    value={newLink.description}
-                    onChange={(e) => setNewLink({ ...newLink, description: e.target.value })}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label>Set Expiry</Label>
-                  <Switch
-                    checked={newLink.hasExpiry}
-                    onCheckedChange={(checked) => setNewLink({ ...newLink, hasExpiry: checked })}
-                  />
-                </div>
-                {newLink.hasExpiry && (
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5">
+              <LinkIcon className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold">{language === 'zh' ? '支付链接' : 'Payment Links'}</h1>
+              <p className="text-sm text-muted-foreground">
+                {language === 'zh' ? '创建和管理您的支付链接' : 'Create and manage your payment links'}
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={fetchLinks}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              {t('common.refresh')}
+            </Button>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="btn-gradient-success">
+                  <Plus className="h-4 w-4 mr-2" />
+                  {language === 'zh' ? '创建链接' : 'Create Link'}
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>{language === 'zh' ? '创建支付链接' : 'Create Payment Link'}</DialogTitle>
+                  <DialogDescription>
+                    {language === 'zh' ? '为您的客户创建新的支付链接' : 'Create a new payment link for your customers'}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <Label>Expiry Date</Label>
+                    <Label>{language === 'zh' ? '金额 *' : 'Amount *'}</Label>
                     <Input
-                      type="datetime-local"
-                      value={newLink.expiryDate}
-                      onChange={(e) => setNewLink({ ...newLink, expiryDate: e.target.value })}
+                      type="number"
+                      placeholder="1000"
+                      value={newLink.amount}
+                      onChange={(e) => setNewLink({ ...newLink, amount: e.target.value })}
                     />
                   </div>
-                )}
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                <Button
-                  onClick={handleCreateLink}
-                  disabled={isCreating || !newLink.amount}
-                  className="bg-[hsl(var(--success))] hover:bg-[hsl(var(--success))]/90"
-                >
-                  {isCreating ? 'Creating...' : 'Create Link'}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+                  <div className="space-y-2">
+                    <Label>{language === 'zh' ? '描述' : 'Description'}</Label>
+                    <Textarea
+                      placeholder={language === 'zh' ? '支付说明...' : 'Payment for...'}
+                      value={newLink.description}
+                      onChange={(e) => setNewLink({ ...newLink, description: e.target.value })}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label>{language === 'zh' ? '设置过期时间' : 'Set Expiry'}</Label>
+                    <Switch
+                      checked={newLink.hasExpiry}
+                      onCheckedChange={(checked) => setNewLink({ ...newLink, hasExpiry: checked })}
+                    />
+                  </div>
+                  {newLink.hasExpiry && (
+                    <div className="space-y-2">
+                      <Label>{language === 'zh' ? '过期日期' : 'Expiry Date'}</Label>
+                      <Input
+                        type="datetime-local"
+                        value={newLink.expiryDate}
+                        onChange={(e) => setNewLink({ ...newLink, expiryDate: e.target.value })}
+                      />
+                    </div>
+                  )}
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                    {language === 'zh' ? '取消' : 'Cancel'}
+                  </Button>
+                  <Button
+                    onClick={handleCreateLink}
+                    disabled={isCreating || !newLink.amount}
+                    className="btn-gradient-success"
+                  >
+                    {isCreating ? t('common.loading') : (language === 'zh' ? '创建' : 'Create')}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         {/* Links Table */}
@@ -198,13 +218,13 @@ const MerchantPaymentLinks = () => {
             <Table>
               <TableHeader>
                 <TableRow className="border-border">
-                  <TableHead className="text-muted-foreground">Link Code</TableHead>
-                  <TableHead className="text-muted-foreground">Amount</TableHead>
-                  <TableHead className="text-muted-foreground">Description</TableHead>
-                  <TableHead className="text-muted-foreground">Status</TableHead>
-                  <TableHead className="text-muted-foreground">Expires At</TableHead>
-                  <TableHead className="text-muted-foreground">Created At</TableHead>
-                  <TableHead className="text-muted-foreground text-center">Actions</TableHead>
+                  <TableHead className="text-muted-foreground">{language === 'zh' ? '链接代码' : 'Link Code'}</TableHead>
+                  <TableHead className="text-muted-foreground">{language === 'zh' ? '金额' : 'Amount'}</TableHead>
+                  <TableHead className="text-muted-foreground">{language === 'zh' ? '描述' : 'Description'}</TableHead>
+                  <TableHead className="text-muted-foreground">{language === 'zh' ? '状态' : 'Status'}</TableHead>
+                  <TableHead className="text-muted-foreground">{language === 'zh' ? '过期时间' : 'Expires At'}</TableHead>
+                  <TableHead className="text-muted-foreground">{language === 'zh' ? '创建时间' : 'Created At'}</TableHead>
+                  <TableHead className="text-muted-foreground text-center">{language === 'zh' ? '操作' : 'Actions'}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -213,35 +233,37 @@ const MerchantPaymentLinks = () => {
                     <TableRow key={i} className="border-border">
                       {Array.from({ length: 7 }).map((_, j) => (
                         <TableCell key={j}>
-                          <Skeleton className="h-4 w-full" />
+                          <div className="h-4 w-full bg-muted animate-pulse rounded" />
                         </TableCell>
                       ))}
                     </TableRow>
                   ))
                 ) : links.length === 0 ? (
                   <TableRow className="border-border">
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      No payment links yet
+                    <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                      <div className="flex flex-col items-center gap-2">
+                        <LinkIcon className="h-8 w-8 text-muted-foreground/50" />
+                        <p>{language === 'zh' ? '暂无支付链接' : 'No payment links yet'}</p>
+                        <p className="text-xs">{language === 'zh' ? '点击上方按钮创建' : 'Click the button above to create one'}</p>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ) : (
                   links.map((link) => (
-                    <TableRow key={link.id} className="border-border">
+                    <TableRow key={link.id} className="border-border hover:bg-muted/50">
                       <TableCell className="font-mono text-sm">{link.link_code}</TableCell>
-                      <TableCell className="text-[hsl(var(--success))] font-semibold">₹{link.amount.toFixed(2)}</TableCell>
+                      <TableCell className="text-[hsl(var(--success))] font-semibold">₹{link.amount.toLocaleString()}</TableCell>
                       <TableCell className="max-w-[200px] truncate">{link.description || '-'}</TableCell>
                       <TableCell>
                         <Badge 
-                          className={link.is_active 
-                            ? 'bg-[hsl(var(--success))] hover:bg-[hsl(var(--success))]/90' 
-                            : 'bg-muted text-muted-foreground'
-                          }
+                          variant={link.is_active ? 'default' : 'secondary'}
+                          className={link.is_active ? 'bg-[hsl(var(--success))] hover:bg-[hsl(var(--success))]/90' : ''}
                         >
-                          {link.is_active ? 'Active' : 'Inactive'}
+                          {link.is_active ? (language === 'zh' ? '有效' : 'Active') : (language === 'zh' ? '无效' : 'Inactive')}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {link.expires_at ? format(new Date(link.expires_at), 'yyyy-MM-dd') : 'Never'}
+                        {link.expires_at ? format(new Date(link.expires_at), 'yyyy-MM-dd') : (language === 'zh' ? '永不' : 'Never')}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {format(new Date(link.created_at), 'yyyy-MM-dd')}
