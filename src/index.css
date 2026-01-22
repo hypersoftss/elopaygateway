@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
+    --background: 220 20% 97%;
     --foreground: 222.2 84% 4.9%;
 
     --card: 0 0% 100%;
@@ -32,7 +32,7 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
     --success: 142 76% 36%;
     --warning: 38 92% 50%;
@@ -51,13 +51,13 @@
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 222.2 47% 8%;
     --foreground: 210 40% 98%;
 
-    --card: 217.2 32.6% 10%;
+    --card: 222.2 47% 11%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 217.2 32.6% 10%;
+    --popover: 222.2 47% 11%;
     --popover-foreground: 210 40% 98%;
 
     --primary: 217.2 91.2% 59.8%;
@@ -66,29 +66,29 @@
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 217.2 32.6% 17.5%;
+    --muted: 217.2 32.6% 15%;
     --muted-foreground: 215 20.2% 65.1%;
 
     --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
 
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
+    --border: 217.2 32.6% 20%;
+    --input: 217.2 32.6% 20%;
     --ring: 224.3 76.3% 48%;
 
     --success: 142 70% 45%;
     --warning: 38 92% 50%;
 
-    --sidebar-background: 217.2 32.6% 10%;
+    --sidebar-background: 222.2 47% 9%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 217.2 91.2% 59.8%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 217.2 32.6% 17.5%;
     --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 217.2 32.6% 17.5%;
+    --sidebar-border: 217.2 32.6% 20%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 }
@@ -100,12 +100,13 @@
 
   body {
     @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
 @layer components {
   .login-card {
-    @apply bg-card rounded-2xl shadow-xl border p-8;
+    @apply bg-card rounded-2xl shadow-2xl border p-8 backdrop-blur-sm;
   }
 
   .gradient-text {
@@ -113,19 +114,84 @@
   }
 
   .btn-gradient-primary {
-    @apply bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground;
+    @apply bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-300;
   }
 
   .btn-gradient-success {
-    @apply bg-gradient-to-r from-[hsl(var(--success))] to-[hsl(142_76%_45%)] hover:from-[hsl(142_76%_30%)] hover:to-[hsl(142_70%_40%)] text-white;
+    @apply bg-gradient-to-r from-[hsl(var(--success))] to-[hsl(142_76%_45%)] hover:from-[hsl(142_76%_30%)] hover:to-[hsl(142_70%_40%)] text-white shadow-lg hover:shadow-xl transition-all duration-300;
   }
 
   .stat-card {
-    @apply bg-card rounded-xl border p-6 transition-all duration-300 hover:shadow-lg hover:border-primary/20;
+    @apply bg-card rounded-xl border p-6 transition-all duration-300 hover:shadow-lg hover:border-primary/20 hover:-translate-y-0.5;
   }
 
   .balance-card {
-    @apply bg-gradient-to-br from-primary/10 via-primary/5 to-transparent rounded-xl border p-6;
+    @apply bg-gradient-to-br from-primary/10 via-primary/5 to-transparent rounded-xl border p-6 backdrop-blur-sm;
+  }
+
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-lg rounded-xl border border-border/50 shadow-xl;
+  }
+
+  .shimmer {
+    @apply relative overflow-hidden before:absolute before:inset-0 before:-translate-x-full before:animate-[shimmer_2s_infinite] before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent;
+  }
+}
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.4s ease-out;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.4s ease-out;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.3s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  .text-balance {
+    text-wrap: balance;
   }
 }
 

@@ -34,10 +34,17 @@ export const useAuthStore = create<AuthState>()(
       setLoading: (isLoading) => set({ isLoading }),
       setRememberMe: (rememberMe) => set({ rememberMe }),
       logout: async () => {
+        const currentUser = useAuthStore.getState().user;
         await supabase.auth.signOut();
         set({ user: null });
-        // Redirect to home page after logout
-        window.location.href = '/';
+        // Redirect to appropriate login page based on role
+        if (currentUser?.role === 'merchant') {
+          window.location.href = '/merchant-login';
+        } else if (currentUser?.role === 'admin') {
+          window.location.href = '/admin-login';
+        } else {
+          window.location.href = '/';
+        }
       },
     }),
     {
