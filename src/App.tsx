@@ -3,11 +3,13 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import { useAuthStore, initializeAuth } from "@/lib/auth";
 
 // Pages
-import Login from "./pages/Login";
+import Landing from "./pages/Landing";
+import AdminLogin from "./pages/AdminLogin";
+import MerchantLogin from "./pages/MerchantLogin";
 import SetupAdmin from "./pages/SetupAdmin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminMerchants from "./pages/admin/AdminMerchants";
@@ -23,11 +25,15 @@ const ProtectedRoute = ({ children, requiredRole }: { children: React.ReactNode;
   const { user, isLoading } = useAuthStore();
 
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    );
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
 
   if (requiredRole && user.role !== requiredRole) {
@@ -44,7 +50,11 @@ const AppRoutes = () => {
 
   return (
     <Routes>
-      <Route path="/login" element={<Login />} />
+      {/* Public Routes */}
+      <Route path="/" element={<Landing />} />
+      <Route path="/admin-login" element={<AdminLogin />} />
+      <Route path="/merchant-login" element={<MerchantLogin />} />
+      <Route path="/login" element={<Navigate to="/" replace />} />
       <Route path="/setup-admin" element={<SetupAdmin />} />
       
       {/* Admin Routes */}
@@ -57,8 +67,7 @@ const AppRoutes = () => {
       <Route path="/merchant/documentation" element={<ProtectedRoute requiredRole="merchant"><MerchantDocumentation /></ProtectedRoute>} />
       <Route path="/merchant/withdrawal" element={<ProtectedRoute requiredRole="merchant"><MerchantWithdrawal /></ProtectedRoute>} />
       
-      {/* Redirects */}
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      {/* Catch-all */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
