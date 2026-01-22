@@ -15,6 +15,7 @@ import AdminSettings from "./pages/admin/AdminSettings";
 import AdminPayinOrders from "./pages/admin/AdminPayinOrders";
 import AdminPayoutOrders from "./pages/admin/AdminPayoutOrders";
 import AdminWithdrawals from "./pages/admin/AdminWithdrawals";
+import AdminApiTesting from "./pages/admin/AdminApiTesting";
 import MerchantDashboard from "./pages/merchant/MerchantDashboard";
 import MerchantDocumentation from "./pages/merchant/MerchantDocumentation";
 import MerchantWithdrawal from "./pages/merchant/MerchantWithdrawal";
@@ -69,6 +70,7 @@ const AppRoutes = () => {
       <Route path="/admin/payin" element={<ProtectedRoute requiredRole="admin"><AdminPayinOrders /></ProtectedRoute>} />
       <Route path="/admin/payout" element={<ProtectedRoute requiredRole="admin"><AdminPayoutOrders /></ProtectedRoute>} />
       <Route path="/admin/withdrawals" element={<ProtectedRoute requiredRole="admin"><AdminWithdrawals /></ProtectedRoute>} />
+      <Route path="/admin/api-testing" element={<ProtectedRoute requiredRole="admin"><AdminApiTesting /></ProtectedRoute>} />
       <Route path="/admin/settings" element={<ProtectedRoute requiredRole="admin"><AdminSettings /></ProtectedRoute>} />
       
       {/* Merchant Routes */}
