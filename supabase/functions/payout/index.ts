@@ -18,7 +18,25 @@ function verifySignature(params: Record<string, string>, payoutKey: string, sign
   const hash = new Md5()
   hash.update(signStr)
   const expectedSign = hash.toString()
+  console.log('Payout signature verification:', { signStr, expectedSign, receivedSign: signature })
   return expectedSign.toLowerCase() === signature.toLowerCase()
+}
+
+function generateBondPayPayoutSignature(
+  accountNumber: string, 
+  amount: string, 
+  bankName: string, 
+  callbackUrl: string, 
+  ifsc: string, 
+  merchantId: string, 
+  name: string, 
+  transactionId: string, 
+  payoutKey: string
+): string {
+  const signStr = `${accountNumber}${amount}${bankName}${callbackUrl}${ifsc}${merchantId}${name}${transactionId}${payoutKey}`
+  const hash = new Md5()
+  hash.update(signStr)
+  return hash.toString()
 }
 
 Deno.serve(async (req) => {
@@ -39,6 +57,8 @@ Deno.serve(async (req) => {
       callback_url,
       sign 
     } = body
+
+    console.log('Payout request received:', { merchant_id, amount, transaction_id })
 
     // Validate required fields
     if (!merchant_id || !amount || !transaction_id || !account_number || !ifsc || !name || !bank_name || !sign) {
@@ -62,6 +82,7 @@ Deno.serve(async (req) => {
       .limit(1)
 
     if (merchantError || !merchants || merchants.length === 0) {
+      console.error('Merchant not found:', merchant_id)
       return new Response(
         JSON.stringify({ code: 404, message: 'Merchant not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -77,7 +98,7 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Verify signature
+    // Verify signature using merchant's own payout key
     const isValidSign = verifySignature(
       { 
         account_number, 
@@ -94,6 +115,7 @@ Deno.serve(async (req) => {
     )
 
     if (!isValidSign) {
+      console.error('Invalid signature for merchant:', merchant_id)
       return new Response(
         JSON.stringify({ code: 401, message: 'Invalid signature' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -113,8 +135,63 @@ Deno.serve(async (req) => {
       )
     }
 
+    // Get admin settings for BondPay master credentials
+    const { data: settings, error: settingsError } = await supabaseAdmin
+      .from('admin_settings')
+      .select('master_merchant_id, master_payout_key, bondpay_base_url')
+      .limit(1)
+
+    if (settingsError || !settings || settings.length === 0) {
+      console.error('Admin settings not found')
+      return new Response(
+        JSON.stringify({ code: 500, message: 'System configuration error' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const adminSettings = settings[0]
+
     // Generate order number
     const orderNo = generateOrderNo()
+
+    // Create internal callback URL for BondPay
+    const internalCallbackUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/callback-handler`
+
+    // Generate signature for BondPay using master credentials
+    const bondPaySignature = generateBondPayPayoutSignature(
+      account_number,
+      amount.toString(),
+      bank_name,
+      internalCallbackUrl,
+      ifsc,
+      adminSettings.master_merchant_id,
+      name,
+      orderNo,
+      adminSettings.master_payout_key
+    )
+
+    console.log('Calling BondPay Payout API with master credentials...')
+
+    // Call BondPay Payout API with master credentials
+    const formData = new URLSearchParams()
+    formData.append('merchant_id', adminSettings.master_merchant_id)
+    formData.append('amount', amount.toString())
+    formData.append('transaction_id', orderNo)
+    formData.append('account_number', account_number)
+    formData.append('ifsc', ifsc)
+    formData.append('name', name)
+    formData.append('bank_name', bank_name)
+    formData.append('callback_url', internalCallbackUrl)
+    formData.append('signature', bondPaySignature)
+
+    const bondPayResponse = await fetch(`${adminSettings.bondpay_base_url}/payout/payment.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: formData.toString()
+    })
+
+    const bondPayData = await bondPayResponse.json()
+    console.log('BondPay Payout response:', bondPayData)
 
     // Create transaction record
     const { error: txError } = await supabaseAdmin
@@ -132,6 +209,10 @@ Deno.serve(async (req) => {
         account_number,
         account_holder_name: name,
         ifsc_code: ifsc,
+        extra: JSON.stringify({
+          bondpay_response: bondPayData,
+          merchant_callback: callback_url
+        })
       })
 
     if (txError) {
@@ -155,17 +236,19 @@ Deno.serve(async (req) => {
       console.error('Balance update error:', balanceError)
     }
 
-    console.log('Payout order created:', orderNo)
+    console.log('Payout order created successfully:', orderNo)
 
     return new Response(
       JSON.stringify({
         code: 200,
         message: 'Success',
+        status: 'success',
         data: {
           order_no: orderNo,
           merchant_order_no: transaction_id,
           amount: amountNum,
           fee,
+          total_amount: totalDeduction,
           status: 'pending'
         }
       }),

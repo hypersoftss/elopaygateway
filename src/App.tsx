@@ -28,6 +28,7 @@ import MerchantAccountInfo from "./pages/merchant/MerchantAccountInfo";
 import MerchantSecurity from "./pages/merchant/MerchantSecurity";
 import MerchantPayinOrders from "./pages/merchant/MerchantPayinOrders";
 import MerchantPayoutOrders from "./pages/merchant/MerchantPayoutOrders";
+import MerchantSettlementHistory from "./pages/merchant/MerchantSettlementHistory";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -89,6 +90,7 @@ const AppRoutes = () => {
       <Route path="/merchant/security" element={<ProtectedRoute requiredRole="merchant"><MerchantSecurity /></ProtectedRoute>} />
       <Route path="/merchant/payin" element={<ProtectedRoute requiredRole="merchant"><MerchantPayinOrders /></ProtectedRoute>} />
       <Route path="/merchant/payout" element={<ProtectedRoute requiredRole="merchant"><MerchantPayoutOrders /></ProtectedRoute>} />
+      <Route path="/merchant/settlement-history" element={<ProtectedRoute requiredRole="merchant"><MerchantSettlementHistory /></ProtectedRoute>} />
       
       {/* Catch-all */}
       <Route path="*" element={<NotFound />} />

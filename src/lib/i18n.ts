@@ -95,6 +95,7 @@ const translations: Record<Language, Record<string, string>> = {
     // Sidebar
     'sidebar.dashboard': '仪表板',
     'sidebar.merchants': '商户管理',
+    'sidebar.orders': '订单管理',
     'sidebar.payinOrders': '代收订单',
     'sidebar.payoutOrders': '代付订单',
     'sidebar.withdrawals': '提现管理',
@@ -105,6 +106,7 @@ const translations: Record<Language, Record<string, string>> = {
     'sidebar.paymentLinks': '收款链接',
     'sidebar.channelPrice': '通道费率',
     'sidebar.accountInfo': '账户信息',
+    'sidebar.settlementHistory': '结算记录',
     'sidebar.withdrawal': '提现申请',
     'sidebar.security': '安全设置',
     
@@ -304,6 +306,7 @@ const translations: Record<Language, Record<string, string>> = {
     // Sidebar
     'sidebar.dashboard': 'Dashboard',
     'sidebar.merchants': 'Merchants',
+    'sidebar.orders': 'Orders',
     'sidebar.payinOrders': 'Pay-in Orders',
     'sidebar.payoutOrders': 'Pay-out Orders',
     'sidebar.withdrawals': 'Withdrawals',
@@ -315,6 +318,7 @@ const translations: Record<Language, Record<string, string>> = {
     'sidebar.channelPrice': 'Channel Pricing',
     'sidebar.accountInfo': 'Account Info',
     'sidebar.withdrawal': 'Withdrawal',
+    'sidebar.settlementHistory': 'Settlement History',
     'sidebar.security': 'Security',
     
     // Merchants
