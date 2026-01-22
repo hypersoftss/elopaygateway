@@ -1,4 +1,3 @@
-import { Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -14,22 +13,26 @@ export const LanguageSwitch = () => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon">
-          <Globe className="h-5 w-5" />
+        <Button variant="ghost" size="icon" className="relative">
+          <span className="text-lg">
+            {language === 'zh' ? '🇨🇳' : '🇬🇧'}
+          </span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align="end" className="min-w-[140px]">
         <DropdownMenuItem
           onClick={() => setLanguage('zh')}
-          className={language === 'zh' ? 'bg-accent' : ''}
+          className={`gap-3 cursor-pointer ${language === 'zh' ? 'bg-accent' : ''}`}
         >
-          中文
+          <span className="text-lg">🇨🇳</span>
+          <span>中文</span>
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => setLanguage('en')}
-          className={language === 'en' ? 'bg-accent' : ''}
+          className={`gap-3 cursor-pointer ${language === 'en' ? 'bg-accent' : ''}`}
         >
-          English
+          <span className="text-lg">🇬🇧</span>
+          <span>English</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

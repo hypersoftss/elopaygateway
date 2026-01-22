@@ -18,7 +18,15 @@ function verifySignature(params: Record<string, string>, apiKey: string, signatu
   const hash = new Md5()
   hash.update(signStr)
   const expectedSign = hash.toString()
+  console.log('Payin signature verification:', { signStr, expectedSign, receivedSign: signature })
   return expectedSign.toLowerCase() === signature.toLowerCase()
+}
+
+function generateBondPaySignature(merchantId: string, amount: string, orderNo: string, apiKey: string, callbackUrl: string): string {
+  const signStr = `${merchantId}${amount}${orderNo}${apiKey}${callbackUrl}`
+  const hash = new Md5()
+  hash.update(signStr)
+  return hash.toString()
 }
 
 Deno.serve(async (req) => {
@@ -28,7 +36,9 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json()
-    const { merchant_id, amount, merchant_order_no, callback_url, sign } = body
+    const { merchant_id, amount, merchant_order_no, callback_url, sign, extra } = body
+
+    console.log('Payin request received:', { merchant_id, amount, merchant_order_no })
 
     // Validate required fields
     if (!merchant_id || !amount || !merchant_order_no || !sign) {
@@ -52,6 +62,7 @@ Deno.serve(async (req) => {
       .limit(1)
 
     if (merchantError || !merchants || merchants.length === 0) {
+      console.error('Merchant not found:', merchant_id)
       return new Response(
         JSON.stringify({ code: 404, message: 'Merchant not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -67,7 +78,7 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Verify signature
+    // Verify signature using merchant's own API key
     const isValidSign = verifySignature(
       { merchant_id, amount: amount.toString(), merchant_order_no, callback_url: callback_url || '' },
       merchant.api_key,
@@ -75,27 +86,68 @@ Deno.serve(async (req) => {
     )
 
     if (!isValidSign) {
+      console.error('Invalid signature for merchant:', merchant_id)
       return new Response(
         JSON.stringify({ code: 401, message: 'Invalid signature' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
+    // Get admin settings for BondPay master credentials
+    const { data: settings, error: settingsError } = await supabaseAdmin
+      .from('admin_settings')
+      .select('master_merchant_id, master_api_key, bondpay_base_url')
+      .limit(1)
+
+    if (settingsError || !settings || settings.length === 0) {
+      console.error('Admin settings not found')
+      return new Response(
+        JSON.stringify({ code: 500, message: 'System configuration error' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const adminSettings = settings[0]
+
     // Calculate fee and net amount
     const amountNum = parseFloat(amount)
     const fee = amountNum * (merchant.payin_fee / 100)
     const netAmount = amountNum - fee
 
-    // Generate order number
+    // Generate our own order number
     const orderNo = generateOrderNo()
 
-    // Get admin settings for BondPay forwarding
-    const { data: settings } = await supabaseAdmin
-      .from('admin_settings')
-      .select('master_merchant_id, master_api_key, bondpay_base_url')
-      .limit(1)
+    // Create our internal callback URL for BondPay to call us
+    const internalCallbackUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/callback-handler`
 
-    const adminSettings = settings?.[0]
+    // Generate signature for BondPay using master credentials
+    const bondPaySignature = generateBondPaySignature(
+      adminSettings.master_merchant_id,
+      amount.toString(),
+      orderNo,
+      adminSettings.master_api_key,
+      internalCallbackUrl
+    )
+
+    console.log('Calling BondPay API with master credentials...')
+
+    // Call BondPay API with master credentials
+    const bondPayResponse = await fetch(`${adminSettings.bondpay_base_url}/v1/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        merchant_id: adminSettings.master_merchant_id,
+        api_key: adminSettings.master_api_key,
+        amount: amount.toString(),
+        merchant_order_no: orderNo,
+        callback_url: internalCallbackUrl,
+        extra: merchant.id, // Store merchant ID for callback routing
+        signature: bondPaySignature
+      })
+    })
+
+    const bondPayData = await bondPayResponse.json()
+    console.log('BondPay response:', bondPayData)
 
     // Create transaction record
     const { error: txError } = await supabaseAdmin
@@ -109,6 +161,11 @@ Deno.serve(async (req) => {
         fee,
         net_amount: netAmount,
         status: 'pending',
+        payment_url: bondPayData.payment_url || null,
+        extra: JSON.stringify({ 
+          bondpay_order: bondPayData.order_no,
+          merchant_callback: callback_url
+        })
       })
 
     if (txError) {
@@ -119,22 +176,21 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Generate payment URL (mock for now)
-    const paymentUrl = `${Deno.env.get('SUPABASE_URL')?.replace('/rest/v1', '')}/pay/${orderNo}`
+    console.log('Payin order created successfully:', orderNo)
 
-    console.log('Payin order created:', orderNo)
-
+    // Return response with BondPay payment URL
     return new Response(
       JSON.stringify({
         code: 200,
         message: 'Success',
+        success: true,
         data: {
           order_no: orderNo,
           merchant_order_no,
           amount: amountNum,
           fee,
           net_amount: netAmount,
-          payment_url: paymentUrl,
+          payment_url: bondPayData.payment_url || `https://pay.example.com/${orderNo}`,
           status: 'pending'
         }
       }),
