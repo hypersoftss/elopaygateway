@@ -94,6 +94,7 @@ export type Database = {
           bondpay_base_url: string | null
           default_payin_fee: number | null
           default_payout_fee: number | null
+          favicon_url: string | null
           gateway_domain: string | null
           gateway_name: string | null
           id: string
@@ -111,6 +112,7 @@ export type Database = {
           bondpay_base_url?: string | null
           default_payin_fee?: number | null
           default_payout_fee?: number | null
+          favicon_url?: string | null
           gateway_domain?: string | null
           gateway_name?: string | null
           id?: string
@@ -128,6 +130,7 @@ export type Database = {
           bondpay_base_url?: string | null
           default_payin_fee?: number | null
           default_payout_fee?: number | null
+          favicon_url?: string | null
           gateway_domain?: string | null
           gateway_name?: string | null
           id?: string

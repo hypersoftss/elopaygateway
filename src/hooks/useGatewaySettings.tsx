@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 interface GatewaySettings {
   gatewayName: string;
   logoUrl: string | null;
+  faviconUrl: string | null;
   supportEmail: string | null;
 }
 
@@ -15,6 +16,7 @@ export const useGatewaySettings = () => {
     cachedSettings || {
       gatewayName: '', // Empty string instead of fallback - prevents showing wrong name
       logoUrl: null,
+      faviconUrl: null,
       supportEmail: null,
     }
   );
@@ -32,7 +34,7 @@ export const useGatewaySettings = () => {
       try {
         const { data, error } = await supabase
           .from('admin_settings')
-          .select('gateway_name, logo_url, support_email')
+          .select('gateway_name, logo_url, favicon_url, support_email')
           .limit(1);
 
         if (error) {
@@ -45,6 +47,7 @@ export const useGatewaySettings = () => {
           const newSettings = {
             gatewayName: settingsData.gateway_name || 'Payment Gateway',
             logoUrl: settingsData.logo_url,
+            faviconUrl: (settingsData as any).favicon_url || null,
             supportEmail: settingsData.support_email,
           };
           // Cache the settings
