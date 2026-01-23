@@ -21,23 +21,6 @@ function verifySignature(params: Record<string, string>, payoutKey: string, sign
   return expectedSign.toLowerCase() === signature.toLowerCase()
 }
 
-function generateBondPayPayoutSignature(
-  accountNumber: string, 
-  amount: string, 
-  bankName: string, 
-  callbackUrl: string, 
-  ifsc: string, 
-  merchantId: string, 
-  name: string, 
-  transactionId: string, 
-  payoutKey: string
-): string {
-  const signStr = `${accountNumber}${amount}${bankName}${callbackUrl}${ifsc}${merchantId}${name}${transactionId}${payoutKey}`
-  const hash = new Md5()
-  hash.update(signStr)
-  return hash.toString()
-}
-
 async function createNotification(
   supabaseAdmin: any,
   type: string,
@@ -101,7 +84,7 @@ Deno.serve(async (req) => {
 
     console.log('Payout request received:', { merchant_id, amount, transaction_id })
 
-    if (!merchant_id || !amount || !transaction_id || !account_number || !ifsc || !name || !bank_name || !sign) {
+    if (!merchant_id || !amount || !transaction_id || !account_number || !name || !bank_name || !sign) {
       return new Response(
         JSON.stringify({ code: 400, message: 'Missing required parameters' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -114,10 +97,10 @@ Deno.serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
-    // Get merchant
+    // Get merchant with gateway info
     const { data: merchants, error: merchantError } = await supabaseAdmin
       .from('merchants')
-      .select('id, payout_key, payout_fee, is_active, balance, frozen_balance, merchant_name')
+      .select('id, payout_key, payout_fee, is_active, balance, frozen_balance, merchant_name, gateway_id')
       .eq('account_number', merchant_id)
       .limit(1)
 
@@ -145,7 +128,7 @@ Deno.serve(async (req) => {
         amount: amount.toString(), 
         bank_name, 
         callback_url: callback_url || '', 
-        ifsc, 
+        ifsc: ifsc || '', 
         merchant_id, 
         name, 
         transaction_id 
@@ -175,7 +158,7 @@ Deno.serve(async (req) => {
     }
 
     // Get admin settings for thresholds
-    const { data: settings, error: settingsError } = await supabaseAdmin
+    const { data: settings } = await supabaseAdmin
       .from('admin_settings')
       .select('large_payout_threshold')
       .limit(1)
@@ -183,11 +166,12 @@ Deno.serve(async (req) => {
     const adminSettings = settings?.[0]
     const orderNo = generateOrderNo()
 
-    // Create transaction in PENDING state - admin must approve before BondPay call
+    // Create transaction in PENDING state - admin must approve before gateway call
     const { data: txData, error: txError } = await supabaseAdmin
       .from('transactions')
       .insert({
         merchant_id: merchant.id,
+        gateway_id: merchant.gateway_id || null,
         order_no: orderNo,
         merchant_order_no: transaction_id,
         transaction_type: 'payout',
@@ -198,7 +182,7 @@ Deno.serve(async (req) => {
         bank_name,
         account_number,
         account_holder_name: name,
-        ifsc_code: ifsc,
+        ifsc_code: ifsc || null,
         callback_data: { merchant_callback: callback_url }
       })
       .select('id')

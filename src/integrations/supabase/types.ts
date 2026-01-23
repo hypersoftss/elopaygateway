@@ -163,6 +163,7 @@ export type Database = {
           callback_url: string | null
           created_at: string | null
           frozen_balance: number | null
+          gateway_id: string | null
           google_2fa_secret: string | null
           id: string
           is_2fa_enabled: boolean | null
@@ -186,6 +187,7 @@ export type Database = {
           callback_url?: string | null
           created_at?: string | null
           frozen_balance?: number | null
+          gateway_id?: string | null
           google_2fa_secret?: string | null
           id?: string
           is_2fa_enabled?: boolean | null
@@ -209,6 +211,7 @@ export type Database = {
           callback_url?: string | null
           created_at?: string | null
           frozen_balance?: number | null
+          gateway_id?: string | null
           google_2fa_secret?: string | null
           id?: string
           is_2fa_enabled?: boolean | null
@@ -224,6 +227,62 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
           withdrawal_password?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merchants_gateway_id_fkey"
+            columns: ["gateway_id"]
+            isOneToOne: false
+            referencedRelation: "payment_gateways"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_gateways: {
+        Row: {
+          api_key: string
+          app_id: string
+          base_url: string
+          created_at: string | null
+          currency: string
+          gateway_code: string
+          gateway_name: string
+          gateway_type: string
+          id: string
+          is_active: boolean | null
+          payout_key: string | null
+          trade_type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          api_key: string
+          app_id: string
+          base_url: string
+          created_at?: string | null
+          currency: string
+          gateway_code: string
+          gateway_name: string
+          gateway_type: string
+          id?: string
+          is_active?: boolean | null
+          payout_key?: string | null
+          trade_type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          api_key?: string
+          app_id?: string
+          base_url?: string
+          created_at?: string | null
+          currency?: string
+          gateway_code?: string
+          gateway_name?: string
+          gateway_type?: string
+          id?: string
+          is_active?: boolean | null
+          payout_key?: string | null
+          trade_type?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -278,6 +337,7 @@ export type Database = {
           created_at: string | null
           extra: string | null
           fee: number | null
+          gateway_id: string | null
           id: string
           ifsc_code: string | null
           merchant_id: string
@@ -299,6 +359,7 @@ export type Database = {
           created_at?: string | null
           extra?: string | null
           fee?: number | null
+          gateway_id?: string | null
           id?: string
           ifsc_code?: string | null
           merchant_id: string
@@ -320,6 +381,7 @@ export type Database = {
           created_at?: string | null
           extra?: string | null
           fee?: number | null
+          gateway_id?: string | null
           id?: string
           ifsc_code?: string | null
           merchant_id?: string
@@ -333,6 +395,13 @@ export type Database = {
           usdt_address?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "transactions_gateway_id_fkey"
+            columns: ["gateway_id"]
+            isOneToOne: false
+            referencedRelation: "payment_gateways"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "transactions_merchant_id_fkey"
             columns: ["merchant_id"]

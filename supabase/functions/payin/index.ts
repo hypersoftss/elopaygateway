@@ -12,13 +12,33 @@ function generateOrderNo(): string {
   return `PI${timestamp}${random}`
 }
 
-function verifySignature(params: Record<string, string>, apiKey: string, signature: string): boolean {
+// BondPay signature (concatenation style)
+function verifyBondPaySignature(params: Record<string, string>, apiKey: string, signature: string): boolean {
   const signStr = `${params.merchant_id}${params.amount}${params.merchant_order_no}${apiKey}${params.callback_url}`
   const hash = new Md5()
   hash.update(signStr)
   const expectedSign = hash.toString()
-  console.log('Payin signature verification:', { signStr, expectedSign, receivedSign: signature })
+  console.log('BondPay signature verification:', { signStr, expectedSign, receivedSign: signature })
   return expectedSign.toLowerCase() === signature.toLowerCase()
+}
+
+// LG Pay signature (ASCII sorted + uppercase MD5)
+function generateLGPaySignature(params: Record<string, any>, key: string): string {
+  // Filter out empty values and sign itself
+  const filteredParams = Object.entries(params)
+    .filter(([k, v]) => v !== '' && v !== null && v !== undefined && k !== 'sign')
+    .sort(([a], [b]) => a.localeCompare(b)) // ASCII sort
+  
+  const queryString = filteredParams
+    .map(([k, v]) => `${k}=${v}`)
+    .join('&')
+  
+  const signString = `${queryString}&key=${key}`
+  console.log('LG Pay sign string:', signString)
+  
+  const hash = new Md5()
+  hash.update(signString)
+  return hash.toString().toUpperCase()
 }
 
 function generateBondPaySignature(merchantId: string, amount: string, orderNo: string, apiKey: string, callbackUrl: string): string {
@@ -94,10 +114,10 @@ Deno.serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
-    // Get merchant
+    // Get merchant with gateway info
     const { data: merchants, error: merchantError } = await supabaseAdmin
       .from('merchants')
-      .select('id, api_key, payin_fee, is_active, callback_url, merchant_name')
+      .select('id, api_key, payin_fee, is_active, callback_url, merchant_name, gateway_id')
       .eq('account_number', merchant_id)
       .limit(1)
 
@@ -119,7 +139,7 @@ Deno.serve(async (req) => {
     }
 
     // Verify signature
-    const isValidSign = verifySignature(
+    const isValidSign = verifyBondPaySignature(
       { merchant_id, amount: amount.toString(), merchant_order_no, callback_url: callback_url || '' },
       merchant.api_key,
       sign
@@ -133,21 +153,49 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Get admin settings
-    const { data: settings, error: settingsError } = await supabaseAdmin
-      .from('admin_settings')
-      .select('master_merchant_id, master_api_key, bondpay_base_url, large_payin_threshold')
-      .limit(1)
-
-    if (settingsError || !settings || settings.length === 0) {
-      console.error('Admin settings not found')
-      return new Response(
-        JSON.stringify({ code: 500, message: 'System configuration error' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+    // Get merchant's gateway configuration
+    let gateway = null
+    if (merchant.gateway_id) {
+      const { data: gatewayData } = await supabaseAdmin
+        .from('payment_gateways')
+        .select('*')
+        .eq('id', merchant.gateway_id)
+        .eq('is_active', true)
+        .single()
+      gateway = gatewayData
     }
 
-    const adminSettings = settings[0]
+    // Fallback to BondPay from admin_settings if no gateway assigned
+    if (!gateway) {
+      const { data: settings } = await supabaseAdmin
+        .from('admin_settings')
+        .select('master_merchant_id, master_api_key, bondpay_base_url, large_payin_threshold')
+        .limit(1)
+
+      if (!settings || settings.length === 0) {
+        console.error('Admin settings not found')
+        return new Response(
+          JSON.stringify({ code: 500, message: 'System configuration error' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      gateway = {
+        gateway_type: 'bondpay',
+        app_id: settings[0].master_merchant_id,
+        api_key: settings[0].master_api_key,
+        base_url: settings[0].bondpay_base_url,
+        currency: 'INR',
+        trade_type: null,
+      }
+    }
+
+    // Get admin settings for thresholds
+    const { data: adminSettings } = await supabaseAdmin
+      .from('admin_settings')
+      .select('large_payin_threshold')
+      .limit(1)
+
     const amountNum = parseFloat(amount)
     const fee = amountNum * (merchant.payin_fee / 100)
     const netAmount = amountNum - fee
@@ -156,40 +204,78 @@ Deno.serve(async (req) => {
     // Create internal callback URL
     const internalCallbackUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/callback-handler`
 
-    // Generate BondPay signature
-    const bondPaySignature = generateBondPaySignature(
-      adminSettings.master_merchant_id,
-      amount.toString(),
-      orderNo,
-      adminSettings.master_api_key,
-      internalCallbackUrl
-    )
+    let paymentUrl = null
+    let gatewayResponse = null
 
-    console.log('Calling BondPay API with master credentials...')
+    // Route to appropriate gateway
+    if (gateway.gateway_type === 'lgpay') {
+      // LG Pay integration
+      const lgParams: Record<string, any> = {
+        app_id: gateway.app_id,
+        trade_type: gateway.trade_type || 'test',
+        order_sn: orderNo,
+        money: Math.round(amountNum * 100), // LG Pay uses cents
+        notify_url: internalCallbackUrl,
+        ip: '0.0.0.0',
+        remark: merchant.id,
+      }
 
-    // Call BondPay API
-    const bondPayResponse = await fetch(`${adminSettings.bondpay_base_url}/v1/create`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        merchant_id: adminSettings.master_merchant_id,
-        api_key: adminSettings.master_api_key,
-        amount: amount.toString(),
-        merchant_order_no: orderNo,
-        callback_url: internalCallbackUrl,
-        extra: merchant.id,
-        signature: bondPaySignature
+      lgParams.sign = generateLGPaySignature(lgParams, gateway.api_key)
+
+      console.log('Calling LG Pay API:', lgParams)
+
+      const formBody = new URLSearchParams()
+      Object.entries(lgParams).forEach(([k, v]) => formBody.append(k, String(v)))
+
+      const lgResponse = await fetch(`${gateway.base_url}/api/order/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: formBody.toString()
       })
-    })
 
-    const bondPayData = await bondPayResponse.json()
-    console.log('BondPay response:', bondPayData)
+      gatewayResponse = await lgResponse.json()
+      console.log('LG Pay response:', gatewayResponse)
+
+      if (gatewayResponse.status === 1 && gatewayResponse.data?.pay_url) {
+        paymentUrl = gatewayResponse.data.pay_url
+      }
+    } else {
+      // BondPay integration (default)
+      const bondPaySignature = generateBondPaySignature(
+        gateway.app_id,
+        amount.toString(),
+        orderNo,
+        gateway.api_key,
+        internalCallbackUrl
+      )
+
+      console.log('Calling BondPay API with credentials...')
+
+      const bondPayResponse = await fetch(`${gateway.base_url}/v1/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          merchant_id: gateway.app_id,
+          api_key: gateway.api_key,
+          amount: amount.toString(),
+          merchant_order_no: orderNo,
+          callback_url: internalCallbackUrl,
+          extra: merchant.id,
+          signature: bondPaySignature
+        })
+      })
+
+      gatewayResponse = await bondPayResponse.json()
+      console.log('BondPay response:', gatewayResponse)
+      paymentUrl = gatewayResponse.payment_url
+    }
 
     // Create transaction
     const { data: txData, error: txError } = await supabaseAdmin
       .from('transactions')
       .insert({
         merchant_id: merchant.id,
+        gateway_id: merchant.gateway_id || null,
         order_no: orderNo,
         merchant_order_no,
         transaction_type: 'payin',
@@ -197,10 +283,11 @@ Deno.serve(async (req) => {
         fee,
         net_amount: netAmount,
         status: 'pending',
-        payment_url: bondPayData.payment_url || null,
+        payment_url: paymentUrl || null,
         extra: JSON.stringify({ 
-          bondpay_order: bondPayData.order_no,
-          merchant_callback: callback_url
+          gateway_response: gatewayResponse,
+          merchant_callback: callback_url,
+          gateway_type: gateway.gateway_type
         })
       })
       .select('id')
@@ -215,7 +302,7 @@ Deno.serve(async (req) => {
     }
 
     // Check for large transaction and create notification
-    if (amountNum >= (adminSettings.large_payin_threshold || 10000)) {
+    if (amountNum >= (adminSettings?.[0]?.large_payin_threshold || 10000)) {
       await createNotification(
         supabaseAdmin,
         'large_payin',
@@ -247,7 +334,7 @@ Deno.serve(async (req) => {
           amount: amountNum,
           fee,
           net_amount: netAmount,
-          payment_url: bondPayData.payment_url || `https://pay.example.com/${orderNo}`,
+          payment_url: paymentUrl || `https://pay.example.com/${orderNo}`,
           status: 'pending'
         }
       }),

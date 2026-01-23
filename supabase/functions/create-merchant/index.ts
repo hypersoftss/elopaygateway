@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
       )
     }
 
-    const { merchantName, email, password, payinFee, payoutFee, callbackUrl } = await req.json()
+    const { merchantName, email, password, payinFee, payoutFee, callbackUrl, gatewayId } = await req.json()
 
     // Validate required fields
     if (!merchantName || !email || !password) {
@@ -99,8 +99,19 @@ Deno.serve(async (req) => {
     const defaultPayinFee = settings?.[0]?.default_payin_fee || 9.0
     const defaultPayoutFee = settings?.[0]?.default_payout_fee || 4.0
 
-    // Create merchant record
-    const { error: merchantError } = await supabaseAdmin
+    // Get gateway info for response
+    let gatewayInfo = null
+    if (gatewayId) {
+      const { data: gateway } = await supabaseAdmin
+        .from('payment_gateways')
+        .select('gateway_name, gateway_code, currency')
+        .eq('id', gatewayId)
+        .single()
+      gatewayInfo = gateway
+    }
+
+    // Create merchant record with gateway
+    const { data: merchantData, error: merchantError } = await supabaseAdmin
       .from('merchants')
       .insert({
         user_id: userId,
@@ -109,10 +120,13 @@ Deno.serve(async (req) => {
         payin_fee: parseFloat(payinFee) || defaultPayinFee,
         payout_fee: parseFloat(payoutFee) || defaultPayoutFee,
         callback_url: callbackUrl || null,
+        gateway_id: gatewayId || null,
         is_active: true,
         balance: 0,
         frozen_balance: 0,
       })
+      .select('api_key, payout_key')
+      .single()
 
     if (merchantError) {
       console.error('Merchant creation error:', merchantError)
@@ -139,6 +153,9 @@ Deno.serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         accountNumber,
+        apiKey: merchantData?.api_key,
+        payoutKey: merchantData?.payout_key,
+        gateway: gatewayInfo,
         message: 'Merchant created successfully' 
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

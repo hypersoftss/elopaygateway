@@ -6,6 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// BondPay payout signature
 function generateBondPayPayoutSignature(
   accountNumber: string, 
   amount: string, 
@@ -21,6 +22,24 @@ function generateBondPayPayoutSignature(
   const hash = new Md5()
   hash.update(signStr)
   return hash.toString()
+}
+
+// LG Pay signature (ASCII sorted + uppercase MD5)
+function generateLGPaySignature(params: Record<string, any>, key: string): string {
+  const filteredParams = Object.entries(params)
+    .filter(([k, v]) => v !== '' && v !== null && v !== undefined && k !== 'sign')
+    .sort(([a], [b]) => a.localeCompare(b))
+  
+  const queryString = filteredParams
+    .map(([k, v]) => `${k}=${v}`)
+    .join('&')
+  
+  const signString = `${queryString}&key=${key}`
+  console.log('LG Pay payout sign string:', signString)
+  
+  const hash = new Md5()
+  hash.update(signString)
+  return hash.toString().toUpperCase()
 }
 
 Deno.serve(async (req) => {
@@ -47,10 +66,10 @@ Deno.serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
-    // Get the transaction
+    // Get the transaction with gateway info
     const { data: transaction, error: txError } = await supabaseAdmin
       .from('transactions')
-      .select('*, merchants(id, balance, frozen_balance, merchant_name)')
+      .select('*, merchants(id, balance, frozen_balance, merchant_name, gateway_id)')
       .eq('id', transaction_id)
       .single()
 
@@ -97,68 +116,127 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'approve') {
-      // Get admin settings for BondPay
-      const { data: settings } = await supabaseAdmin
-        .from('admin_settings')
-        .select('master_merchant_id, master_payout_key, bondpay_base_url')
-        .limit(1)
-        .single()
+      // Get gateway configuration
+      let gateway = null
+      if (transaction.gateway_id) {
+        const { data: gatewayData } = await supabaseAdmin
+          .from('payment_gateways')
+          .select('*')
+          .eq('id', transaction.gateway_id)
+          .single()
+        gateway = gatewayData
+      }
 
-      if (!settings) {
-        console.error('Admin settings not found')
-        return new Response(
-          JSON.stringify({ success: false, message: 'System configuration error' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+      // Fallback to BondPay from admin_settings
+      if (!gateway) {
+        const { data: settings } = await supabaseAdmin
+          .from('admin_settings')
+          .select('master_merchant_id, master_api_key, master_payout_key, bondpay_base_url')
+          .limit(1)
+          .single()
+
+        if (!settings) {
+          console.error('Admin settings not found')
+          return new Response(
+            JSON.stringify({ success: false, message: 'System configuration error' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+
+        gateway = {
+          gateway_type: 'bondpay',
+          app_id: settings.master_merchant_id,
+          api_key: settings.master_api_key,
+          payout_key: settings.master_payout_key,
+          base_url: settings.bondpay_base_url,
+          currency: 'INR',
+        }
       }
 
       const internalCallbackUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/callback-handler`
+      let gatewayResponse = null
 
-      // Generate BondPay signature
-      const bondPaySignature = generateBondPayPayoutSignature(
-        transaction.account_number || '',
-        transaction.amount.toString(),
-        transaction.bank_name || '',
-        internalCallbackUrl,
-        transaction.ifsc_code || '',
-        settings.master_merchant_id,
-        transaction.account_holder_name || '',
-        transaction.order_no,
-        settings.master_payout_key
-      )
+      if (gateway.gateway_type === 'lgpay') {
+        // LG Pay payout
+        const lgParams: Record<string, any> = {
+          app_id: gateway.app_id,
+          order_sn: transaction.order_no,
+          currency: gateway.currency || 'TEST',
+          money: Math.round(transaction.amount * 100), // LG Pay uses cents
+          notify_url: internalCallbackUrl,
+          name: transaction.account_holder_name || '',
+          card_number: transaction.account_number || '',
+          bank_name: transaction.bank_name || '',
+          addon2: 'v1.0',
+        }
 
-      console.log('Calling BondPay Payout API for approved transaction...')
+        // Add IFSC for India
+        if (gateway.currency === 'INR' && transaction.ifsc_code) {
+          lgParams.addon1 = transaction.ifsc_code
+        }
 
-      // Call BondPay API
-      const formData = new URLSearchParams()
-      formData.append('merchant_id', settings.master_merchant_id)
-      formData.append('amount', transaction.amount.toString())
-      formData.append('transaction_id', transaction.order_no)
-      formData.append('account_number', transaction.account_number || '')
-      formData.append('ifsc', transaction.ifsc_code || '')
-      formData.append('name', transaction.account_holder_name || '')
-      formData.append('bank_name', transaction.bank_name || '')
-      formData.append('callback_url', internalCallbackUrl)
-      formData.append('signature', bondPaySignature)
+        lgParams.sign = generateLGPaySignature(lgParams, gateway.payout_key || gateway.api_key)
 
-      const bondPayResponse = await fetch(`${settings.bondpay_base_url}/payout/payment.php`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: formData.toString()
-      })
+        console.log('Calling LG Pay Payout API:', lgParams)
 
-      const bondPayData = await bondPayResponse.json()
-      console.log('BondPay Payout response:', bondPayData)
+        const formBody = new URLSearchParams()
+        Object.entries(lgParams).forEach(([k, v]) => formBody.append(k, String(v)))
 
-      // Update transaction with BondPay response - keep pending, callback will update
+        const lgResponse = await fetch(`${gateway.base_url}/api/deposit/create`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: formBody.toString()
+        })
+
+        gatewayResponse = await lgResponse.json()
+        console.log('LG Pay Payout response:', gatewayResponse)
+
+      } else {
+        // BondPay payout (default)
+        const bondPaySignature = generateBondPayPayoutSignature(
+          transaction.account_number || '',
+          transaction.amount.toString(),
+          transaction.bank_name || '',
+          internalCallbackUrl,
+          transaction.ifsc_code || '',
+          gateway.app_id,
+          transaction.account_holder_name || '',
+          transaction.order_no,
+          gateway.payout_key
+        )
+
+        console.log('Calling BondPay Payout API for approved transaction...')
+
+        const formData = new URLSearchParams()
+        formData.append('merchant_id', gateway.app_id)
+        formData.append('amount', transaction.amount.toString())
+        formData.append('transaction_id', transaction.order_no)
+        formData.append('account_number', transaction.account_number || '')
+        formData.append('ifsc', transaction.ifsc_code || '')
+        formData.append('name', transaction.account_holder_name || '')
+        formData.append('bank_name', transaction.bank_name || '')
+        formData.append('callback_url', internalCallbackUrl)
+        formData.append('signature', bondPaySignature)
+
+        const bondPayResponse = await fetch(`${gateway.base_url}/payout/payment.php`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: formData.toString()
+        })
+
+        gatewayResponse = await bondPayResponse.json()
+        console.log('BondPay Payout response:', gatewayResponse)
+      }
+
+      // Update transaction with gateway response
       await supabaseAdmin
         .from('transactions')
         .update({ 
-          callback_data: { bondpay_response: bondPayData, approved_at: new Date().toISOString() }
+          callback_data: { gateway_response: gatewayResponse, approved_at: new Date().toISOString() }
         })
         .eq('id', transaction_id)
 
-      // Remove from frozen balance (already deducted from balance when created)
+      // Remove from frozen balance
       if (merchant) {
         await supabaseAdmin
           .from('merchants')
@@ -168,13 +246,13 @@ Deno.serve(async (req) => {
           .eq('id', merchant.id)
       }
 
-      console.log('Payout approved and sent to BondPay:', transaction_id)
+      console.log('Payout approved and sent to gateway:', transaction_id)
 
       return new Response(
         JSON.stringify({ 
           success: true, 
-          message: 'Payout approved and sent to BondPay',
-          bondpay_response: bondPayData
+          message: 'Payout approved and sent to gateway',
+          gateway_response: gatewayResponse
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
