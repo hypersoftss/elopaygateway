@@ -1,8 +1,28 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { Md5 } from 'https://deno.land/std@0.119.0/hash/md5.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+// Verify LG Pay callback signature
+function verifyLGPaySignature(params: Record<string, any>, key: string, receivedSign: string): boolean {
+  const filteredParams = Object.entries(params)
+    .filter(([k, v]) => v !== '' && v !== null && v !== undefined && k !== 'sign')
+    .sort(([a], [b]) => a.localeCompare(b))
+  
+  const queryString = filteredParams
+    .map(([k, v]) => `${k}=${v}`)
+    .join('&')
+  
+  const signString = `${queryString}&key=${key}`
+  const hash = new Md5()
+  hash.update(signString)
+  const expectedSign = hash.toString().toUpperCase()
+  
+  console.log('LG Pay callback signature verification:', { signString, expectedSign, receivedSign })
+  return expectedSign === receivedSign
 }
 
 // Helper function to send Telegram notification
@@ -30,8 +50,32 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const body = await req.json()
-    console.log('Callback received from BondPay:', body)
+    // Parse body - support both JSON and form-urlencoded
+    let body: Record<string, any> = {}
+    const contentType = req.headers.get('content-type') || ''
+    
+    if (contentType.includes('application/json')) {
+      body = await req.json()
+    } else if (contentType.includes('application/x-www-form-urlencoded')) {
+      const formData = await req.formData()
+      formData.forEach((value, key) => {
+        body[key] = value
+      })
+    } else {
+      // Try JSON first, fallback to text parsing
+      const text = await req.text()
+      try {
+        body = JSON.parse(text)
+      } catch {
+        // Try form-urlencoded parsing
+        const params = new URLSearchParams(text)
+        params.forEach((value, key) => {
+          body[key] = value
+        })
+      }
+    }
+
+    console.log('Callback received:', body)
 
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -41,12 +85,159 @@ Deno.serve(async (req) => {
 
     let redirectUrl: string | null = null
 
-    // Handle payin callback
-    // BondPay sends: { orderNo, merchantOrder, status, amount, createtime, updatetime }
-    if (body.orderNo && body.merchantOrder) {
-      const { orderNo, merchantOrder, status, amount } = body
+    // Detect callback type
+    const isLGPayCallback = body.order_sn !== undefined
+    const isBondPayPayin = body.orderNo && body.merchantOrder
+    const isBondPayPayout = body.transaction_id && body.merchant_id && !body.orderNo
+
+    if (isLGPayCallback) {
+      // LG Pay callback handler
+      const { order_sn, money, status, pay_time, msg, remark, sign } = body
+      const isPayoutCallback = body.hasOwnProperty('status') && !body.hasOwnProperty('pay_time') === false
+
+      console.log('Processing LG Pay callback for order:', order_sn)
 
       // Find our transaction by order_no
+      const { data: transactions, error: txFindError } = await supabaseAdmin
+        .from('transactions')
+        .select('*, merchants(*), payment_gateways(*)')
+        .eq('order_no', order_sn)
+        .limit(1)
+
+      if (txFindError || !transactions || transactions.length === 0) {
+        console.error('Transaction not found for LG Pay callback:', order_sn)
+        return new Response('ok', { headers: corsHeaders })
+      }
+
+      const transaction = transactions[0]
+      const gateway = transaction.payment_gateways
+
+      // Verify signature if gateway exists
+      if (gateway && sign) {
+        const signParams = { ...body }
+        delete signParams.sign
+        const isValidSign = verifyLGPaySignature(signParams, gateway.api_key, sign)
+        if (!isValidSign) {
+          console.error('Invalid LG Pay callback signature')
+          // Continue processing anyway as LG Pay might retry
+        }
+      }
+
+      // LG Pay: status 1 = success, 0 = failed (for payout), payin only sends success
+      const newStatus = status === 1 || status === '1' ? 'success' : 'failed'
+
+      // Update transaction status
+      await supabaseAdmin
+        .from('transactions')
+        .update({
+          status: newStatus,
+          callback_data: body
+        })
+        .eq('id', transaction.id)
+
+      // Handle balance updates
+      if (transaction.transaction_type === 'payin' && newStatus === 'success') {
+        // Add to merchant balance
+        await supabaseAdmin
+          .from('merchants')
+          .update({
+            balance: (transaction.merchants.balance || 0) + transaction.net_amount
+          })
+          .eq('id', transaction.merchant_id)
+
+        await sendTelegramNotification(supabaseAdmin, 'payin_success', transaction.merchant_id, {
+          orderNo: transaction.order_no,
+          amount: transaction.amount,
+          fee: transaction.fee,
+          netAmount: transaction.net_amount,
+        })
+      } else if (transaction.transaction_type === 'payin' && newStatus === 'failed') {
+        await sendTelegramNotification(supabaseAdmin, 'payin_failed', transaction.merchant_id, {
+          orderNo: transaction.order_no,
+          amount: transaction.amount,
+        })
+      } else if (transaction.transaction_type === 'payout') {
+        const unfreezeAmount = transaction.amount + (transaction.fee || 0)
+        
+        if (newStatus === 'success') {
+          await supabaseAdmin
+            .from('merchants')
+            .update({
+              frozen_balance: Math.max(0, (transaction.merchants.frozen_balance || 0) - unfreezeAmount)
+            })
+            .eq('id', transaction.merchant_id)
+
+          await sendTelegramNotification(supabaseAdmin, 'payout_success', transaction.merchant_id, {
+            orderNo: transaction.order_no,
+            amount: transaction.amount,
+            bankName: transaction.bank_name,
+          })
+        } else if (newStatus === 'failed') {
+          await supabaseAdmin
+            .from('merchants')
+            .update({
+              balance: (transaction.merchants.balance || 0) + unfreezeAmount,
+              frozen_balance: Math.max(0, (transaction.merchants.frozen_balance || 0) - unfreezeAmount)
+            })
+            .eq('id', transaction.merchant_id)
+
+          await sendTelegramNotification(supabaseAdmin, 'payout_failed', transaction.merchant_id, {
+            orderNo: transaction.order_no,
+            amount: transaction.amount,
+            reason: msg || 'Transaction failed',
+          })
+        }
+      }
+
+      // Forward callback to merchant
+      const extraData = transaction.extra ? JSON.parse(transaction.extra) : {}
+      if (extraData.merchant_callback) {
+        try {
+          await fetch(extraData.merchant_callback, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              orderNo: transaction.order_no,
+              merchantOrder: transaction.merchant_order_no,
+              status: newStatus,
+              amount: transaction.amount,
+              fee: transaction.fee,
+              net_amount: transaction.net_amount,
+              timestamp: new Date().toISOString()
+            })
+          })
+          console.log('Forwarded LG Pay callback to merchant')
+        } catch (callbackError) {
+          console.error('Failed to forward callback to merchant:', callbackError)
+        }
+      }
+
+      // Build redirect URL
+      if (newStatus === 'success' && extraData.success_url) {
+        const params = new URLSearchParams({
+          order_no: transaction.order_no,
+          amount: transaction.amount.toString(),
+          merchant: transaction.merchants?.merchant_name || ''
+        })
+        redirectUrl = `${extraData.success_url}?${params.toString()}`
+      } else if (newStatus === 'failed' && extraData.failure_url) {
+        const params = new URLSearchParams({
+          order_no: transaction.order_no,
+          reason: msg || 'Payment failed'
+        })
+        redirectUrl = `${extraData.failure_url}?${params.toString()}`
+      }
+
+      console.log('LG Pay callback processed successfully for order:', order_sn)
+      
+      // LG Pay expects "ok" response
+      return new Response('ok', { headers: corsHeaders })
+    }
+
+    // Handle BondPay payin callback
+    if (isBondPayPayin) {
+      const { orderNo, merchantOrder, status, amount } = body
+
       const { data: transactions, error: txFindError } = await supabaseAdmin
         .from('transactions')
         .select('*, merchants(*)')
@@ -65,8 +256,7 @@ Deno.serve(async (req) => {
       const newStatus = status.toLowerCase() === 'success' ? 'success' : 
                        status.toLowerCase() === 'failed' ? 'failed' : 'pending'
 
-      // Update transaction status
-      const { error: updateError } = await supabaseAdmin
+      await supabaseAdmin
         .from('transactions')
         .update({
           status: newStatus,
@@ -74,24 +264,14 @@ Deno.serve(async (req) => {
         })
         .eq('id', transaction.id)
 
-      if (updateError) {
-        console.error('Failed to update transaction:', updateError)
-      }
-
-      // If payin success, add to merchant balance
       if (newStatus === 'success' && transaction.transaction_type === 'payin') {
-        const { error: balanceError } = await supabaseAdmin
+        await supabaseAdmin
           .from('merchants')
           .update({
             balance: (transaction.merchants.balance || 0) + transaction.net_amount
           })
           .eq('id', transaction.merchant_id)
 
-        if (balanceError) {
-          console.error('Failed to update balance:', balanceError)
-        }
-
-        // Send Telegram notification for payin success
         await sendTelegramNotification(supabaseAdmin, 'payin_success', transaction.merchant_id, {
           orderNo: transaction.order_no,
           amount: transaction.amount,
@@ -99,37 +279,30 @@ Deno.serve(async (req) => {
           netAmount: transaction.net_amount,
         })
       } else if (newStatus === 'failed' && transaction.transaction_type === 'payin') {
-        // Send Telegram notification for payin failed
         await sendTelegramNotification(supabaseAdmin, 'payin_failed', transaction.merchant_id, {
           orderNo: transaction.order_no,
           amount: transaction.amount,
         })
       }
 
-      // If payout completed, unfreeze the amount
       if (transaction.transaction_type === 'payout') {
         const unfreezeAmount = transaction.amount + (transaction.fee || 0)
         
         if (newStatus === 'success') {
-          const { error: balanceError } = await supabaseAdmin
+          await supabaseAdmin
             .from('merchants')
             .update({
               frozen_balance: Math.max(0, (transaction.merchants.frozen_balance || 0) - unfreezeAmount)
             })
             .eq('id', transaction.merchant_id)
 
-          if (balanceError) {
-            console.error('Failed to update frozen balance:', balanceError)
-          }
-
-          // Send Telegram notification for payout success
           await sendTelegramNotification(supabaseAdmin, 'payout_success', transaction.merchant_id, {
             orderNo: transaction.order_no,
             amount: transaction.amount,
             bankName: transaction.bank_name,
           })
         } else if (newStatus === 'failed') {
-          const { error: balanceError } = await supabaseAdmin
+          await supabaseAdmin
             .from('merchants')
             .update({
               balance: (transaction.merchants.balance || 0) + unfreezeAmount,
@@ -137,11 +310,6 @@ Deno.serve(async (req) => {
             })
             .eq('id', transaction.merchant_id)
 
-          if (balanceError) {
-            console.error('Failed to restore balance:', balanceError)
-          }
-
-          // Send Telegram notification for payout failed
           await sendTelegramNotification(supabaseAdmin, 'payout_failed', transaction.merchant_id, {
             orderNo: transaction.order_no,
             amount: transaction.amount,
@@ -150,10 +318,8 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Parse extra data for callback and redirect URLs
       const extraData = transaction.extra ? JSON.parse(transaction.extra) : {}
       
-      // Forward callback to merchant's callback URL if configured
       if (extraData.merchant_callback) {
         try {
           await fetch(extraData.merchant_callback, {
@@ -175,7 +341,6 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Build redirect URL based on payment status
       if (newStatus === 'success' && extraData.success_url) {
         const params = new URLSearchParams({
           order_no: transaction.order_no,
@@ -184,7 +349,6 @@ Deno.serve(async (req) => {
           description: extraData.payment_link_code ? `Payment Link: ${extraData.payment_link_code}` : ''
         })
         redirectUrl = `${extraData.success_url}?${params.toString()}`
-        console.log('Success redirect URL:', redirectUrl)
       } else if (newStatus === 'failed' && extraData.failure_url) {
         const params = new URLSearchParams({
           order_no: transaction.order_no,
@@ -194,14 +358,13 @@ Deno.serve(async (req) => {
           link_code: extraData.payment_link_code || ''
         })
         redirectUrl = `${extraData.failure_url}?${params.toString()}`
-        console.log('Failure redirect URL:', redirectUrl)
       }
 
-      console.log('Callback processed successfully for order:', merchantOrder)
+      console.log('BondPay callback processed successfully for order:', merchantOrder)
     }
 
-    // Handle payout callback
-    if (body.transaction_id && body.merchant_id && !body.orderNo) {
+    // Handle BondPay payout callback
+    if (isBondPayPayout) {
       const { transaction_id, status } = body
 
       const { data: transactions, error: txFindError } = await supabaseAdmin
@@ -222,7 +385,7 @@ Deno.serve(async (req) => {
       const newStatus = status.toUpperCase() === 'SUCCESS' ? 'success' : 
                        status.toUpperCase() === 'FAILED' ? 'failed' : 'pending'
 
-      const { error: updateError } = await supabaseAdmin
+      await supabaseAdmin
         .from('transactions')
         .update({
           status: newStatus,
@@ -230,32 +393,23 @@ Deno.serve(async (req) => {
         })
         .eq('id', transaction.id)
 
-      if (updateError) {
-        console.error('Failed to update transaction:', updateError)
-      }
-
       const unfreezeAmount = transaction.amount + (transaction.fee || 0)
       
       if (newStatus === 'success') {
-        const { error: balanceError } = await supabaseAdmin
+        await supabaseAdmin
           .from('merchants')
           .update({
             frozen_balance: Math.max(0, (transaction.merchants.frozen_balance || 0) - unfreezeAmount)
           })
           .eq('id', transaction.merchant_id)
 
-        if (balanceError) {
-          console.error('Failed to update frozen balance:', balanceError)
-        }
-
-        // Send Telegram notification
         await sendTelegramNotification(supabaseAdmin, 'payout_success', transaction.merchant_id, {
           orderNo: transaction.order_no,
           amount: transaction.amount,
           bankName: transaction.bank_name,
         })
       } else if (newStatus === 'failed') {
-        const { error: balanceError } = await supabaseAdmin
+        await supabaseAdmin
           .from('merchants')
           .update({
             balance: (transaction.merchants.balance || 0) + unfreezeAmount,
@@ -263,11 +417,6 @@ Deno.serve(async (req) => {
           })
           .eq('id', transaction.merchant_id)
 
-        if (balanceError) {
-          console.error('Failed to restore balance:', balanceError)
-        }
-
-        // Send Telegram notification
         await sendTelegramNotification(supabaseAdmin, 'payout_failed', transaction.merchant_id, {
           orderNo: transaction.order_no,
           amount: transaction.amount,
@@ -295,10 +444,10 @@ Deno.serve(async (req) => {
         }
       }
 
-      console.log('Payout callback processed successfully for order:', transaction_id)
+      console.log('BondPay payout callback processed successfully for order:', transaction_id)
     }
 
-    // Return redirect URL if available, otherwise return success
+    // Return redirect URL if available
     if (redirectUrl) {
       return new Response(
         JSON.stringify({ 

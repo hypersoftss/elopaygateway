@@ -52,6 +52,16 @@ interface Merchant {
   is_active: boolean;
   is_2fa_enabled: boolean;
   created_at: string;
+  gateway_id: string | null;
+}
+
+interface Gateway {
+  id: string;
+  gateway_code: string;
+  gateway_name: string;
+  gateway_type: string;
+  currency: string;
+  is_active: boolean;
 }
 
 const AdminMerchants = () => {
@@ -73,6 +83,8 @@ const AdminMerchants = () => {
   const [newWithdrawalPassword, setNewWithdrawalPassword] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
 
+  const [gateways, setGateways] = useState<Gateway[]>([]);
+
   const [newMerchant, setNewMerchant] = useState({
     merchantName: '',
     email: '',
@@ -80,6 +92,7 @@ const AdminMerchants = () => {
     payinFee: '9.0',
     payoutFee: '4.0',
     callbackUrl: '',
+    gatewayId: '',
   });
 
   const fetchMerchants = async () => {
@@ -101,8 +114,22 @@ const AdminMerchants = () => {
     }
   };
 
+  const fetchGateways = async () => {
+    try {
+      const { data } = await supabase
+        .from('payment_gateways')
+        .select('id, gateway_code, gateway_name, gateway_type, currency, is_active')
+        .eq('is_active', true)
+        .order('gateway_name');
+      setGateways(data || []);
+    } catch (err) {
+      console.error('Failed to fetch gateways:', err);
+    }
+  };
+
   useEffect(() => {
     fetchMerchants();
+    fetchGateways();
   }, []);
 
   const handleCreateMerchant = async () => {
@@ -126,6 +153,7 @@ const AdminMerchants = () => {
             payinFee: parseFloat(newMerchant.payinFee),
             payoutFee: parseFloat(newMerchant.payoutFee),
             callbackUrl: newMerchant.callbackUrl || null,
+            gatewayId: newMerchant.gatewayId || null,
           }),
         }
       );
@@ -149,6 +177,7 @@ const AdminMerchants = () => {
         payinFee: '9.0',
         payoutFee: '4.0',
         callbackUrl: '',
+        gatewayId: '',
       });
       fetchMerchants();
     } catch (err: any) {
@@ -450,6 +479,21 @@ const AdminMerchants = () => {
                     onChange={(e) => setNewMerchant({ ...newMerchant, callbackUrl: e.target.value })}
                     placeholder="https://your-site.com/callback"
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label>{language === 'zh' ? '支付网关' : 'Payment Gateway'} *</Label>
+                  <select
+                    className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                    value={newMerchant.gatewayId}
+                    onChange={(e) => setNewMerchant({ ...newMerchant, gatewayId: e.target.value })}
+                  >
+                    <option value="">{language === 'zh' ? '选择网关...' : 'Select gateway...'}</option>
+                    {gateways.map((gw) => (
+                      <option key={gw.id} value={gw.id}>
+                        {gw.gateway_name} ({gw.currency})
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="flex gap-2">
                   <Button
