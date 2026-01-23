@@ -31,6 +31,18 @@ async function sendMessage(botToken: string, chatId: string, text: string, parse
   })
 }
 
+// Set bot commands menu (shows when user types /)
+async function setMyCommands(botToken: string, commands: { command: string; description: string }[], scope?: any) {
+  const body: any = { commands }
+  if (scope) body.scope = scope
+  
+  await fetch(`https://api.telegram.org/bot${botToken}/setMyCommands`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
 // Generate random password
 function generatePassword(length: number = 12): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'
@@ -49,6 +61,16 @@ function formatINR(amount: number): string {
 // Generate random withdrawal password
 function generateWithdrawalPassword(): string {
   return Math.random().toString(36).slice(2, 10).toUpperCase()
+}
+
+// Find merchant by telegram chat ID
+async function findMerchantByChatId(supabaseAdmin: any, chatId: string) {
+  const { data: merchant } = await supabaseAdmin
+    .from('merchants')
+    .select('*')
+    .eq('telegram_chat_id', chatId)
+    .maybeSingle()
+  return merchant
 }
 
 Deno.serve(async (req) => {
@@ -118,54 +140,358 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // ============ /start or /help - Show all commands ============
+    // ============ /setmenu - Setup bot commands menu ============
+    if (command === '/setmenu' && isAdmin) {
+      // Set default commands (for all users/groups - basic merchant commands)
+      const merchantCommands = [
+        { command: 'me', description: '👤 My account info & balance' },
+        { command: 'mybalance', description: '💰 Check my balance' },
+        { command: 'today', description: '📊 Today\'s transaction summary' },
+        { command: 'history', description: '📋 Recent transactions' },
+        { command: 'status', description: '🔍 Check order status' },
+        { command: 'tg_id', description: '🆔 Get chat/group ID' },
+        { command: 'help', description: '❓ Show help menu' },
+      ]
+
+      // Set admin commands (only for admin chat)
+      const adminCommands = [
+        { command: 'create_merchant', description: '➕ Create new merchant' },
+        { command: 'merchants', description: '📋 List all merchants' },
+        { command: 'merchant', description: '👤 View merchant details' },
+        { command: 'search', description: '🔍 Search merchant' },
+        { command: 'balance', description: '💰 Check merchant balance' },
+        { command: 'today', description: '📊 Today\'s summary' },
+        { command: 'history', description: '📋 Transaction history' },
+        { command: 'status', description: '🔍 Order status' },
+        { command: 'set_fee', description: '💳 Update fees' },
+        { command: 'set_callback', description: '🔗 Set callback URL' },
+        { command: 'set_telegram', description: '📱 Set Telegram group' },
+        { command: 'reset_2fa', description: '🔐 Reset 2FA' },
+        { command: 'reset_password', description: '🔑 Reset password' },
+        { command: 'reset_withdrawal', description: '🔒 Reset withdrawal pass' },
+        { command: 'activate', description: '✅ Activate merchant' },
+        { command: 'deactivate', description: '❌ Deactivate merchant' },
+        { command: 'stats', description: '📈 System statistics' },
+        { command: 'top', description: '🏆 Top merchants' },
+        { command: 'tg_id', description: '🆔 Get chat ID' },
+        { command: 'help', description: '❓ Show all commands' },
+      ]
+
+      // Set merchant commands for all group chats (default)
+      await setMyCommands(botToken, merchantCommands, { type: 'all_group_chats' })
+      
+      // Set admin commands specifically for admin chat
+      if (adminChatId) {
+        await setMyCommands(botToken, adminCommands, { type: 'chat', chat_id: parseInt(adminChatId) })
+      }
+      
+      // Also set merchant commands for private chats
+      await setMyCommands(botToken, merchantCommands, { type: 'all_private_chats' })
+
+      await sendMessage(botToken, chatId, 
+        `✅ <b>Bot Menu Updated!</b>\n\n` +
+        `Commands menu has been set up:\n\n` +
+        `• <b>Merchant Groups:</b> ${merchantCommands.length} commands\n` +
+        `• <b>Admin Group:</b> ${adminCommands.length} commands\n\n` +
+        `<i>Users will now see command suggestions when typing /</i>`
+      )
+      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    // ============ Check if this is a merchant group ============
+    const merchantByChat = await findMerchantByChatId(supabaseAdmin, chatId)
+    const isMerchantGroup = !!merchantByChat
+
+    // ============ MERCHANT COMMANDS (for their own group) ============
+    if (isMerchantGroup && !isAdmin) {
+      
+      // /me - My account info
+      if (command === '/me' || command === '/myaccount') {
+        const m = merchantByChat
+        const status = m.is_active ? '✅ Active' : '❌ Inactive'
+        const twoFa = m.is_2fa_enabled ? '🔐 Enabled' : '🔓 Disabled'
+        const total = (m.balance || 0) + (m.frozen_balance || 0)
+
+        const msg = `👤 <b>My Account</b>\n\n` +
+          `━━━ 📋 INFO ━━━\n` +
+          `📛 Name: ${m.merchant_name}\n` +
+          `🆔 ID: <code>${m.account_number}</code>\n` +
+          `📊 Status: ${status}\n` +
+          `🔐 2FA: ${twoFa}\n\n` +
+          `━━━ 💰 BALANCE ━━━\n` +
+          `💵 Available: ${formatINR(m.balance || 0)}\n` +
+          `🧊 Frozen: ${formatINR(m.frozen_balance || 0)}\n` +
+          `📊 Total: ${formatINR(total)}\n\n` +
+          `━━━ 💳 FEES ━━━\n` +
+          `📥 Payin: ${m.payin_fee}%\n` +
+          `📤 Payout: ${m.payout_fee}%\n\n` +
+          `🌐 Dashboard: ${gatewayDomain}/merchant`
+
+        await sendMessage(botToken, chatId, msg)
+        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+
+      // /mybalance - My balance
+      if (command === '/mybalance' || command === '/bal') {
+        const m = merchantByChat
+        const total = (m.balance || 0) + (m.frozen_balance || 0)
+        
+        const msg = `💰 <b>${m.merchant_name}</b>\n\n` +
+          `💵 Available: ${formatINR(m.balance || 0)}\n` +
+          `🧊 Frozen: ${formatINR(m.frozen_balance || 0)}\n` +
+          `━━━━━━━━━━━━━━━━━━\n` +
+          `📊 Total: ${formatINR(total)}`
+
+        await sendMessage(botToken, chatId, msg)
+        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+
+      // /today - Today's summary for merchant
+      if (command === '/today' || command === '/summary') {
+        const m = merchantByChat
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+
+        const yesterday = new Date(today)
+        yesterday.setDate(yesterday.getDate() - 1)
+
+        const { data: todayTx } = await supabaseAdmin
+          .from('transactions')
+          .select('amount, fee, status, transaction_type')
+          .eq('merchant_id', m.id)
+          .gte('created_at', today.toISOString())
+
+        const { data: yesterdayTx } = await supabaseAdmin
+          .from('transactions')
+          .select('amount, fee, status, transaction_type')
+          .eq('merchant_id', m.id)
+          .gte('created_at', yesterday.toISOString())
+          .lt('created_at', today.toISOString())
+
+        let tPayinCount = 0, tPayinSuccess = 0, tPayinAmount = 0
+        let tPayoutCount = 0, tPayoutSuccess = 0, tPayoutAmount = 0
+
+        todayTx?.forEach(tx => {
+          if (tx.transaction_type === 'payin') {
+            tPayinCount++
+            if (tx.status === 'success') {
+              tPayinSuccess++
+              tPayinAmount += tx.amount
+            }
+          } else {
+            tPayoutCount++
+            if (tx.status === 'success') {
+              tPayoutSuccess++
+              tPayoutAmount += tx.amount
+            }
+          }
+        })
+
+        let yPayinCount = 0, yPayinSuccess = 0, yPayinAmount = 0
+        let yPayoutCount = 0, yPayoutSuccess = 0, yPayoutAmount = 0
+
+        yesterdayTx?.forEach(tx => {
+          if (tx.transaction_type === 'payin') {
+            yPayinCount++
+            if (tx.status === 'success') {
+              yPayinSuccess++
+              yPayinAmount += tx.amount
+            }
+          } else {
+            yPayoutCount++
+            if (tx.status === 'success') {
+              yPayoutSuccess++
+              yPayoutAmount += tx.amount
+            }
+          }
+        })
+
+        const msg = `📊 <b>${m.merchant_name}</b>\n\n` +
+          `━━━ 📅 TODAY ━━━\n` +
+          `📥 <b>Pay-In:</b>\n` +
+          `   Orders: ${tPayinCount} | Success: ${tPayinSuccess}\n` +
+          `   Amount: ${formatINR(tPayinAmount)}\n` +
+          `   Rate: ${tPayinCount ? Math.round(tPayinSuccess / tPayinCount * 100) : 0}%\n\n` +
+          `📤 <b>Pay-Out:</b>\n` +
+          `   Orders: ${tPayoutCount} | Success: ${tPayoutSuccess}\n` +
+          `   Amount: ${formatINR(tPayoutAmount)}\n` +
+          `   Rate: ${tPayoutCount ? Math.round(tPayoutSuccess / tPayoutCount * 100) : 0}%\n\n` +
+          `━━━ 📅 YESTERDAY ━━━\n` +
+          `📥 <b>Pay-In:</b>\n` +
+          `   Orders: ${yPayinCount} | Success: ${yPayinSuccess}\n` +
+          `   Amount: ${formatINR(yPayinAmount)}\n\n` +
+          `📤 <b>Pay-Out:</b>\n` +
+          `   Orders: ${yPayoutCount} | Success: ${yPayoutSuccess}\n` +
+          `   Amount: ${formatINR(yPayoutAmount)}\n\n` +
+          `━━━ 💰 BALANCE ━━━\n` +
+          `Available: ${formatINR(m.balance || 0)}`
+
+        await sendMessage(botToken, chatId, msg)
+        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+
+      // /history - My transaction history
+      if (command === '/history' || command === '/transactions') {
+        const m = merchantByChat
+        const txType = args[0]?.toLowerCase()
+
+        let query = supabaseAdmin
+          .from('transactions')
+          .select('order_no, amount, fee, status, transaction_type, created_at')
+          .eq('merchant_id', m.id)
+          .order('created_at', { ascending: false })
+          .limit(10)
+
+        if (txType === 'payin') {
+          query = query.eq('transaction_type', 'payin')
+        } else if (txType === 'payout') {
+          query = query.eq('transaction_type', 'payout')
+        }
+
+        const { data: transactions } = await query
+
+        if (!transactions?.length) {
+          await sendMessage(botToken, chatId, '📋 No transactions found\n\n<i>Usage: /history [payin/payout]</i>')
+          return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+        }
+
+        let msg = `📊 <b>${m.merchant_name} - Recent Transactions</b>\n\n`
+        transactions.forEach((tx, i) => {
+          const icon = tx.transaction_type === 'payin' ? '📥' : '📤'
+          const statusIcon = tx.status === 'success' ? '✅' : tx.status === 'failed' ? '❌' : '⏳'
+          const date = new Date(tx.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
+          msg += `${i + 1}. ${icon} ${statusIcon} ${formatINR(tx.amount)}\n`
+          msg += `   <code>${tx.order_no}</code>\n`
+          msg += `   ${date}\n\n`
+        })
+        msg += `<i>Filter: /history payin or /history payout</i>`
+
+        await sendMessage(botToken, chatId, msg)
+        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+
+      // /status [order_no] - Check specific order
+      if (command === '/status') {
+        const m = merchantByChat
+        
+        if (!args[0]) {
+          await sendMessage(botToken, chatId, '❌ Usage: <code>/status [order_no]</code>')
+          return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+        }
+
+        const { data: tx, error } = await supabaseAdmin
+          .from('transactions')
+          .select('*')
+          .eq('order_no', args[0])
+          .eq('merchant_id', m.id) // Only show their own orders
+          .maybeSingle()
+
+        if (error || !tx) {
+          await sendMessage(botToken, chatId, '❌ Order not found')
+          return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+        }
+
+        const icon = tx.transaction_type === 'payin' ? '📥 Pay-In' : '📤 Pay-Out'
+        const statusIcon = tx.status === 'success' ? '✅' : tx.status === 'failed' ? '❌' : '⏳'
+        const date = new Date(tx.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
+
+        const msg = `🔍 <b>Order Status</b>\n\n` +
+          `━━━━━━━━━━━━━━━━━━\n` +
+          `📋 Order: <code>${tx.order_no}</code>\n` +
+          `🔖 Your Order: <code>${tx.merchant_order_no || 'N/A'}</code>\n` +
+          `📊 Type: ${icon}\n` +
+          `${statusIcon} Status: <b>${tx.status.toUpperCase()}</b>\n\n` +
+          `💰 Amount: ${formatINR(tx.amount)}\n` +
+          `💸 Fee: ${formatINR(tx.fee || 0)}\n` +
+          `💵 Net: ${formatINR(tx.net_amount || tx.amount)}\n\n` +
+          `⏰ Created: ${date}`
+
+        await sendMessage(botToken, chatId, msg)
+        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+
+      // /start or /help for merchant
+      if (command === '/start' || command === '/help') {
+        const m = merchantByChat
+        const helpText = `🤖 <b>${gatewayName} Bot</b>\n\n` +
+          `👋 Welcome <b>${m.merchant_name}</b>!\n\n` +
+          `<b>━━━ 📋 AVAILABLE COMMANDS ━━━</b>\n\n` +
+          `<code>/me</code> - View your account details\n` +
+          `<code>/mybalance</code> - Check your balance\n` +
+          `<code>/today</code> - Today & yesterday summary\n` +
+          `<code>/history [payin/payout]</code> - Recent transactions\n` +
+          `<code>/status [order_no]</code> - Check order status\n` +
+          `<code>/tg_id</code> - Get this chat ID\n` +
+          `<code>/help</code> - Show this menu\n\n` +
+          `━━━━━━━━━━━━━━━━━━━━━\n` +
+          `🆔 Merchant ID: <code>${m.account_number}</code>\n` +
+          `🌐 Dashboard: ${gatewayDomain}/merchant`
+
+        await sendMessage(botToken, chatId, helpText)
+        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+
+      // Unknown command for merchant
+      await sendMessage(botToken, chatId, `❓ Unknown command.\n\nType /help for available commands.`)
+      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    // ============ /start or /help - Show all commands (Admin) ============
     if (command === '/start' || command === '/help') {
+      if (!isAdmin) {
+        await sendMessage(botToken, chatId, 
+          `⛔ <b>Access Denied</b>\n\n` +
+          `This bot can only be controlled from:\n` +
+          `• The Admin group\n` +
+          `• Your registered Merchant group\n\n` +
+          `Your Chat ID: <code>${chatId}</code>\n\n` +
+          `<i>Contact admin to link this group.</i>`
+        )
+        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+
       const helpText = `🤖 <b>${gatewayName} Admin Bot</b>\n\n` +
-        `<b>━━━ 📋 GENERAL COMMANDS ━━━</b>\n` +
+        `<b>━━━ 📋 GENERAL ━━━</b>\n` +
         `/tg_id - Get current chat/group ID\n` +
+        `/setmenu - Setup command menu\n` +
         `/help - Show this help menu\n\n` +
         
         `<b>━━━ 👤 MERCHANT MANAGEMENT ━━━</b>\n` +
         `<code>/create_merchant "Name" email group_id [callback_url]</code>\n` +
-        `   Create new merchant with optional callback URL\n\n` +
-        `<code>/merchants</code> - List all merchants\n\n` +
-        `<code>/merchant [account_no]</code> - View merchant details\n\n` +
+        `<code>/merchants</code> - List all merchants\n` +
+        `<code>/merchant [account_no]</code> - View merchant\n` +
         `<code>/search [name/email]</code> - Search merchant\n\n` +
         
         `<b>━━━ 💰 BALANCE & TRANSACTIONS ━━━</b>\n` +
-        `<code>/balance [account_no]</code> - Check balance\n\n` +
-        `<code>/history [account_no] [payin/payout]</code>\n` +
-        `   Transaction history\n\n` +
-        `<code>/status [order_no]</code> - Check order status\n\n` +
+        `<code>/balance [account_no]</code> - Check balance\n` +
+        `<code>/history [account_no] [payin/payout]</code> - History\n` +
+        `<code>/status [order_no]</code> - Order status\n` +
         `<code>/today [account_no]</code> - Today's summary\n\n` +
         
         `<b>━━━ 🔧 ACCOUNT ACTIONS ━━━</b>\n` +
-        `<code>/reset_2fa [account_no]</code> - Reset 2FA\n\n` +
-        `<code>/reset_password [account_no]</code> - Reset login password\n\n` +
-        `<code>/reset_withdrawal [account_no]</code> - Reset withdrawal password\n\n` +
+        `<code>/reset_2fa [account_no]</code>\n` +
+        `<code>/reset_password [account_no]</code>\n` +
+        `<code>/reset_withdrawal [account_no]</code>\n` +
         `<code>/set_fee [account_no] [payin/payout] [%]</code>\n` +
-        `   Update merchant fee\n\n` +
         `<code>/set_callback [account_no] [url]</code>\n` +
-        `   Set callback URL\n\n` +
-        `<code>/set_telegram [account_no] [group_id]</code>\n` +
-        `   Update Telegram group\n\n` +
+        `<code>/set_telegram [account_no] [group_id]</code>\n\n` +
         
         `<b>━━━ ⚡ STATUS CONTROL ━━━</b>\n` +
-        `<code>/activate [account_no]</code> - Activate account\n\n` +
-        `<code>/deactivate [account_no]</code> - Deactivate account\n\n` +
+        `<code>/activate [account_no]</code>\n` +
+        `<code>/deactivate [account_no]</code>\n\n` +
         
         `<b>━━━ 📊 REPORTS ━━━</b>\n` +
-        `<code>/stats</code> - Overall system stats\n\n` +
-        `<code>/top</code> - Top merchants by volume\n\n` +
+        `<code>/stats</code> - System stats\n` +
+        `<code>/top</code> - Top merchants\n\n` +
         `━━━━━━━━━━━━━━━━━━━━━\n` +
-        `<i>Admin Group: ${adminChatId ? '✅ Configured' : '❌ Not Set'}</i>\n` +
-        `<i>Your Chat ID: <code>${chatId}</code></i>`
+        `Admin Group: ${adminChatId ? '✅' : '❌'} | Chat: <code>${chatId}</code>\n` +
+        `💡 <i>Use /setmenu to setup command suggestions</i>`
       
       await sendMessage(botToken, chatId, helpText)
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // Only allow admin commands from admin chat
+    // ============ ADMIN ONLY COMMANDS ============
     if (!isAdmin) {
       await sendMessage(botToken, chatId, 
         `⛔ <b>Access Denied</b>\n\n` +
@@ -296,6 +622,12 @@ Deno.serve(async (req) => {
         `━━━ 💰 FEE STRUCTURE ━━━\n` +
         `📥 Payin Fee: ${merchant.payin_fee}%\n` +
         `📤 Payout Fee: ${merchant.payout_fee}%\n\n` +
+        `━━━ 🤖 BOT COMMANDS ━━━\n` +
+        `/me - View account info\n` +
+        `/mybalance - Check balance\n` +
+        `/today - Today's summary\n` +
+        `/history - Recent transactions\n` +
+        `/help - All commands\n\n` +
         `━━━ 🌐 DASHBOARD ━━━\n` +
         `🔗 ${gatewayDomain}/merchant\n\n` +
         `⚠️ <b>IMPORTANT:</b>\n` +
@@ -409,7 +741,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // ============ CHECK BALANCE ============
+    // ============ CHECK BALANCE (Admin) ============
     if (command === '/balance') {
       if (!args[0]) {
         await sendMessage(botToken, chatId, '❌ Usage: <code>/balance [account_no]</code>')
@@ -437,7 +769,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // ============ TODAY'S SUMMARY ============
+    // ============ TODAY'S SUMMARY (Admin) ============
     if (command === '/today') {
       if (!args[0]) {
         await sendMessage(botToken, chatId, '❌ Usage: <code>/today [account_no]</code>')
@@ -497,7 +829,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // ============ TRANSACTION HISTORY ============
+    // ============ TRANSACTION HISTORY (Admin) ============
     if (command === '/history') {
       if (!args[0]) {
         await sendMessage(botToken, chatId, '❌ Usage: <code>/history [account_no] [payin/payout]</code>')
@@ -549,7 +881,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // ============ CHECK ORDER STATUS ============
+    // ============ CHECK ORDER STATUS (Admin) ============
     if (command === '/status') {
       if (!args[0]) {
         await sendMessage(botToken, chatId, '❌ Usage: <code>/status [order_no]</code>')
@@ -673,7 +1005,7 @@ Deno.serve(async (req) => {
       }
 
       await sendMessage(botToken, chatId, `✅ <b>${merchant.merchant_name}</b>\n\nTelegram group updated to: <code>${args[1]}</code>`)
-      await sendMessage(botToken, args[1], `👋 <b>Connected!</b>\n\nThis group is now linked to <b>${merchant.merchant_name}</b>.\n\nYou will receive all transaction notifications here.`)
+      await sendMessage(botToken, args[1], `👋 <b>Connected!</b>\n\nThis group is now linked to <b>${merchant.merchant_name}</b>.\n\nYou will receive all transaction notifications here.\n\n<b>Available Commands:</b>\n/me - Account info\n/mybalance - Check balance\n/today - Today's summary\n/history - Transactions\n/help - All commands`)
 
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
