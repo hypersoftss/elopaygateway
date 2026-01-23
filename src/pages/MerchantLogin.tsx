@@ -18,7 +18,7 @@ const MerchantLogin = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, isLoading, rememberMe, setRememberMe } = useAuthStore();
-  const { settings } = useGatewaySettings();
+  const { settings, isLoading: settingsLoading } = useGatewaySettings();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,7 +35,6 @@ const MerchantLogin = () => {
 
   useEffect(() => {
     initializeAuth();
-    // Check current theme
     const isDarkMode = document.documentElement.classList.contains('dark');
     setIsDark(isDarkMode);
   }, []);
@@ -184,7 +183,7 @@ const MerchantLogin = () => {
     setTwoFACode('');
   };
 
-  if (isLoading) {
+  if (isLoading || settingsLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-pulse text-muted-foreground">{t('common.loading')}</div>
@@ -193,8 +192,8 @@ const MerchantLogin = () => {
   }
 
   return (
-    <div className="min-h-screen flex bg-background">
-      {/* Left Side - Branding */}
+    <div className="min-h-screen flex flex-col lg:flex-row bg-background">
+      {/* Left Side - Branding (Hidden on Mobile) */}
       <div className="hidden lg:flex lg:w-1/2 relative bg-gradient-to-br from-primary via-primary/90 to-primary/80 overflow-hidden">
         {/* Pattern Overlay */}
         <div className="absolute inset-0 opacity-10">
@@ -206,56 +205,52 @@ const MerchantLogin = () => {
         {/* Floating Shapes */}
         <div className="absolute top-20 left-20 w-32 h-32 rounded-full bg-white/10 blur-xl animate-pulse" />
         <div className="absolute bottom-40 right-20 w-48 h-48 rounded-full bg-white/5 blur-2xl" />
-        <div className="absolute top-1/2 left-1/3 w-24 h-24 rounded-full bg-white/10 blur-lg animate-pulse" style={{ animationDelay: '1s' }} />
         
         {/* Content */}
-        <div className="relative z-10 flex flex-col justify-center px-16 text-white">
+        <div className="relative z-10 flex flex-col justify-center px-12 xl:px-16 text-white">
           {/* Logo */}
-          <div className="flex items-center gap-4 mb-12">
+          <div className="flex items-center gap-4 mb-10">
             {settings.logoUrl ? (
-              <img src={settings.logoUrl} alt="Logo" className="h-16 w-16 object-contain rounded-2xl bg-white/10 p-2" />
+              <img src={settings.logoUrl} alt={settings.gatewayName || 'Logo'} className="h-14 w-14 object-contain rounded-xl bg-white/10 p-1.5" />
             ) : (
-              <div className="h-16 w-16 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center">
-                <Store className="h-8 w-8 text-white" />
+              <div className="h-14 w-14 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center">
+                <Store className="h-7 w-7 text-white" />
               </div>
             )}
             <div>
-              <h1 className="text-3xl font-bold">{settings.gatewayName || 'PayGate'}</h1>
-              <p className="text-white/70 text-sm">{language === 'zh' ? '商户支付平台' : 'Merchant Payment Platform'}</p>
+              <h1 className="text-2xl xl:text-3xl font-bold">{settings.gatewayName || 'PayGate'}</h1>
+              <p className="text-white/70 text-sm">{language === 'zh' ? '商户支付平台' : 'Merchant Platform'}</p>
             </div>
           </div>
           
           {/* Features */}
-          <div className="space-y-6">
-            <h2 className="text-2xl font-semibold mb-8">
+          <div className="space-y-4">
+            <h2 className="text-xl xl:text-2xl font-semibold mb-6">
               {language === 'zh' ? '安全 • 快速 • 可靠' : 'Secure • Fast • Reliable'}
             </h2>
             
-            <div className="space-y-4">
-              {[
-                { zh: '实时交易监控与分析', en: 'Real-time transaction monitoring' },
-                { zh: '多种支付渠道支持', en: 'Multiple payment channels' },
-                { zh: '企业级安全保障', en: 'Enterprise-grade security' },
-                { zh: '24/7 技术支持', en: '24/7 Technical support' },
-              ].map((feature, i) => (
-                <div key={i} className="flex items-center gap-3 text-white/90">
-                  <div className="h-2 w-2 rounded-full bg-white/60" />
-                  <span>{language === 'zh' ? feature.zh : feature.en}</span>
-                </div>
-              ))}
-            </div>
+            {[
+              { zh: '实时交易监控', en: 'Real-time monitoring' },
+              { zh: '多种支付渠道', en: 'Multiple channels' },
+              { zh: '企业级安全', en: 'Enterprise security' },
+            ].map((feature, i) => (
+              <div key={i} className="flex items-center gap-3 text-white/90 text-sm xl:text-base">
+                <div className="h-1.5 w-1.5 rounded-full bg-white/60" />
+                <span>{language === 'zh' ? feature.zh : feature.en}</span>
+              </div>
+            ))}
           </div>
           
           {/* Stats */}
-          <div className="mt-16 grid grid-cols-3 gap-8">
+          <div className="mt-12 grid grid-cols-3 gap-6">
             {[
-              { value: '99.9%', label: language === 'zh' ? '系统稳定' : 'Uptime' },
-              { value: '50ms', label: language === 'zh' ? '响应速度' : 'Response' },
-              { value: '256-bit', label: language === 'zh' ? '加密保护' : 'Encryption' },
+              { value: '99.9%', label: language === 'zh' ? '稳定' : 'Uptime' },
+              { value: '50ms', label: language === 'zh' ? '响应' : 'Speed' },
+              { value: '256-bit', label: language === 'zh' ? '加密' : 'SSL' },
             ].map((stat, i) => (
               <div key={i}>
-                <p className="text-2xl font-bold">{stat.value}</p>
-                <p className="text-sm text-white/60">{stat.label}</p>
+                <p className="text-xl xl:text-2xl font-bold">{stat.value}</p>
+                <p className="text-xs xl:text-sm text-white/60">{stat.label}</p>
               </div>
             ))}
           </div>
@@ -263,38 +258,38 @@ const MerchantLogin = () => {
       </div>
 
       {/* Right Side - Login Form */}
-      <div className="w-full lg:w-1/2 flex flex-col">
+      <div className="flex-1 flex flex-col min-h-screen lg:min-h-0">
         {/* Top Bar */}
-        <div className="flex items-center justify-between p-4 lg:p-6">
+        <div className="flex items-center justify-between p-3 sm:p-4">
           {/* Mobile Logo */}
           <div className="flex items-center gap-2 lg:hidden">
             {settings.logoUrl ? (
-              <img src={settings.logoUrl} alt="Logo" className="h-8 w-8 object-contain rounded-lg" />
+              <img src={settings.logoUrl} alt={settings.gatewayName || 'Logo'} className="h-9 w-9 object-contain rounded-lg" />
             ) : (
-              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-                <Store className="h-4 w-4 text-primary-foreground" />
+              <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center">
+                <Store className="h-5 w-5 text-primary-foreground" />
               </div>
             )}
-            <span className="font-bold">{settings.gatewayName || 'PayGate'}</span>
+            <span className="font-bold text-foreground">{settings.gatewayName || 'PayGate'}</span>
           </div>
           <div className="hidden lg:block" />
           
           {/* Controls */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <Button 
               variant="ghost" 
               size="sm" 
               onClick={toggleLanguage}
-              className="gap-2 text-muted-foreground hover:text-foreground"
+              className="h-9 px-2 sm:px-3 gap-1.5 text-muted-foreground hover:text-foreground"
             >
               <Globe className="h-4 w-4" />
-              {language === 'zh' ? 'EN' : '中文'}
+              <span className="text-xs sm:text-sm">{language === 'zh' ? 'EN' : '中文'}</span>
             </Button>
             <Button 
               variant="ghost" 
               size="icon" 
               onClick={toggleTheme}
-              className="text-muted-foreground hover:text-foreground"
+              className="h-9 w-9 text-muted-foreground hover:text-foreground"
             >
               {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
@@ -302,32 +297,32 @@ const MerchantLogin = () => {
         </div>
 
         {/* Form Container */}
-        <div className="flex-1 flex items-center justify-center p-6 lg:p-12">
-          <div className="w-full max-w-md">
+        <div className="flex-1 flex items-center justify-center px-4 py-6 sm:px-6 lg:px-12">
+          <div className="w-full max-w-sm sm:max-w-md">
             {/* Header */}
-            <div className="text-center mb-8">
-              <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-primary/10 mb-4">
+            <div className="text-center mb-6 sm:mb-8">
+              <div className="inline-flex items-center justify-center h-12 w-12 sm:h-14 sm:w-14 rounded-xl sm:rounded-2xl bg-primary/10 mb-3 sm:mb-4">
                 {show2FAStep ? (
-                  <Smartphone className="h-7 w-7 text-primary" />
+                  <Smartphone className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
                 ) : (
-                  <Lock className="h-7 w-7 text-primary" />
+                  <Lock className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
                 )}
               </div>
-              <h1 className="text-2xl font-bold text-foreground">
+              <h1 className="text-xl sm:text-2xl font-bold text-foreground">
                 {show2FAStep
-                  ? (language === 'zh' ? '双重认证' : 'Two-Factor Authentication')
+                  ? (language === 'zh' ? '双重认证' : 'Two-Factor Auth')
                   : (language === 'zh' ? '商户登录' : 'Merchant Login')}
               </h1>
-              <p className="text-muted-foreground mt-2">
+              <p className="text-muted-foreground text-sm mt-1.5 sm:mt-2">
                 {show2FAStep
-                  ? (language === 'zh' ? '请输入 Google Authenticator 验证码' : 'Enter your authenticator code')
-                  : (language === 'zh' ? '欢迎回来，请登录您的账户' : 'Welcome back, sign in to continue')}
+                  ? (language === 'zh' ? '请输入验证码' : 'Enter authenticator code')
+                  : (language === 'zh' ? '欢迎回来' : 'Welcome back')}
               </p>
             </div>
 
             {/* Form */}
             {show2FAStep ? (
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">
                     {language === 'zh' ? '6位验证码' : '6-digit code'}
@@ -340,32 +335,32 @@ const MerchantLogin = () => {
                     value={twoFACode}
                     onChange={(e) => setTwoFACode(e.target.value.replace(/\D/g, ''))}
                     placeholder="000000"
-                    className="h-14 text-center text-2xl tracking-[0.5em] font-mono"
+                    className="h-12 sm:h-14 text-center text-xl sm:text-2xl tracking-[0.4em] sm:tracking-[0.5em] font-mono"
                     autoFocus
                   />
                 </div>
 
                 <Button
                   onClick={handle2FAVerify}
-                  className="w-full h-12 font-semibold"
+                  className="w-full h-11 sm:h-12 font-semibold"
                   disabled={isSubmitting || twoFACode.length !== 6}
                 >
-                  {isSubmitting ? t('common.loading') : (language === 'zh' ? '验证并登录' : 'Verify & Login')}
+                  {isSubmitting ? t('common.loading') : (language === 'zh' ? '验证' : 'Verify')}
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
 
                 <Button
                   type="button"
                   variant="ghost"
-                  className="w-full"
+                  className="w-full text-sm"
                   onClick={handleBack}
                 >
-                  {language === 'zh' ? '返回登录' : 'Back to Login'}
+                  {language === 'zh' ? '返回' : 'Back'}
                 </Button>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-5">
-                <div className="space-y-2">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-1.5 sm:space-y-2">
                   <Label htmlFor="email" className="text-sm font-medium">{t('auth.email')}</Label>
                   <Input
                     id="email"
@@ -373,12 +368,12 @@ const MerchantLogin = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="name@company.com"
-                    className="h-12"
+                    className="h-11 sm:h-12"
                     required
                   />
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1.5 sm:space-y-2">
                   <Label htmlFor="password" className="text-sm font-medium">{t('auth.password')}</Label>
                   <div className="relative">
                     <Input
@@ -386,7 +381,7 @@ const MerchantLogin = () => {
                       type={showPassword ? 'text' : 'password'}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="h-12 pr-12"
+                      className="h-11 sm:h-12 pr-12"
                       required
                     />
                     <Button
@@ -401,7 +396,7 @@ const MerchantLogin = () => {
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1.5 sm:space-y-2">
                   <Label className="text-sm font-medium">{t('auth.captcha')}</Label>
                   <Captcha
                     value={captchaValue}
@@ -410,22 +405,20 @@ const MerchantLogin = () => {
                   />
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="rememberMe"
-                      checked={rememberMe}
-                      onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-                    />
-                    <Label htmlFor="rememberMe" className="text-sm cursor-pointer text-muted-foreground">
-                      {t('auth.rememberMe')}
-                    </Label>
-                  </div>
+                <div className="flex items-center space-x-2 pt-1">
+                  <Checkbox
+                    id="rememberMe"
+                    checked={rememberMe}
+                    onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                  />
+                  <Label htmlFor="rememberMe" className="text-sm cursor-pointer text-muted-foreground">
+                    {t('auth.rememberMe')}
+                  </Label>
                 </div>
 
                 <Button 
                   type="submit" 
-                  className="w-full h-12 font-semibold" 
+                  className="w-full h-11 sm:h-12 font-semibold mt-2" 
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? t('common.loading') : t('auth.login')}
@@ -435,19 +428,19 @@ const MerchantLogin = () => {
             )}
 
             {/* Security Notice */}
-            <div className="mt-8 pt-6 border-t border-border">
+            <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-border">
               <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                <Shield className="h-4 w-4 text-primary" />
-                <span>{language === 'zh' ? '您的数据受256位SSL加密保护' : 'Your data is protected by 256-bit SSL encryption'}</span>
+                <Shield className="h-3.5 w-3.5 text-primary" />
+                <span>{language === 'zh' ? '256位SSL加密保护' : '256-bit SSL protected'}</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="p-4 text-center">
+        <div className="p-3 sm:p-4 text-center">
           <p className="text-xs text-muted-foreground">
-            © 2024 {settings.gatewayName || 'PayGate'}. {language === 'zh' ? '保留所有权利' : 'All rights reserved'}.
+            © 2024 {settings.gatewayName || 'PayGate'}
           </p>
         </div>
       </div>
