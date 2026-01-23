@@ -1,39 +1,73 @@
 import { useState, useEffect } from 'react';
-import { Wallet, Banknote, Bitcoin, Shield, ArrowRight, Sparkles, CheckCircle2 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Wallet, Banknote, Bitcoin, Shield, ArrowRight, Sparkles, CheckCircle2, Lock, Eye, EyeOff } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { useTranslation } from '@/lib/i18n';
 import { useAuthStore } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
+interface MerchantData {
+  balance: number;
+  frozen_balance: number;
+  payout_fee: number;
+  currency: string | null;
+  withdrawal_password: string | null;
+}
+
+// Currency symbols
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  INR: '₹',
+  PKR: 'Rs',
+  BDT: '৳',
+};
+
+// Withdrawal methods by currency
+const WITHDRAWAL_METHODS: Record<string, { value: string; label: string; icon: string }[]> = {
+  INR: [
+    { value: 'bank', label: 'Bank Transfer', icon: '🏦' },
+    { value: 'usdt', label: 'USDT (TRC20)', icon: '💰' },
+  ],
+  PKR: [
+    { value: 'easypaisa', label: 'Easypaisa', icon: '📱' },
+    { value: 'jazzcash', label: 'JazzCash', icon: '📲' },
+    { value: 'usdt', label: 'USDT (TRC20)', icon: '💰' },
+  ],
+  BDT: [
+    { value: 'nagad', label: 'Nagad', icon: '📱' },
+    { value: 'bkash', label: 'bKash', icon: '📲' },
+    { value: 'usdt', label: 'USDT (TRC20)', icon: '💰' },
+  ],
+};
+
 const MerchantWithdrawal = () => {
-  const { t, language } = useTranslation();
+  const { language } = useTranslation();
   const { user } = useAuthStore();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [balance, setBalance] = useState(0);
-  const [frozenBalance, setFrozenBalance] = useState(0);
-  const [payoutFee, setPayoutFee] = useState(0);
+  const [merchantData, setMerchantData] = useState<MerchantData | null>(null);
+  const [selectedMethod, setSelectedMethod] = useState<string>('');
+  const [showPassword, setShowPassword] = useState(false);
 
-  // Bank form
-  const [bankForm, setBankForm] = useState({
+  // Common form fields
+  const [form, setForm] = useState({
     amount: '',
-    bankName: '',
+    accountName: '',
     accountNumber: '',
+    bankName: '',
     ifscCode: '',
-    accountHolder: '',
+    usdtAddress: '',
+    withdrawalPassword: '',
   });
 
-  // USDT form
-  const [usdtForm, setUsdtForm] = useState({
-    amount: '',
-    usdtAddress: '',
-  });
+  const currency = merchantData?.currency || 'INR';
+  const currencySymbol = CURRENCY_SYMBOLS[currency] || '₹';
+  const availableMethods = WITHDRAWAL_METHODS[currency] || WITHDRAWAL_METHODS.INR;
 
   useEffect(() => {
     const fetchMerchantData = async () => {
@@ -41,128 +75,130 @@ const MerchantWithdrawal = () => {
 
       const { data } = await supabase
         .from('merchants')
-        .select('balance, frozen_balance, payout_fee')
+        .select('balance, frozen_balance, payout_fee, withdrawal_password, gateway_id')
         .eq('id', user.merchantId)
         .single();
 
       if (data) {
-        setBalance(Number(data.balance) || 0);
-        setFrozenBalance(Number(data.frozen_balance) || 0);
-        setPayoutFee(Number(data.payout_fee) || 0);
+        // Get currency from gateway
+        let currency = 'INR';
+        if (data.gateway_id) {
+          const { data: gateway } = await supabase
+            .from('payment_gateways')
+            .select('currency')
+            .eq('id', data.gateway_id)
+            .single();
+          if (gateway) {
+            currency = gateway.currency;
+          }
+        }
+
+        setMerchantData({
+          balance: Number(data.balance) || 0,
+          frozen_balance: Number(data.frozen_balance) || 0,
+          payout_fee: Number(data.payout_fee) || 0,
+          currency,
+          withdrawal_password: data.withdrawal_password,
+        });
+
+        // Set default method based on currency
+        const methods = WITHDRAWAL_METHODS[currency] || WITHDRAWAL_METHODS.INR;
+        if (methods.length > 0) {
+          setSelectedMethod(methods[0].value);
+        }
       }
     };
 
     fetchMerchantData();
   }, [user?.merchantId]);
 
-  const handleBankWithdrawal = async () => {
-    if (!user?.merchantId) return;
-
-    const amount = parseFloat(bankForm.amount);
-    if (amount <= 0) {
-      toast({ 
-        title: language === 'zh' ? '错误' : 'Error', 
-        description: language === 'zh' ? '无效金额' : 'Invalid amount', 
-        variant: 'destructive' 
-      });
-      return;
-    }
-
-    if (amount > balance) {
-      toast({ 
-        title: language === 'zh' ? '错误' : 'Error', 
-        description: language === 'zh' ? '余额不足' : 'Insufficient balance', 
-        variant: 'destructive' 
-      });
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      const fee = (amount * payoutFee) / 100;
-      const netAmount = amount - fee;
-      const orderNo = `WD_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-      // Mark as withdrawal for admin approval with extra = 'withdrawal'
-      const { error } = await supabase.from('transactions').insert({
-        merchant_id: user.merchantId,
-        order_no: orderNo,
-        transaction_type: 'payout',
-        amount: amount,
-        fee: fee,
-        net_amount: netAmount,
-        status: 'pending',
-        bank_name: bankForm.bankName,
-        account_number: bankForm.accountNumber,
-        ifsc_code: bankForm.ifscCode,
-        account_holder_name: bankForm.accountHolder,
-        extra: 'withdrawal', // Mark for admin control
-      });
-
-      if (error) throw error;
-
-      // Freeze the amount - deduct from balance and add to frozen
-      await supabase
-        .from('merchants')
-        .update({
-          balance: balance - amount,
-          frozen_balance: frozenBalance + amount,
-        })
-        .eq('id', user.merchantId);
-
+  const validatePassword = (): boolean => {
+    if (!merchantData?.withdrawal_password) {
       toast({
-        title: language === 'zh' ? '成功' : 'Success',
-        description: language === 'zh' ? '提现申请已提交，等待管理员审核' : 'Withdrawal request submitted, awaiting admin approval',
+        title: language === 'zh' ? '错误' : 'Error',
+        description: language === 'zh' ? '请先设置提现密码' : 'Please set withdrawal password first',
+        variant: 'destructive',
       });
-
-      setBankForm({
-        amount: '',
-        bankName: '',
-        accountNumber: '',
-        ifscCode: '',
-        accountHolder: '',
-      });
-      setBalance(balance - amount);
-      setFrozenBalance(frozenBalance + amount);
-    } catch (err: any) {
-      toast({ title: language === 'zh' ? '错误' : 'Error', description: err.message, variant: 'destructive' });
-    } finally {
-      setIsLoading(false);
+      return false;
     }
+
+    if (form.withdrawalPassword !== merchantData.withdrawal_password) {
+      toast({
+        title: language === 'zh' ? '错误' : 'Error',
+        description: language === 'zh' ? '提现密码错误' : 'Invalid withdrawal password',
+        variant: 'destructive',
+      });
+      return false;
+    }
+
+    return true;
   };
 
-  const handleUsdtWithdrawal = async () => {
-    if (!user?.merchantId) return;
+  const handleWithdrawal = async () => {
+    if (!user?.merchantId || !merchantData) return;
 
-    const amount = parseFloat(usdtForm.amount);
+    const amount = parseFloat(form.amount);
     if (amount <= 0) {
-      toast({ 
-        title: language === 'zh' ? '错误' : 'Error', 
-        description: language === 'zh' ? '无效金额' : 'Invalid amount', 
-        variant: 'destructive' 
+      toast({
+        title: language === 'zh' ? '错误' : 'Error',
+        description: language === 'zh' ? '无效金额' : 'Invalid amount',
+        variant: 'destructive',
       });
       return;
     }
 
-    if (amount > balance) {
-      toast({ 
-        title: language === 'zh' ? '错误' : 'Error', 
-        description: language === 'zh' ? '余额不足' : 'Insufficient balance', 
-        variant: 'destructive' 
+    if (amount > merchantData.balance) {
+      toast({
+        title: language === 'zh' ? '错误' : 'Error',
+        description: language === 'zh' ? '余额不足' : 'Insufficient balance',
+        variant: 'destructive',
       });
       return;
+    }
+
+    // Validate withdrawal password
+    if (!validatePassword()) return;
+
+    // Validate required fields based on method
+    if (selectedMethod === 'usdt') {
+      if (!form.usdtAddress) {
+        toast({
+          title: language === 'zh' ? '错误' : 'Error',
+          description: language === 'zh' ? '请输入USDT地址' : 'Please enter USDT address',
+          variant: 'destructive',
+        });
+        return;
+      }
+    } else if (selectedMethod === 'bank') {
+      if (!form.accountName || !form.accountNumber || !form.bankName || !form.ifscCode) {
+        toast({
+          title: language === 'zh' ? '错误' : 'Error',
+          description: language === 'zh' ? '请填写所有银行信息' : 'Please fill all bank details',
+          variant: 'destructive',
+        });
+        return;
+      }
+    } else {
+      // Mobile wallets (easypaisa, jazzcash, nagad, bkash)
+      if (!form.accountName || !form.accountNumber) {
+        toast({
+          title: language === 'zh' ? '错误' : 'Error',
+          description: language === 'zh' ? '请填写账户信息' : 'Please fill account details',
+          variant: 'destructive',
+        });
+        return;
+      }
     }
 
     setIsLoading(true);
 
     try {
-      const fee = (amount * payoutFee) / 100;
+      const fee = (amount * merchantData.payout_fee) / 100;
       const netAmount = amount - fee;
       const orderNo = `WD_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-      // Mark as withdrawal for admin approval with extra = 'withdrawal'
-      const { error } = await supabase.from('transactions').insert({
+      // Build transaction data based on method
+      const transactionData: any = {
         merchant_id: user.merchantId,
         order_no: orderNo,
         transaction_type: 'payout',
@@ -170,9 +206,24 @@ const MerchantWithdrawal = () => {
         fee: fee,
         net_amount: netAmount,
         status: 'pending',
-        usdt_address: usdtForm.usdtAddress,
-        extra: 'withdrawal', // Mark for admin control
-      });
+        extra: JSON.stringify({ withdrawal: true, method: selectedMethod, currency }),
+      };
+
+      if (selectedMethod === 'usdt') {
+        transactionData.usdt_address = form.usdtAddress;
+      } else if (selectedMethod === 'bank') {
+        transactionData.bank_name = form.bankName;
+        transactionData.account_number = form.accountNumber;
+        transactionData.ifsc_code = form.ifscCode;
+        transactionData.account_holder_name = form.accountName;
+      } else {
+        // Mobile wallets - store method in bank_name field
+        transactionData.bank_name = selectedMethod.toUpperCase();
+        transactionData.account_number = form.accountNumber;
+        transactionData.account_holder_name = form.accountName;
+      }
+
+      const { error } = await supabase.from('transactions').insert(transactionData);
 
       if (error) throw error;
 
@@ -180,8 +231,8 @@ const MerchantWithdrawal = () => {
       await supabase
         .from('merchants')
         .update({
-          balance: balance - amount,
-          frozen_balance: frozenBalance + amount,
+          balance: merchantData.balance - amount,
+          frozen_balance: merchantData.frozen_balance + amount,
         })
         .eq('id', user.merchantId);
 
@@ -190,23 +241,51 @@ const MerchantWithdrawal = () => {
         description: language === 'zh' ? '提现申请已提交，等待管理员审核' : 'Withdrawal request submitted, awaiting admin approval',
       });
 
-      setUsdtForm({
+      // Reset form
+      setForm({
         amount: '',
+        accountName: '',
+        accountNumber: '',
+        bankName: '',
+        ifscCode: '',
         usdtAddress: '',
+        withdrawalPassword: '',
       });
-      setBalance(balance - amount);
-      setFrozenBalance(frozenBalance + amount);
+
+      // Update local state
+      setMerchantData({
+        ...merchantData,
+        balance: merchantData.balance - amount,
+        frozen_balance: merchantData.frozen_balance + amount,
+      });
     } catch (err: any) {
-      toast({ title: language === 'zh' ? '错误' : 'Error', description: err.message, variant: 'destructive' });
+      toast({
+        title: language === 'zh' ? '错误' : 'Error',
+        description: err.message,
+        variant: 'destructive',
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const bankFee = bankForm.amount ? (parseFloat(bankForm.amount) * payoutFee / 100) : 0;
-  const bankNet = bankForm.amount ? (parseFloat(bankForm.amount) - bankFee) : 0;
-  const usdtFee = usdtForm.amount ? (parseFloat(usdtForm.amount) * payoutFee / 100) : 0;
-  const usdtNet = usdtForm.amount ? (parseFloat(usdtForm.amount) - usdtFee) : 0;
+  const fee = form.amount ? (parseFloat(form.amount) * (merchantData?.payout_fee || 0)) / 100 : 0;
+  const netAmount = form.amount ? parseFloat(form.amount) - fee : 0;
+
+  const getMethodLabel = (method: string) => {
+    const found = availableMethods.find(m => m.value === method);
+    return found ? `${found.icon} ${found.label}` : method;
+  };
+
+  if (!merchantData) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -219,7 +298,7 @@ const MerchantWithdrawal = () => {
           <div>
             <h1 className="text-2xl font-bold">{language === 'zh' ? '提现' : 'Withdrawal'}</h1>
             <p className="text-sm text-muted-foreground">
-              {language === 'zh' ? '申请提现到您的银行账户或USDT地址' : 'Request withdrawal to your bank account or USDT address'}
+              {language === 'zh' ? '申请提现到您的账户' : 'Request withdrawal to your account'} • {currency}
             </p>
           </div>
         </div>
@@ -231,7 +310,9 @@ const MerchantWithdrawal = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">{language === 'zh' ? '可用余额' : 'Available Balance'}</p>
-                  <p className="text-2xl font-bold text-[hsl(var(--success))]">₹{balance.toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-[hsl(var(--success))]">
+                    {currencySymbol}{merchantData.balance.toLocaleString()}
+                  </p>
                 </div>
                 <div className="p-3 rounded-full bg-[hsl(var(--success))]/10">
                   <Wallet className="h-5 w-5 text-[hsl(var(--success))]" />
@@ -239,13 +320,15 @@ const MerchantWithdrawal = () => {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="premium-card bg-gradient-to-br from-[hsl(var(--warning))]/10 to-transparent border-[hsl(var(--warning))]/20">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">{language === 'zh' ? '冻结余额' : 'Frozen Balance'}</p>
-                  <p className="text-2xl font-bold text-[hsl(var(--warning))]">₹{frozenBalance.toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-[hsl(var(--warning))]">
+                    {currencySymbol}{merchantData.frozen_balance.toLocaleString()}
+                  </p>
                 </div>
                 <div className="p-3 rounded-full bg-[hsl(var(--warning))]/10">
                   <Shield className="h-5 w-5 text-[hsl(var(--warning))]" />
@@ -259,7 +342,7 @@ const MerchantWithdrawal = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">{language === 'zh' ? '提现费率' : 'Withdrawal Fee'}</p>
-                  <p className="text-2xl font-bold text-primary">{payoutFee}%</p>
+                  <p className="text-2xl font-bold text-primary">{merchantData.payout_fee}%</p>
                 </div>
                 <div className="p-3 rounded-full bg-primary/10">
                   <Sparkles className="h-5 w-5 text-primary" />
@@ -268,6 +351,29 @@ const MerchantWithdrawal = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* No Password Warning */}
+        {!merchantData.withdrawal_password && (
+          <Card className="premium-card border-destructive/30 bg-destructive/5">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-full bg-destructive/10">
+                  <Lock className="h-5 w-5 text-destructive" />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm text-destructive">
+                    {language === 'zh' ? '未设置提现密码' : 'Withdrawal Password Not Set'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {language === 'zh'
+                      ? '请联系管理员设置提现密码后才能提现'
+                      : 'Please contact admin to set your withdrawal password before withdrawing'}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Security Notice */}
         <Card className="premium-card border-[hsl(var(--warning))]/30 bg-[hsl(var(--warning))]/5">
@@ -279,9 +385,9 @@ const MerchantWithdrawal = () => {
               <div>
                 <p className="font-semibold text-sm">{language === 'zh' ? '安全提现' : 'Secure Withdrawal'}</p>
                 <p className="text-xs text-muted-foreground">
-                  {language === 'zh' 
-                    ? '所有提现请求需要管理员审核批准后才会处理。资金在审核期间将被冻结。' 
-                    : 'All withdrawal requests require admin approval before processing. Funds will be frozen during review.'}
+                  {language === 'zh'
+                    ? '所有提现请求需要管理员审核批准后才会处理。资金在审核期间将被冻结。'
+                    : 'All withdrawal requests require admin approval. Funds will be frozen during review.'}
                 </p>
               </div>
             </div>
@@ -290,239 +396,228 @@ const MerchantWithdrawal = () => {
 
         {/* Withdrawal Form */}
         <Card className="premium-card overflow-hidden">
-          <CardContent className="p-0">
-            <Tabs defaultValue="bank" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 rounded-none border-b border-border bg-muted/30 h-auto p-0">
-                <TabsTrigger 
-                  value="bank" 
-                  className="rounded-none data-[state=active]:bg-[hsl(var(--success))] data-[state=active]:text-white py-4 gap-2 transition-all"
-                >
-                  <Banknote className="h-4 w-4" />
-                  {language === 'zh' ? '银行提现' : 'Bank Withdrawal'}
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="usdt" 
-                  className="rounded-none data-[state=active]:bg-[hsl(var(--warning))] data-[state=active]:text-white py-4 gap-2 transition-all"
-                >
-                  <Bitcoin className="h-4 w-4" />
-                  {language === 'zh' ? 'USDT提现' : 'USDT Withdrawal'}
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="bank" className="p-6 space-y-6 m-0">
-                <div className="flex items-center gap-3 p-4 bg-[hsl(var(--success))]/5 rounded-xl border border-[hsl(var(--success))]/20">
-                  <div className="p-2 rounded-full bg-[hsl(var(--success))]/10">
-                    <Banknote className="h-5 w-5 text-[hsl(var(--success))]" />
-                  </div>
-                  <div>
-                    <p className="font-semibold">{language === 'zh' ? '银行转账' : 'Bank Transfer'}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {language === 'zh' ? '提现到您的银行账户' : 'Withdraw to your bank account'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-muted-foreground text-xs font-medium">
-                      {language === 'zh' ? '账户持有人' : 'Account Holder'}
-                    </Label>
-                    <Input
-                      value={bankForm.accountHolder}
-                      onChange={(e) => setBankForm({ ...bankForm, accountHolder: e.target.value })}
-                      placeholder={language === 'zh' ? '全名' : 'Full Name'}
-                      className="bg-muted/30 border-border/50 focus:border-[hsl(var(--success))]"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-muted-foreground text-xs font-medium">
-                      {language === 'zh' ? '银行名称' : 'Bank Name'}
-                    </Label>
-                    <Input
-                      value={bankForm.bankName}
-                      onChange={(e) => setBankForm({ ...bankForm, bankName: e.target.value })}
-                      placeholder={language === 'zh' ? '银行名称' : 'Bank Name'}
-                      className="bg-muted/30 border-border/50 focus:border-[hsl(var(--success))]"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-muted-foreground text-xs font-medium">
-                      {language === 'zh' ? '账户号码' : 'Account Number'}
-                    </Label>
-                    <Input
-                      value={bankForm.accountNumber}
-                      onChange={(e) => setBankForm({ ...bankForm, accountNumber: e.target.value })}
-                      placeholder="XXXXXXXXXXXX"
-                      className="bg-muted/30 border-border/50 focus:border-[hsl(var(--success))]"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-muted-foreground text-xs font-medium">
-                      {language === 'zh' ? 'IFSC代码' : 'IFSC Code'}
-                    </Label>
-                    <Input
-                      value={bankForm.ifscCode}
-                      onChange={(e) => setBankForm({ ...bankForm, ifscCode: e.target.value })}
-                      placeholder="ABCD0001234"
-                      className="bg-muted/30 border-border/50 focus:border-[hsl(var(--success))]"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <Label className="text-muted-foreground text-xs font-medium">
-                    {language === 'zh' ? '提现金额' : 'Withdrawal Amount'}
-                  </Label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-bold text-muted-foreground">₹</span>
-                    <Input
-                      type="number"
-                      value={bankForm.amount}
-                      onChange={(e) => setBankForm({ ...bankForm, amount: e.target.value })}
-                      placeholder="0.00"
-                      className="pl-10 h-14 text-2xl font-bold bg-muted/30 border-border/50 focus:border-[hsl(var(--success))]"
-                    />
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">{language === 'zh' ? '可用' : 'Available'}: ₹{balance.toLocaleString()}</span>
-                    <button 
-                      onClick={() => setBankForm({ ...bankForm, amount: balance.toString() })}
-                      className="text-[hsl(var(--success))] font-medium hover:underline"
+          <CardContent className="p-6 space-y-6">
+            {/* Method Selection */}
+            <div className="space-y-2">
+              <Label className="text-muted-foreground text-xs font-medium">
+                {language === 'zh' ? '提现方式' : 'Withdrawal Method'}
+              </Label>
+              <Tabs value={selectedMethod} onValueChange={setSelectedMethod} className="w-full">
+                <TabsList className="grid w-full h-auto p-1" style={{ gridTemplateColumns: `repeat(${availableMethods.length}, 1fr)` }}>
+                  {availableMethods.map((method) => (
+                    <TabsTrigger
+                      key={method.value}
+                      value={method.value}
+                      className="py-3 text-xs sm:text-sm gap-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                     >
-                      {language === 'zh' ? '全部提现' : 'Withdraw All'}
-                    </button>
-                  </div>
-                </div>
+                      <span>{method.icon}</span>
+                      <span className="hidden sm:inline">{method.label}</span>
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
 
-                {/* Fee Breakdown */}
-                {bankForm.amount && parseFloat(bankForm.amount) > 0 && (
-                  <div className="p-4 bg-muted/30 rounded-xl space-y-2 border border-border/50">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">{language === 'zh' ? '提现金额' : 'Withdrawal Amount'}</span>
-                      <span className="font-medium">₹{parseFloat(bankForm.amount).toLocaleString()}</span>
+                {/* Bank Transfer (INR only) */}
+                <TabsContent value="bank" className="mt-4 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-muted-foreground text-xs font-medium">
+                        {language === 'zh' ? '账户持有人' : 'Account Holder Name'}
+                      </Label>
+                      <Input
+                        value={form.accountName}
+                        onChange={(e) => setForm({ ...form, accountName: e.target.value })}
+                        placeholder={language === 'zh' ? '全名' : 'Full Name'}
+                        className="bg-muted/30 border-border/50"
+                      />
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">{language === 'zh' ? '手续费' : 'Fee'} ({payoutFee}%)</span>
-                      <span className="font-medium text-destructive">-₹{bankFee.toLocaleString()}</span>
+                    <div className="space-y-2">
+                      <Label className="text-muted-foreground text-xs font-medium">
+                        {language === 'zh' ? '银行名称' : 'Bank Name'}
+                      </Label>
+                      <Input
+                        value={form.bankName}
+                        onChange={(e) => setForm({ ...form, bankName: e.target.value })}
+                        placeholder={language === 'zh' ? '银行名称' : 'Bank Name'}
+                        className="bg-muted/30 border-border/50"
+                      />
                     </div>
-                    <div className="border-t border-border pt-2 flex justify-between">
-                      <span className="font-semibold">{language === 'zh' ? '实际到账' : 'Net Amount'}</span>
-                      <span className="font-bold text-[hsl(var(--success))]">₹{bankNet.toLocaleString()}</span>
+                    <div className="space-y-2">
+                      <Label className="text-muted-foreground text-xs font-medium">
+                        {language === 'zh' ? '账户号码' : 'Account Number'}
+                      </Label>
+                      <Input
+                        value={form.accountNumber}
+                        onChange={(e) => setForm({ ...form, accountNumber: e.target.value })}
+                        placeholder="XXXXXXXXXXXX"
+                        className="bg-muted/30 border-border/50"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-muted-foreground text-xs font-medium">
+                        {language === 'zh' ? 'IFSC代码' : 'IFSC Code'}
+                      </Label>
+                      <Input
+                        value={form.ifscCode}
+                        onChange={(e) => setForm({ ...form, ifscCode: e.target.value })}
+                        placeholder="ABCD0001234"
+                        className="bg-muted/30 border-border/50"
+                      />
                     </div>
                   </div>
-                )}
+                </TabsContent>
 
-                <Button
-                  className="w-full h-12 bg-[hsl(var(--success))] hover:bg-[hsl(var(--success))]/90 text-white font-semibold gap-2"
-                  onClick={handleBankWithdrawal}
-                  disabled={isLoading || !bankForm.amount || !bankForm.bankName || !bankForm.accountNumber || !bankForm.ifscCode || !bankForm.accountHolder}
-                >
-                  {isLoading ? (
-                    <>{language === 'zh' ? '处理中...' : 'Processing...'}</>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="h-5 w-5" />
-                      {language === 'zh' ? '提交提现申请' : 'Submit Withdrawal Request'}
-                      <ArrowRight className="h-4 w-4" />
-                    </>
-                  )}
-                </Button>
-              </TabsContent>
+                {/* Mobile Wallets (PKR/BDT) */}
+                {['easypaisa', 'jazzcash', 'nagad', 'bkash'].map((method) => (
+                  <TabsContent key={method} value={method} className="mt-4 space-y-4">
+                    <div className="p-4 bg-primary/5 rounded-xl border border-primary/20 mb-4">
+                      <p className="text-sm font-medium">{getMethodLabel(method)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {language === 'zh' ? '提现到您的' : 'Withdraw to your'} {method.charAt(0).toUpperCase() + method.slice(1)} {language === 'zh' ? '账户' : 'account'}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-muted-foreground text-xs font-medium">
+                          {language === 'zh' ? '账户名称' : 'Account Name'}
+                        </Label>
+                        <Input
+                          value={form.accountName}
+                          onChange={(e) => setForm({ ...form, accountName: e.target.value })}
+                          placeholder={language === 'zh' ? '账户持有人姓名' : 'Account holder name'}
+                          className="bg-muted/30 border-border/50"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-muted-foreground text-xs font-medium">
+                          {language === 'zh' ? '账户号码' : 'Account Number'}
+                        </Label>
+                        <Input
+                          value={form.accountNumber}
+                          onChange={(e) => setForm({ ...form, accountNumber: e.target.value })}
+                          placeholder={language === 'zh' ? '手机号码/账户号码' : 'Mobile/Account Number'}
+                          className="bg-muted/30 border-border/50"
+                        />
+                      </div>
+                    </div>
+                  </TabsContent>
+                ))}
 
-              <TabsContent value="usdt" className="p-6 space-y-6 m-0">
-                <div className="flex items-center gap-3 p-4 bg-[hsl(var(--warning))]/5 rounded-xl border border-[hsl(var(--warning))]/20">
-                  <div className="p-2 rounded-full bg-[hsl(var(--warning))]/10">
-                    <Bitcoin className="h-5 w-5 text-[hsl(var(--warning))]" />
-                  </div>
-                  <div>
-                    <p className="font-semibold">{language === 'zh' ? 'USDT提现' : 'USDT Withdrawal'}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {language === 'zh' ? '提现USDT到您的TRC20地址' : 'Withdraw USDT to your TRC20 address'}
+                {/* USDT */}
+                <TabsContent value="usdt" className="mt-4 space-y-4">
+                  <div className="p-4 bg-[hsl(var(--warning))]/5 rounded-xl border border-[hsl(var(--warning))]/20">
+                    <div className="flex items-center gap-2">
+                      <Bitcoin className="h-5 w-5 text-[hsl(var(--warning))]" />
+                      <p className="text-sm font-medium">USDT (TRC20)</p>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {language === 'zh' ? '仅支持TRC20网络' : 'Only TRC20 network supported'}
                     </p>
                   </div>
-                </div>
-
-                <div className="space-y-4">
                   <div className="space-y-2">
                     <Label className="text-muted-foreground text-xs font-medium">
                       {language === 'zh' ? 'USDT地址 (TRC20)' : 'USDT Address (TRC20)'}
                     </Label>
                     <Input
-                      value={usdtForm.usdtAddress}
-                      onChange={(e) => setUsdtForm({ ...usdtForm, usdtAddress: e.target.value })}
+                      value={form.usdtAddress}
+                      onChange={(e) => setForm({ ...form, usdtAddress: e.target.value })}
                       placeholder="T..."
-                      className="bg-muted/30 border-border/50 focus:border-[hsl(var(--warning))] font-mono"
+                      className="bg-muted/30 border-border/50 font-mono"
                     />
-                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-[hsl(var(--warning))]"></span>
-                      {language === 'zh' ? '仅支持TRC20地址' : 'Only TRC20 addresses are supported'}
-                    </p>
                   </div>
+                </TabsContent>
+              </Tabs>
+            </div>
 
-                  <div className="space-y-3">
-                    <Label className="text-muted-foreground text-xs font-medium">
-                      {language === 'zh' ? '提现金额' : 'Withdrawal Amount'}
-                    </Label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-bold text-muted-foreground">₹</span>
-                      <Input
-                        type="number"
-                        value={usdtForm.amount}
-                        onChange={(e) => setUsdtForm({ ...usdtForm, amount: e.target.value })}
-                        placeholder="0.00"
-                        className="pl-10 h-14 text-2xl font-bold bg-muted/30 border-border/50 focus:border-[hsl(var(--warning))]"
-                      />
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">{language === 'zh' ? '可用' : 'Available'}: ₹{balance.toLocaleString()}</span>
-                      <button 
-                        onClick={() => setUsdtForm({ ...usdtForm, amount: balance.toString() })}
-                        className="text-[hsl(var(--warning))] font-medium hover:underline"
-                      >
-                        {language === 'zh' ? '全部提现' : 'Withdraw All'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Fee Breakdown */}
-                {usdtForm.amount && parseFloat(usdtForm.amount) > 0 && (
-                  <div className="p-4 bg-muted/30 rounded-xl space-y-2 border border-border/50">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">{language === 'zh' ? '提现金额' : 'Withdrawal Amount'}</span>
-                      <span className="font-medium">₹{parseFloat(usdtForm.amount).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">{language === 'zh' ? '手续费' : 'Fee'} ({payoutFee}%)</span>
-                      <span className="font-medium text-destructive">-₹{usdtFee.toLocaleString()}</span>
-                    </div>
-                    <div className="border-t border-border pt-2 flex justify-between">
-                      <span className="font-semibold">{language === 'zh' ? '实际到账' : 'Net Amount'}</span>
-                      <span className="font-bold text-[hsl(var(--warning))]">₹{usdtNet.toLocaleString()}</span>
-                    </div>
-                  </div>
-                )}
-
-                <Button
-                  className="w-full h-12 bg-[hsl(var(--warning))] hover:bg-[hsl(var(--warning))]/90 text-white font-semibold gap-2"
-                  onClick={handleUsdtWithdrawal}
-                  disabled={isLoading || !usdtForm.amount || !usdtForm.usdtAddress}
+            {/* Amount Input */}
+            <div className="space-y-3">
+              <Label className="text-muted-foreground text-xs font-medium">
+                {language === 'zh' ? '提现金额' : 'Withdrawal Amount'}
+              </Label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-bold text-muted-foreground">
+                  {currencySymbol}
+                </span>
+                <Input
+                  type="number"
+                  value={form.amount}
+                  onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                  placeholder="0.00"
+                  className="pl-10 h-14 text-2xl font-bold bg-muted/30 border-border/50"
+                />
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">
+                  {language === 'zh' ? '可用' : 'Available'}: {currencySymbol}{merchantData.balance.toLocaleString()}
+                </span>
+                <button
+                  onClick={() => setForm({ ...form, amount: merchantData.balance.toString() })}
+                  className="text-primary font-medium hover:underline"
                 >
-                  {isLoading ? (
-                    <>{language === 'zh' ? '处理中...' : 'Processing...'}</>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="h-5 w-5" />
-                      {language === 'zh' ? '提交提现申请' : 'Submit Withdrawal Request'}
-                      <ArrowRight className="h-4 w-4" />
-                    </>
-                  )}
-                </Button>
-              </TabsContent>
-            </Tabs>
+                  {language === 'zh' ? '全部提现' : 'Withdraw All'}
+                </button>
+              </div>
+            </div>
+
+            {/* Fee Breakdown */}
+            {form.amount && parseFloat(form.amount) > 0 && (
+              <div className="p-4 bg-muted/30 rounded-xl space-y-2 border border-border/50">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">{language === 'zh' ? '提现金额' : 'Withdrawal Amount'}</span>
+                  <span className="font-medium">{currencySymbol}{parseFloat(form.amount).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    {language === 'zh' ? '手续费' : 'Fee'} ({merchantData.payout_fee}%)
+                  </span>
+                  <span className="font-medium text-destructive">-{currencySymbol}{fee.toLocaleString()}</span>
+                </div>
+                <div className="border-t border-border pt-2 flex justify-between">
+                  <span className="font-semibold">{language === 'zh' ? '实际到账' : 'Net Amount'}</span>
+                  <span className="font-bold text-[hsl(var(--success))]">{currencySymbol}{netAmount.toLocaleString()}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Withdrawal Password */}
+            <div className="space-y-2">
+              <Label className="text-muted-foreground text-xs font-medium flex items-center gap-2">
+                <Lock className="h-3 w-3" />
+                {language === 'zh' ? '提现密码' : 'Withdrawal Password'}
+              </Label>
+              <div className="relative">
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  value={form.withdrawalPassword}
+                  onChange={(e) => setForm({ ...form, withdrawalPassword: e.target.value })}
+                  placeholder={language === 'zh' ? '输入提现密码' : 'Enter withdrawal password'}
+                  className="bg-muted/30 border-border/50 pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <Button
+              className="w-full h-12 bg-[hsl(var(--success))] hover:bg-[hsl(var(--success))]/90 text-white font-semibold gap-2"
+              onClick={handleWithdrawal}
+              disabled={isLoading || !form.amount || !form.withdrawalPassword || !merchantData.withdrawal_password}
+            >
+              {isLoading ? (
+                <>{language === 'zh' ? '处理中...' : 'Processing...'}</>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-5 w-5" />
+                  {language === 'zh' ? '提交提现申请' : 'Submit Withdrawal Request'}
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              )}
+            </Button>
           </CardContent>
         </Card>
       </div>
