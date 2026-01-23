@@ -46,6 +46,7 @@ import LGPayINRDocs from "./pages/admin/sdk/LGPayINRDocs";
 import LGPayPKRDocs from "./pages/admin/sdk/LGPayPKRDocs";
 import LGPayBDTDocs from "./pages/admin/sdk/LGPayBDTDocs";
 import AdminGateways from "./pages/admin/AdminGateways";
+import AdminGatewayHealth from "./pages/admin/AdminGatewayHealth";
 
 const queryClient = new QueryClient();
 
@@ -103,6 +104,7 @@ const AppRoutes = () => {
       <Route path="/admin/withdrawals" element={<ProtectedRoute requiredRole="admin"><AdminWithdrawals /></ProtectedRoute>} />
       <Route path="/admin/api-testing" element={<ProtectedRoute requiredRole="admin"><AdminApiTesting /></ProtectedRoute>} />
       <Route path="/admin/gateways" element={<ProtectedRoute requiredRole="admin"><AdminGateways /></ProtectedRoute>} />
+      <Route path="/admin/gateway-health" element={<ProtectedRoute requiredRole="admin"><AdminGatewayHealth /></ProtectedRoute>} />
       <Route path="/admin/settings" element={<ProtectedRoute requiredRole="admin"><AdminSettings /></ProtectedRoute>} />
       
       {/* SDK Documentation Routes */}

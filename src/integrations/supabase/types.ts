@@ -92,6 +92,9 @@ export type Database = {
       admin_settings: {
         Row: {
           admin_telegram_chat_id: string | null
+          balance_threshold_bdt: number | null
+          balance_threshold_inr: number | null
+          balance_threshold_pkr: number | null
           bondpay_base_url: string | null
           default_payin_fee: number | null
           default_payout_fee: number | null
@@ -113,6 +116,9 @@ export type Database = {
         }
         Insert: {
           admin_telegram_chat_id?: string | null
+          balance_threshold_bdt?: number | null
+          balance_threshold_inr?: number | null
+          balance_threshold_pkr?: number | null
           bondpay_base_url?: string | null
           default_payin_fee?: number | null
           default_payout_fee?: number | null
@@ -134,6 +140,9 @@ export type Database = {
         }
         Update: {
           admin_telegram_chat_id?: string | null
+          balance_threshold_bdt?: number | null
+          balance_threshold_inr?: number | null
+          balance_threshold_pkr?: number | null
           bondpay_base_url?: string | null
           default_payin_fee?: number | null
           default_payout_fee?: number | null
@@ -154,6 +163,41 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      gateway_balance_history: {
+        Row: {
+          balance: number | null
+          checked_at: string
+          gateway_id: string
+          id: string
+          message: string | null
+          status: string
+        }
+        Insert: {
+          balance?: number | null
+          checked_at?: string
+          gateway_id: string
+          id?: string
+          message?: string | null
+          status?: string
+        }
+        Update: {
+          balance?: number | null
+          checked_at?: string
+          gateway_id?: string
+          id?: string
+          message?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gateway_balance_history_gateway_id_fkey"
+            columns: ["gateway_id"]
+            isOneToOne: false
+            referencedRelation: "payment_gateways"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       merchants: {
         Row: {

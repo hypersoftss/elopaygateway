@@ -39,6 +39,9 @@ interface AdminSettings {
   admin_telegram_chat_id: string | null;
   telegram_bot_token: string | null;
   telegram_webhook_url: string | null;
+  balance_threshold_inr: number;
+  balance_threshold_pkr: number;
+  balance_threshold_bdt: number;
 }
 
 
@@ -86,6 +89,9 @@ const AdminSettingsPage = () => {
           admin_telegram_chat_id: settingsData.admin_telegram_chat_id || null,
           telegram_bot_token: settingsData.telegram_bot_token || null,
           telegram_webhook_url: settingsData.telegram_webhook_url || null,
+          balance_threshold_inr: settingsData.balance_threshold_inr || 10000,
+          balance_threshold_pkr: settingsData.balance_threshold_pkr || 50000,
+          balance_threshold_bdt: settingsData.balance_threshold_bdt || 50000,
         } as AdminSettings);
         setLogoPreview(settingsData.logo_url);
         setFaviconPreview(settingsData.favicon_url);
@@ -292,6 +298,9 @@ const AdminSettingsPage = () => {
           admin_telegram_chat_id: settings.admin_telegram_chat_id,
           telegram_bot_token: settings.telegram_bot_token,
           telegram_webhook_url: settings.telegram_webhook_url,
+          balance_threshold_inr: settings.balance_threshold_inr,
+          balance_threshold_pkr: settings.balance_threshold_pkr,
+          balance_threshold_bdt: settings.balance_threshold_bdt,
         } as any)
         .eq('id', settings.id);
 
@@ -904,6 +913,91 @@ const AdminSettingsPage = () => {
                       />
                     </CardContent>
                   </Card>
+                </div>
+
+                {/* Gateway Balance Thresholds */}
+                <div className="pt-6 border-t">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    💰 {language === 'zh' ? '网关余额告警阈值' : 'Gateway Balance Alert Thresholds'}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    {language === 'zh' 
+                      ? '当网关余额低于设定阈值时，将发送Telegram告警通知' 
+                      : 'Telegram alerts will be sent when gateway balance falls below these thresholds'}
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <Card className="border-2 border-amber-500/20">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center text-white text-xs font-bold">INR</div>
+                          <div>
+                            <CardTitle className="text-base">India (INR)</CardTitle>
+                            <CardDescription className="text-xs">
+                              {language === 'zh' ? '印度卢比阈值' : 'Indian Rupee threshold'}
+                            </CardDescription>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <Label>{language === 'zh' ? '阈值 (₹)' : 'Threshold (₹)'}</Label>
+                        <Input
+                          type="number"
+                          value={settings?.balance_threshold_inr || 10000}
+                          onChange={(e) => setSettings(s => s ? { ...s, balance_threshold_inr: parseFloat(e.target.value) } : null)}
+                          className="mt-2"
+                          placeholder="10000"
+                        />
+                      </CardContent>
+                    </Card>
+
+                    <Card className="border-2 border-green-500/20">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center text-white text-xs font-bold">PKR</div>
+                          <div>
+                            <CardTitle className="text-base">Pakistan (PKR)</CardTitle>
+                            <CardDescription className="text-xs">
+                              {language === 'zh' ? '巴基斯坦卢比阈值' : 'Pakistani Rupee threshold'}
+                            </CardDescription>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <Label>{language === 'zh' ? '阈值 (Rs.)' : 'Threshold (Rs.)'}</Label>
+                        <Input
+                          type="number"
+                          value={settings?.balance_threshold_pkr || 50000}
+                          onChange={(e) => setSettings(s => s ? { ...s, balance_threshold_pkr: parseFloat(e.target.value) } : null)}
+                          className="mt-2"
+                          placeholder="50000"
+                        />
+                      </CardContent>
+                    </Card>
+
+                    <Card className="border-2 border-teal-500/20">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 bg-teal-500 rounded-lg flex items-center justify-center text-white text-xs font-bold">BDT</div>
+                          <div>
+                            <CardTitle className="text-base">Bangladesh (BDT)</CardTitle>
+                            <CardDescription className="text-xs">
+                              {language === 'zh' ? '孟加拉塔卡阈值' : 'Bangladeshi Taka threshold'}
+                            </CardDescription>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <Label>{language === 'zh' ? '阈值 (৳)' : 'Threshold (৳)'}</Label>
+                        <Input
+                          type="number"
+                          value={settings?.balance_threshold_bdt || 50000}
+                          onChange={(e) => setSettings(s => s ? { ...s, balance_threshold_bdt: parseFloat(e.target.value) } : null)}
+                          className="mt-2"
+                          placeholder="50000"
+                        />
+                      </CardContent>
+                    </Card>
+                  </div>
                 </div>
               </CardContent>
             </Card>

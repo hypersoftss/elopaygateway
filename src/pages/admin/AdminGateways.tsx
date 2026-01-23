@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Layers, Plus, Trash2, Edit, Eye, EyeOff } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Layers, Plus, Trash2, Edit, Eye, EyeOff, Activity } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -266,17 +267,25 @@ const AdminGatewaysPage = () => {
               {language === 'zh' ? '管理支付网关凭证和配置' : 'Manage payment gateway credentials and configuration'}
             </p>
           </div>
-          <Button 
-            onClick={() => {
-              resetForm();
-              setEditingGateway(null);
-              setShowGatewayDialog(true);
-            }}
-            className="btn-gradient-primary"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            {language === 'zh' ? '添加网关' : 'Add Gateway'}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Link to="/admin/gateway-health">
+              <Button variant="outline">
+                <Activity className="h-4 w-4 mr-2" />
+                {language === 'zh' ? '健康监控' : 'Health Monitor'}
+              </Button>
+            </Link>
+            <Button 
+              onClick={() => {
+                resetForm();
+                setEditingGateway(null);
+                setShowGatewayDialog(true);
+              }}
+              className="btn-gradient-primary"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              {language === 'zh' ? '添加网关' : 'Add Gateway'}
+            </Button>
+          </div>
         </div>
 
         {/* Gateways Table */}
