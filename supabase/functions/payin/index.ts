@@ -117,7 +117,10 @@ Deno.serve(async (req) => {
     // Get merchant with gateway info and trade_type
     const { data: merchants, error: merchantError } = await supabaseAdmin
       .from('merchants')
-      .select('id, api_key, payin_fee, is_active, callback_url, merchant_name, gateway_id, trade_type')
+      .select(`
+        id, api_key, payin_fee, is_active, callback_url, merchant_name, gateway_id, trade_type,
+        payment_gateways (gateway_type)
+      `)
       .eq('account_number', merchant_id)
       .limit(1)
 
@@ -130,6 +133,7 @@ Deno.serve(async (req) => {
     }
 
     const merchant = merchants[0]
+    const gatewayType = (merchant.payment_gateways as any)?.gateway_type || 'bondpay'
 
     if (!merchant.is_active) {
       return new Response(
@@ -138,7 +142,8 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Verify signature
+    // Verify signature based on gateway type
+    // All merchants use the same signature format: md5(merchant_id + amount + merchant_order_no + api_key + callback_url)
     const isValidSign = verifyBondPaySignature(
       { merchant_id, amount: amount.toString(), merchant_order_no, callback_url: callback_url || '' },
       merchant.api_key,
@@ -146,12 +151,14 @@ Deno.serve(async (req) => {
     )
 
     if (!isValidSign) {
-      console.error('Invalid signature for merchant:', merchant_id)
+      console.error('Invalid signature for merchant:', merchant_id, 'Gateway type:', gatewayType)
       return new Response(
         JSON.stringify({ code: 401, message: 'Invalid signature' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+    
+    console.log('Signature verified for merchant:', merchant_id, 'Gateway type:', gatewayType)
 
     // Get merchant's gateway configuration
     let gateway = null
