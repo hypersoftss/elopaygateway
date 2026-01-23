@@ -8,17 +8,20 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Captcha } from '@/components/Captcha';
 import { useTranslation } from '@/lib/i18n';
 import { useAuthStore, initializeAuth } from '@/lib/auth';
-import { useGatewaySettings } from '@/hooks/useGatewaySettings';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import * as OTPAuth from 'otpauth';
+
+interface GatewaySettings {
+  gatewayName: string;
+  logoUrl: string | null;
+}
 
 const MerchantLogin = () => {
   const { t, language, setLanguage } = useTranslation();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, isLoading, rememberMe, setRememberMe } = useAuthStore();
-  const { settings, isLoading: settingsLoading } = useGatewaySettings();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -27,6 +30,8 @@ const MerchantLogin = () => {
   const [isCaptchaValid, setIsCaptchaValid] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDark, setIsDark] = useState(true);
+  const [settings, setSettings] = useState<GatewaySettings>({ gatewayName: '', logoUrl: null });
+  const [settingsLoading, setSettingsLoading] = useState(true);
 
   // 2FA State
   const [show2FAStep, setShow2FAStep] = useState(false);
@@ -37,6 +42,26 @@ const MerchantLogin = () => {
     initializeAuth();
     const isDarkMode = document.documentElement.classList.contains('dark');
     setIsDark(isDarkMode);
+    
+    // Fetch gateway settings via edge function
+    const fetchSettings = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('get-payment-link-merchant', {
+          body: { get_gateway_settings: true }
+        });
+        if (!error && data?.gateway_settings) {
+          setSettings({
+            gatewayName: data.gateway_settings.gateway_name || 'PayGate',
+            logoUrl: data.gateway_settings.logo_url
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch gateway settings:', err);
+      } finally {
+        setSettingsLoading(false);
+      }
+    };
+    fetchSettings();
   }, []);
 
   const toggleTheme = () => {
