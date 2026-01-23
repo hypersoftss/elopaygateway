@@ -35,6 +35,7 @@ interface AdminSettings {
   gateway_name: string;
   gateway_domain: string | null;
   logo_url: string | null;
+  favicon_url: string | null;
   support_email: string | null;
   large_payin_threshold: number;
   large_payout_threshold: number;
@@ -50,6 +51,8 @@ const AdminSettingsPage = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [faviconFile, setFaviconFile] = useState<File | null>(null);
+  const [faviconPreview, setFaviconPreview] = useState<string | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
   const [showPayoutKey, setShowPayoutKey] = useState(false);
 
@@ -70,13 +73,16 @@ const AdminSettingsPage = () => {
         .limit(1);
 
       if (data && data.length > 0) {
+        const settingsData = data[0] as any;
         setSettings({
-          ...data[0],
-          large_payin_threshold: data[0].large_payin_threshold || 10000,
-          large_payout_threshold: data[0].large_payout_threshold || 5000,
-          large_withdrawal_threshold: data[0].large_withdrawal_threshold || 10000,
+          ...settingsData,
+          large_payin_threshold: settingsData.large_payin_threshold || 10000,
+          large_payout_threshold: settingsData.large_payout_threshold || 5000,
+          large_withdrawal_threshold: settingsData.large_withdrawal_threshold || 10000,
+          favicon_url: settingsData.favicon_url || null,
         } as AdminSettings);
-        setLogoPreview(data[0].logo_url);
+        setLogoPreview(settingsData.logo_url);
+        setFaviconPreview(settingsData.favicon_url);
       }
 
       // Fetch admin 2FA status
@@ -107,6 +113,14 @@ const AdminSettingsPage = () => {
     if (file) {
       setLogoFile(file);
       setLogoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleFaviconChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setFaviconFile(file);
+      setFaviconPreview(URL.createObjectURL(file));
     }
   };
 
@@ -237,6 +251,24 @@ const AdminSettingsPage = () => {
         logoUrl = urlData.publicUrl;
       }
 
+      let faviconUrl = settings.favicon_url;
+      if (faviconFile) {
+        const fileExt = faviconFile.name.split('.').pop();
+        const fileName = `favicon-${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('gateway-assets')
+          .upload(fileName, faviconFile, { upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage
+          .from('gateway-assets')
+          .getPublicUrl(fileName);
+
+        faviconUrl = urlData.publicUrl;
+      }
+
       const { error } = await supabase
         .from('admin_settings')
         .update({
@@ -249,14 +281,19 @@ const AdminSettingsPage = () => {
           gateway_name: settings.gateway_name,
           gateway_domain: settings.gateway_domain,
           logo_url: logoUrl,
+          favicon_url: faviconUrl,
           support_email: settings.support_email,
           large_payin_threshold: settings.large_payin_threshold,
           large_payout_threshold: settings.large_payout_threshold,
           large_withdrawal_threshold: settings.large_withdrawal_threshold,
-        })
+        } as any)
         .eq('id', settings.id);
 
       if (error) throw error;
+
+      // Clear the gateway settings cache so new settings are fetched
+      const { clearGatewaySettingsCache } = await import('@/hooks/useGatewaySettings');
+      clearGatewaySettingsCache();
 
       toast({
         title: t('common.success'),
@@ -377,6 +414,39 @@ const AdminSettingsPage = () => {
                       </Button>
                       <p className="text-xs text-muted-foreground mt-1">
                         {language === 'zh' ? '推荐: 200x200px PNG或SVG, 最大2MB' : 'Recommended: 200x200px PNG or SVG. Max 2MB.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Favicon Upload */}
+                <div className="space-y-3">
+                  <Label className="flex items-center gap-2">
+                    <Image className="h-4 w-4" />
+                    {language === 'zh' ? '网站图标 (Favicon)' : 'Favicon'}
+                  </Label>
+                  <div className="flex items-center gap-4">
+                    {faviconPreview && (
+                      <div className="w-12 h-12 rounded-lg border flex items-center justify-center bg-muted overflow-hidden">
+                        <img src={faviconPreview} alt="Favicon" className="w-full h-full object-contain" />
+                      </div>
+                    )}
+                    <div>
+                      <Input
+                        id="favicon"
+                        type="file"
+                        accept="image/*,.ico"
+                        onChange={handleFaviconChange}
+                        className="hidden"
+                      />
+                      <Button variant="outline" asChild>
+                        <label htmlFor="favicon" className="cursor-pointer">
+                          <Upload className="h-4 w-4 mr-2" />
+                          {language === 'zh' ? '上传图标' : 'Upload Favicon'}
+                        </label>
+                      </Button>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {language === 'zh' ? '推荐: 32x32px或64x64px PNG/ICO' : 'Recommended: 32x32px or 64x64px PNG/ICO'}
                       </p>
                     </div>
                   </div>

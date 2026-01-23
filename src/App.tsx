@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import React, { useEffect } from "react";
 import { useAuthStore, initializeAuth } from "@/lib/auth";
 import { Require2FA } from "@/components/Require2FA";
+import { useGatewaySettings } from "@/hooks/useGatewaySettings";
+import { useFavicon } from "@/hooks/useFavicon";
 
 // Pages
 import Index from "./pages/Index";
@@ -63,6 +65,11 @@ const ProtectedRoute = ({ children, requiredRole }: { children: React.ReactNode;
 };
 
 const AppRoutes = () => {
+  const { settings } = useGatewaySettings();
+  
+  // Apply dynamic favicon
+  useFavicon(settings.faviconUrl);
+  
   useEffect(() => {
     initializeAuth();
   }, []);
