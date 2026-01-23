@@ -412,23 +412,62 @@ function generateLGPaySign(params, apiKey) {
                         )}
 
                         {credentials.currency === 'INR' && (
-                          <div>
-                            <h4 className="font-semibold mb-2">{language === 'zh' ? '支持的支付方式' : 'Supported Payment Methods'}</h4>
-                            <div className="grid grid-cols-3 gap-3">
-                              <div className="p-3 border rounded-lg">
-                                <p className="font-medium text-blue-600">UPI</p>
-                                <p className="text-xs text-muted-foreground">Unified Payments Interface</p>
-                              </div>
-                              <div className="p-3 border rounded-lg">
-                                <p className="font-medium text-green-600">IMPS</p>
-                                <p className="text-xs text-muted-foreground">Bank Transfer</p>
-                              </div>
-                              <div className="p-3 border rounded-lg">
-                                <p className="font-medium text-purple-600">NEFT</p>
-                                <p className="text-xs text-muted-foreground">Bank Transfer</p>
+                          <div className="space-y-4">
+                            <div>
+                              <h4 className="font-semibold mb-2">{language === 'zh' ? '支持的支付方式' : 'Supported Payment Methods'}</h4>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                <div className={`p-3 border rounded-lg ${credentials.tradeType === 'INRUPI' ? 'border-blue-500 bg-blue-500/10' : ''}`}>
+                                  <p className="font-medium text-blue-600">INRUPI</p>
+                                  <p className="text-xs text-muted-foreground">UPI Payment</p>
+                                  {credentials.tradeType === 'INRUPI' && <Badge className="mt-1 bg-blue-500">Active</Badge>}
+                                </div>
+                                <div className={`p-3 border rounded-lg ${credentials.tradeType === 'usdt' ? 'border-green-500 bg-green-500/10' : ''}`}>
+                                  <p className="font-medium text-green-600">USDT</p>
+                                  <p className="text-xs text-muted-foreground">Crypto (TRC20)</p>
+                                  {credentials.tradeType === 'usdt' && <Badge className="mt-1 bg-green-500">Active</Badge>}
+                                </div>
+                                <div className="p-3 border rounded-lg">
+                                  <p className="font-medium text-purple-600">IMPS</p>
+                                  <p className="text-xs text-muted-foreground">Bank Transfer</p>
+                                </div>
+                                <div className="p-3 border rounded-lg">
+                                  <p className="font-medium text-orange-600">NEFT</p>
+                                  <p className="text-xs text-muted-foreground">Bank Transfer</p>
+                                </div>
                               </div>
                             </div>
-                            <p className="text-xs text-muted-foreground mt-2">Trade Type: INRUPI | Withdrawal Code: INR</p>
+                            
+                            {/* USDT Documentation Section */}
+                            {credentials.tradeType === 'usdt' && (
+                              <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+                                <h4 className="font-semibold mb-2 text-green-600 flex items-center gap-2">
+                                  💰 USDT (TRC20) {language === 'zh' ? '接入说明' : 'Integration Guide'}
+                                </h4>
+                                <div className="space-y-3 text-sm">
+                                  <div>
+                                    <p className="font-medium">{language === 'zh' ? 'Payin Trade Type:' : 'Payin Trade Type:'}</p>
+                                    <code className="p-2 bg-muted rounded block mt-1">usdt</code>
+                                  </div>
+                                  <div>
+                                    <p className="font-medium">{language === 'zh' ? 'Payout Withdrawal Code:' : 'Payout Withdrawal Code:'}</p>
+                                    <code className="p-2 bg-muted rounded block mt-1">INR</code>
+                                  </div>
+                                  <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded">
+                                    <p className="text-yellow-700">
+                                      ⚠️ {language === 'zh' 
+                                        ? 'USDT支付成功后，系统会自动转换为INR结算'
+                                        : 'USDT payments are automatically converted to INR for settlement'}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <span>{language === 'zh' ? '您的支付方式' : 'Your Trade Type'}: </span>
+                              <Badge variant="secondary">{credentials.tradeType || 'INRUPI'}</Badge>
+                              <span> | Withdrawal Code: INR</span>
+                            </div>
                           </div>
                         )}
                       </CardContent>
