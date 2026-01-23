@@ -175,6 +175,11 @@ const AdminLogin = () => {
         return;
       }
 
+      // Reset 2FA step BEFORE re-login so the redirect works
+      setShow2FAStep(false);
+      setPendingSession(null);
+      setTwoFACode('');
+
       // Re-login after successful 2FA
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -187,6 +192,8 @@ const AdminLogin = () => {
           description: error.message,
           variant: 'destructive',
         });
+        // Restore 2FA step on error
+        setShow2FAStep(true);
       }
     } catch (error) {
       toast({
