@@ -157,22 +157,28 @@ Deno.serve(async (req) => {
       let gatewayResponse = null
 
       if (gateway.gateway_type === 'lgpay') {
-        // LG Pay payout - use merchant's trade_type or gateway default
-        // Parse extra field to get trade_type if stored there
-        let tradeType = merchant.trade_type || gateway.trade_type || 'TEST'
-        try {
-          const extraData = transaction.extra ? JSON.parse(transaction.extra) : null
-          if (extraData?.trade_type) {
-            tradeType = extraData.trade_type
-          }
-        } catch (e) {
-          console.log('Could not parse extra field:', e)
+        // LG Pay payout - use specific withdrawal codes per currency
+        // Deposit codes differ from withdrawal codes:
+        // PKR: Deposit = PKRPH, Withdrawal = PKR
+        // BDT: Deposit = BDTBNK (or nagad/bkash), Withdrawal = BDT
+        // INR: Deposit = INR, Withdrawal = INR
+        let withdrawalCode = gateway.currency // Default to currency code
+        
+        // Map currency to specific withdrawal codes
+        if (gateway.currency === 'PKR') {
+          withdrawalCode = 'PKR' // PKR payout code
+        } else if (gateway.currency === 'BDT') {
+          withdrawalCode = 'BDT' // BDT payout code  
+        } else if (gateway.currency === 'INR') {
+          withdrawalCode = 'INR' // INR payout code
         }
+        
+        console.log('LG Pay payout - Currency:', gateway.currency, 'Withdrawal code:', withdrawalCode)
         
         const lgParams: Record<string, any> = {
           app_id: gateway.app_id,
           order_sn: transaction.order_no,
-          currency: tradeType.toUpperCase(), // Use trade_type as currency for payout
+          currency: withdrawalCode, // Use withdrawal-specific code
           money: Math.round(transaction.amount * 100), // LG Pay uses cents
           notify_url: internalCallbackUrl,
           name: transaction.account_holder_name || '',
