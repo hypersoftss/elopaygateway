@@ -53,7 +53,14 @@ function generatePassword(length: number = 12): string {
   return password
 }
 
-// Format INR amount
+// Format currency amount
+function formatAmount(amount: number, currency: string = 'INR'): string {
+  const symbols: Record<string, string> = { INR: '₹', PKR: 'Rs.', BDT: '৳' }
+  const symbol = symbols[currency] || '₹'
+  return `${symbol}${amount.toLocaleString('en-IN')}`
+}
+
+// Keep formatINR for backward compatibility  
 function formatINR(amount: number): string {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount)
 }
@@ -148,6 +155,7 @@ Deno.serve(async (req) => {
         { command: 'mybalance', description: '💰 Check my balance' },
         { command: 'today', description: '📊 Today\'s transaction summary' },
         { command: 'history', description: '📋 Recent transactions' },
+        { command: 'pending', description: '⏳ My pending transactions' },
         { command: 'status', description: '🔍 Check order status' },
         { command: 'tg_id', description: '🆔 Get chat/group ID' },
         { command: 'help', description: '❓ Show help menu' },
@@ -162,6 +170,7 @@ Deno.serve(async (req) => {
         { command: 'balance', description: '💰 Check merchant balance' },
         { command: 'add_balance', description: '➕ Add balance to merchant' },
         { command: 'sub_balance', description: '➖ Subtract merchant balance' },
+        { command: 'pending', description: '⏳ All pending transactions' },
         { command: 'set_trade', description: '🔄 Set merchant trade type' },
         { command: 'set_gateway', description: '🌐 Assign gateway to merchant' },
         { command: 'today', description: '📊 Today\'s summary' },
@@ -419,6 +428,52 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
       }
 
+      // /pending - Merchant's pending transactions
+      if (command === '/pending') {
+        const m = merchantByChat
+        
+        const { data: pendingTx } = await supabaseAdmin
+          .from('transactions')
+          .select('order_no, amount, status, transaction_type, created_at')
+          .eq('merchant_id', m.id)
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false })
+          .limit(15)
+
+        if (!pendingTx?.length) {
+          await sendMessage(botToken, chatId, `✅ <b>No Pending Transactions</b>\n\nAll your transactions have been processed!`)
+          return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+        }
+
+        let payinPending = 0, payoutPending = 0, payinAmount = 0, payoutAmount = 0
+        pendingTx.forEach(tx => {
+          if (tx.transaction_type === 'payin') {
+            payinPending++
+            payinAmount += tx.amount
+          } else {
+            payoutPending++
+            payoutAmount += tx.amount
+          }
+        })
+
+        let msg = `⏳ <b>${m.merchant_name} - Pending</b>\n\n`
+        msg += `━━━ 📊 SUMMARY ━━━\n`
+        msg += `📥 Pay-In: ${payinPending} orders | ${formatINR(payinAmount)}\n`
+        msg += `📤 Pay-Out: ${payoutPending} orders | ${formatINR(payoutAmount)}\n\n`
+        msg += `━━━ 📋 ORDERS ━━━\n`
+        
+        pendingTx.forEach((tx, i) => {
+          const icon = tx.transaction_type === 'payin' ? '📥' : '📤'
+          const date = new Date(tx.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false })
+          msg += `${i + 1}. ${icon} ⏳ ${formatINR(tx.amount)}\n`
+          msg += `   <code>${tx.order_no}</code>\n`
+          msg += `   ${date}\n\n`
+        })
+
+        await sendMessage(botToken, chatId, msg)
+        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+
       // /start or /help for merchant
       if (command === '/start' || command === '/help') {
         const m = merchantByChat
@@ -428,6 +483,7 @@ Deno.serve(async (req) => {
           `<code>/me</code> - View your account details\n` +
           `<code>/mybalance</code> - Check your balance\n` +
           `<code>/today</code> - Today & yesterday summary\n` +
+          `<code>/pending</code> - Your pending transactions\n` +
           `<code>/history [payin/payout]</code> - Recent transactions\n` +
           `<code>/status [order_no]</code> - Check order status\n` +
           `<code>/tg_id</code> - Get this chat ID\n` +
@@ -466,7 +522,7 @@ Deno.serve(async (req) => {
         `/help - Show this help menu\n\n` +
         
         `<b>━━━ 👤 MERCHANT MANAGEMENT ━━━</b>\n` +
-        `<code>/create_merchant "Name" email group_id [callback_url]</code>\n` +
+        `<code>/create_merchant "Name" email group_id gateway_code</code>\n` +
         `<code>/merchants</code> - List all merchants\n` +
         `<code>/merchant [account_no]</code> - View merchant\n` +
         `<code>/search [name/email]</code> - Search merchant\n\n` +
@@ -474,7 +530,8 @@ Deno.serve(async (req) => {
         `<b>━━━ 💰 BALANCE & TRANSACTIONS ━━━</b>\n` +
         `<code>/balance [account_no]</code> - Check balance\n` +
         `<code>/add_balance [account_no] [amount]</code> - Add balance\n` +
-        `<code>/sub_balance [account_no] [amount]</code> - Subtract balance\n` +
+        `<code>/sub_balance [account_no] [amount]</code> - Subtract\n` +
+        `<code>/pending</code> - All pending transactions\n` +
         `<code>/history [account_no] [payin/payout]</code> - History\n` +
         `<code>/status [order_no]</code> - Order status\n` +
         `<code>/today [account_no]</code> - Today's summary\n\n` +
@@ -1245,6 +1302,54 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
+    // ============ ADMIN PENDING - All pending transactions ============
+    if (command === '/pending') {
+      const { data: pendingTx } = await supabaseAdmin
+        .from('transactions')
+        .select('order_no, amount, status, transaction_type, created_at, merchants(merchant_name, account_number)')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+        .limit(25)
+
+      if (!pendingTx?.length) {
+        await sendMessage(botToken, chatId, `✅ <b>No Pending Transactions</b>\n\nAll transactions are processed!`)
+        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+
+      let payinPending = 0, payoutPending = 0, payinAmount = 0, payoutAmount = 0
+      pendingTx.forEach(tx => {
+        if (tx.transaction_type === 'payin') {
+          payinPending++
+          payinAmount += tx.amount
+        } else {
+          payoutPending++
+          payoutAmount += tx.amount
+        }
+      })
+
+      let msg = `⏳ <b>System Pending Transactions</b>\n\n`
+      msg += `━━━ 📊 SUMMARY ━━━\n`
+      msg += `📥 Pay-In: ${payinPending} orders | ${formatINR(payinAmount)}\n`
+      msg += `📤 Pay-Out: ${payoutPending} orders | ${formatINR(payoutAmount)}\n`
+      msg += `📋 Total: ${pendingTx.length} orders\n\n`
+      msg += `━━━ 📋 RECENT PENDING ━━━\n`
+      
+      pendingTx.slice(0, 15).forEach((tx, i) => {
+        const icon = tx.transaction_type === 'payin' ? '📥' : '📤'
+        const merchant = tx.merchants as any
+        msg += `${i + 1}. ${icon} ${formatINR(tx.amount)}\n`
+        msg += `   👤 ${merchant?.merchant_name || 'N/A'}\n`
+        msg += `   <code>${tx.order_no}</code>\n\n`
+      })
+      
+      if (pendingTx.length > 15) {
+        msg += `<i>... and ${pendingTx.length - 15} more</i>`
+      }
+
+      await sendMessage(botToken, chatId, msg)
+      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
     // ============ TOP MERCHANTS ============
     if (command === '/top') {
       const { data: merchants } = await supabaseAdmin
@@ -1445,12 +1550,15 @@ Deno.serve(async (req) => {
       if (args.length < 2) {
         await sendMessage(botToken, chatId, 
           `❌ Usage: <code>/set_trade [account_no] [trade_type]</code>\n\n` +
-          `<b>Available Trade Types:</b>\n` +
-          `• <code>INRUPI</code> - India UPI\n` +
-          `• <code>usdt</code> - USDT Crypto\n` +
-          `• <code>PKRPH</code> - Pakistan\n` +
-          `• <code>nagad</code> - Bangladesh Nagad\n` +
-          `• <code>bkash</code> - Bangladesh bKash\n\n` +
+          `<b>🇮🇳 India (INR):</b>\n` +
+          `• <code>INRUPI</code> - UPI Payment\n` +
+          `• <code>usdt</code> - USDT (TRC20)\n\n` +
+          `<b>🇵🇰 Pakistan (PKR):</b>\n` +
+          `• <code>easypaisa</code> - Easypaisa\n` +
+          `• <code>jazzcash</code> - JazzCash\n\n` +
+          `<b>🇧🇩 Bangladesh (BDT):</b>\n` +
+          `• <code>nagad</code> - Nagad\n` +
+          `• <code>bkash</code> - bKash\n\n` +
           `Example: <code>/set_trade 100000001 usdt</code>`
         )
         return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
