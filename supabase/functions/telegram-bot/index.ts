@@ -168,23 +168,14 @@ Deno.serve(async (req) => {
         { command: 'merchant', description: '👤 View merchant details' },
         { command: 'search', description: '🔍 Search merchant' },
         { command: 'balance', description: '💰 Check merchant balance' },
-        { command: 'add_balance', description: '➕ Add balance to merchant' },
-        { command: 'sub_balance', description: '➖ Subtract merchant balance' },
         { command: 'pending', description: '⏳ All pending transactions' },
-        { command: 'set_trade', description: '🔄 Set merchant trade type' },
-        { command: 'set_gateway', description: '🌐 Assign gateway to merchant' },
         { command: 'today', description: '📊 Today\'s summary' },
         { command: 'history', description: '📋 Transaction history' },
         { command: 'status', description: '🔍 Order status' },
-        { command: 'set_fee', description: '💳 Update fees' },
-        { command: 'set_callback', description: '🔗 Set callback URL' },
         { command: 'set_telegram', description: '📱 Set Telegram group' },
         { command: 'reset_2fa', description: '🔐 Reset 2FA' },
         { command: 'reset_password', description: '🔑 Reset password' },
         { command: 'reset_withdrawal', description: '🔒 Reset withdrawal pass' },
-        { command: 'activate', description: '✅ Activate merchant' },
-        { command: 'deactivate', description: '❌ Deactivate merchant' },
-        { command: 'gateways', description: '🌐 List all gateways' },
         { command: 'stats', description: '📈 System statistics' },
         { command: 'top', description: '🏆 Top merchants' },
         { command: 'tg_id', description: '🆔 Get chat ID' },
@@ -529,29 +520,16 @@ Deno.serve(async (req) => {
         
         `<b>━━━ 💰 BALANCE & TRANSACTIONS ━━━</b>\n` +
         `<code>/balance [account_no]</code> - Check balance\n` +
-        `<code>/add_balance [account_no] [amount]</code> - Add balance\n` +
-        `<code>/sub_balance [account_no] [amount]</code> - Subtract\n` +
         `<code>/pending</code> - All pending transactions\n` +
         `<code>/history [account_no] [payin/payout]</code> - History\n` +
         `<code>/status [order_no]</code> - Order status\n` +
         `<code>/today [account_no]</code> - Today's summary\n\n` +
         
-        `<b>━━━ 🌐 GATEWAY & TRADE ━━━</b>\n` +
-        `<code>/gateways</code> - List all gateways\n` +
-        `<code>/set_gateway [account_no] [gateway_code]</code>\n` +
-        `<code>/set_trade [account_no] [trade_type]</code>\n\n` +
-        
         `<b>━━━ 🔧 ACCOUNT ACTIONS ━━━</b>\n` +
         `<code>/reset_2fa [account_no]</code>\n` +
         `<code>/reset_password [account_no]</code>\n` +
         `<code>/reset_withdrawal [account_no]</code>\n` +
-        `<code>/set_fee [account_no] [payin/payout] [%]</code>\n` +
-        `<code>/set_callback [account_no] [url]</code>\n` +
         `<code>/set_telegram [account_no] [group_id]</code>\n\n` +
-        
-        `<b>━━━ ⚡ STATUS CONTROL ━━━</b>\n` +
-        `<code>/activate [account_no]</code>\n` +
-        `<code>/deactivate [account_no]</code>\n\n` +
         
         `<b>━━━ 📊 REPORTS ━━━</b>\n` +
         `<code>/stats</code> - System stats\n` +
@@ -1033,70 +1011,6 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // ============ SET FEE ============
-    if (command === '/set_fee') {
-      if (args.length < 3) {
-        await sendMessage(botToken, chatId, '❌ Usage: <code>/set_fee [account_no] [payin/payout] [percentage]</code>\n\nExample: <code>/set_fee 100000001 payin 8.5</code>')
-        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-      }
-
-      const feeType = args[1].toLowerCase()
-      const feeValue = parseFloat(args[2])
-
-      if (feeType !== 'payin' && feeType !== 'payout') {
-        await sendMessage(botToken, chatId, '❌ Fee type must be "payin" or "payout"')
-        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-      }
-
-      if (isNaN(feeValue) || feeValue < 0 || feeValue > 100) {
-        await sendMessage(botToken, chatId, '❌ Invalid fee percentage (0-100)')
-        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-      }
-
-      const updateField = feeType === 'payin' ? 'payin_fee' : 'payout_fee'
-      const { data: merchant, error } = await supabaseAdmin
-        .from('merchants')
-        .update({ [updateField]: feeValue })
-        .eq('account_number', args[0])
-        .select('merchant_name, telegram_chat_id')
-        .maybeSingle()
-
-      if (error || !merchant) {
-        await sendMessage(botToken, chatId, '❌ Merchant not found')
-        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-      }
-
-      await sendMessage(botToken, chatId, `✅ <b>${merchant.merchant_name}</b>\n\n${feeType.toUpperCase()} fee updated to ${feeValue}%`)
-
-      if (merchant.telegram_chat_id) {
-        await sendMessage(botToken, merchant.telegram_chat_id, `💳 <b>Fee Update</b>\n\nYour ${feeType.toUpperCase()} fee has been updated to ${feeValue}%`)
-      }
-
-      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-    }
-
-    // ============ SET CALLBACK URL ============
-    if (command === '/set_callback') {
-      if (args.length < 2) {
-        await sendMessage(botToken, chatId, '❌ Usage: <code>/set_callback [account_no] [url]</code>')
-        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-      }
-
-      const { data: merchant, error } = await supabaseAdmin
-        .from('merchants')
-        .update({ callback_url: args[1] })
-        .eq('account_number', args[0])
-        .select('merchant_name')
-        .maybeSingle()
-
-      if (error || !merchant) {
-        await sendMessage(botToken, chatId, '❌ Merchant not found')
-        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-      }
-
-      await sendMessage(botToken, chatId, `✅ <b>${merchant.merchant_name}</b>\n\nCallback URL updated to:\n<code>${args[1]}</code>`)
-      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-    }
 
     // ============ SET TELEGRAM GROUP ============
     if (command === '/set_telegram') {
@@ -1221,38 +1135,6 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // ============ ACTIVATE/DEACTIVATE ============
-    if (command === '/activate' || command === '/deactivate') {
-      if (!args[0]) {
-        await sendMessage(botToken, chatId, `❌ Usage: <code>${command} [account_no]</code>`)
-        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-      }
-
-      const isActive = command === '/activate'
-      const { data: merchant, error } = await supabaseAdmin
-        .from('merchants')
-        .update({ is_active: isActive })
-        .eq('account_number', args[0])
-        .select('merchant_name, telegram_chat_id')
-        .maybeSingle()
-
-      if (error || !merchant) {
-        await sendMessage(botToken, chatId, '❌ Merchant not found')
-        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-      }
-
-      const status = isActive ? '✅ Activated' : '❌ Deactivated'
-      await sendMessage(botToken, chatId, `${status}: <b>${merchant.merchant_name}</b>`)
-      
-      if (merchant.telegram_chat_id) {
-        const merchantStatus = isActive 
-          ? '✅ Your account has been activated by admin.'
-          : '❌ Your account has been deactivated by admin. Contact support for more information.'
-        await sendMessage(botToken, merchant.telegram_chat_id, `<b>Account Status Update</b>\n\n${merchantStatus}`)
-      }
-
-      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-    }
 
     // ============ SYSTEM STATS ============
     if (command === '/stats') {
@@ -1375,225 +1257,6 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // ============ ADD BALANCE ============
-    if (command === '/add_balance') {
-      if (args.length < 2) {
-        await sendMessage(botToken, chatId, '❌ Usage: <code>/add_balance [account_no] [amount]</code>\n\nExample: <code>/add_balance 100000001 5000</code>')
-        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-      }
-
-      const amount = parseFloat(args[1])
-      if (isNaN(amount) || amount <= 0) {
-        await sendMessage(botToken, chatId, '❌ Invalid amount')
-        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-      }
-
-      const { data: merchant, error } = await supabaseAdmin
-        .from('merchants')
-        .select('id, merchant_name, balance, telegram_chat_id')
-        .eq('account_number', args[0])
-        .maybeSingle()
-
-      if (error || !merchant) {
-        await sendMessage(botToken, chatId, '❌ Merchant not found')
-        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-      }
-
-      const newBalance = (merchant.balance || 0) + amount
-      await supabaseAdmin
-        .from('merchants')
-        .update({ balance: newBalance })
-        .eq('id', merchant.id)
-
-      await sendMessage(botToken, chatId, 
-        `✅ <b>Balance Added</b>\n\n` +
-        `👤 ${merchant.merchant_name}\n` +
-        `➕ Added: ${formatINR(amount)}\n` +
-        `💰 New Balance: ${formatINR(newBalance)}`
-      )
-
-      if (merchant.telegram_chat_id) {
-        await sendMessage(botToken, merchant.telegram_chat_id, 
-          `💰 <b>Balance Update</b>\n\n` +
-          `➕ ${formatINR(amount)} added to your account\n` +
-          `💵 New Balance: ${formatINR(newBalance)}`
-        )
-      }
-
-      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-    }
-
-    // ============ SUBTRACT BALANCE ============
-    if (command === '/sub_balance') {
-      if (args.length < 2) {
-        await sendMessage(botToken, chatId, '❌ Usage: <code>/sub_balance [account_no] [amount]</code>\n\nExample: <code>/sub_balance 100000001 1000</code>')
-        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-      }
-
-      const amount = parseFloat(args[1])
-      if (isNaN(amount) || amount <= 0) {
-        await sendMessage(botToken, chatId, '❌ Invalid amount')
-        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-      }
-
-      const { data: merchant, error } = await supabaseAdmin
-        .from('merchants')
-        .select('id, merchant_name, balance, telegram_chat_id')
-        .eq('account_number', args[0])
-        .maybeSingle()
-
-      if (error || !merchant) {
-        await sendMessage(botToken, chatId, '❌ Merchant not found')
-        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-      }
-
-      const newBalance = Math.max(0, (merchant.balance || 0) - amount)
-      await supabaseAdmin
-        .from('merchants')
-        .update({ balance: newBalance })
-        .eq('id', merchant.id)
-
-      await sendMessage(botToken, chatId, 
-        `✅ <b>Balance Subtracted</b>\n\n` +
-        `👤 ${merchant.merchant_name}\n` +
-        `➖ Subtracted: ${formatINR(amount)}\n` +
-        `💰 New Balance: ${formatINR(newBalance)}`
-      )
-
-      if (merchant.telegram_chat_id) {
-        await sendMessage(botToken, merchant.telegram_chat_id, 
-          `💰 <b>Balance Update</b>\n\n` +
-          `➖ ${formatINR(amount)} deducted from your account\n` +
-          `💵 New Balance: ${formatINR(newBalance)}`
-        )
-      }
-
-      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-    }
-
-    // ============ LIST GATEWAYS ============
-    if (command === '/gateways') {
-      const { data: gateways } = await supabaseAdmin
-        .from('payment_gateways')
-        .select('gateway_code, gateway_name, gateway_type, currency, trade_type, is_active')
-        .order('gateway_name')
-
-      if (!gateways?.length) {
-        await sendMessage(botToken, chatId, '🌐 No gateways configured')
-        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-      }
-
-      let msg = `🌐 <b>Payment Gateways</b>\n\n`
-      gateways.forEach((g, i) => {
-        const status = g.is_active ? '✅' : '❌'
-        msg += `${i + 1}. ${status} <b>${g.gateway_name}</b>\n`
-        msg += `   Code: <code>${g.gateway_code}</code>\n`
-        msg += `   Type: ${g.gateway_type} | ${g.currency}\n`
-        if (g.trade_type) msg += `   Trade: ${g.trade_type}\n`
-        msg += `\n`
-      })
-
-      await sendMessage(botToken, chatId, msg)
-      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-    }
-
-    // ============ SET GATEWAY ============
-    if (command === '/set_gateway') {
-      if (args.length < 2) {
-        await sendMessage(botToken, chatId, '❌ Usage: <code>/set_gateway [account_no] [gateway_code]</code>\n\n<i>Use /gateways to see available codes</i>')
-        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-      }
-
-      const { data: gateway } = await supabaseAdmin
-        .from('payment_gateways')
-        .select('id, gateway_name, currency')
-        .eq('gateway_code', args[1])
-        .eq('is_active', true)
-        .maybeSingle()
-
-      if (!gateway) {
-        await sendMessage(botToken, chatId, `❌ Gateway <code>${args[1]}</code> not found or inactive\n\n<i>Use /gateways to see available codes</i>`)
-        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-      }
-
-      const { data: merchant, error } = await supabaseAdmin
-        .from('merchants')
-        .update({ gateway_id: gateway.id })
-        .eq('account_number', args[0])
-        .select('merchant_name, telegram_chat_id')
-        .maybeSingle()
-
-      if (error || !merchant) {
-        await sendMessage(botToken, chatId, '❌ Merchant not found')
-        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-      }
-
-      await sendMessage(botToken, chatId, 
-        `✅ <b>Gateway Updated</b>\n\n` +
-        `👤 ${merchant.merchant_name}\n` +
-        `🌐 Gateway: ${gateway.gateway_name} (${gateway.currency})`
-      )
-
-      if (merchant.telegram_chat_id) {
-        await sendMessage(botToken, merchant.telegram_chat_id, 
-          `🌐 <b>Gateway Update</b>\n\n` +
-          `Your payment gateway has been changed to:\n` +
-          `<b>${gateway.gateway_name}</b> (${gateway.currency})`
-        )
-      }
-
-      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-    }
-
-    // ============ SET TRADE TYPE ============
-    if (command === '/set_trade') {
-      if (args.length < 2) {
-        await sendMessage(botToken, chatId, 
-          `❌ Usage: <code>/set_trade [account_no] [trade_type]</code>\n\n` +
-          `<b>🇮🇳 India (INR):</b>\n` +
-          `• <code>INRUPI</code> - UPI Payment\n` +
-          `• <code>usdt</code> - USDT (TRC20)\n\n` +
-          `<b>🇵🇰 Pakistan (PKR):</b>\n` +
-          `• <code>easypaisa</code> - Easypaisa\n` +
-          `• <code>jazzcash</code> - JazzCash\n\n` +
-          `<b>🇧🇩 Bangladesh (BDT):</b>\n` +
-          `• <code>nagad</code> - Nagad\n` +
-          `• <code>bkash</code> - bKash\n\n` +
-          `Example: <code>/set_trade 100000001 usdt</code>`
-        )
-        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-      }
-
-      const tradeType = args[1]
-
-      const { data: merchant, error } = await supabaseAdmin
-        .from('merchants')
-        .update({ trade_type: tradeType })
-        .eq('account_number', args[0])
-        .select('merchant_name, telegram_chat_id')
-        .maybeSingle()
-
-      if (error || !merchant) {
-        await sendMessage(botToken, chatId, '❌ Merchant not found')
-        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-      }
-
-      await sendMessage(botToken, chatId, 
-        `✅ <b>Trade Type Updated</b>\n\n` +
-        `👤 ${merchant.merchant_name}\n` +
-        `🔄 Trade Type: <code>${tradeType}</code>`
-      )
-
-      if (merchant.telegram_chat_id) {
-        await sendMessage(botToken, merchant.telegram_chat_id, 
-          `🔄 <b>Trade Type Update</b>\n\n` +
-          `Your payment trade type has been changed to:\n` +
-          `<code>${tradeType}</code>`
-        )
-      }
-
-      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-    }
 
     // Unknown command
     await sendMessage(botToken, chatId, `❓ Unknown command.\n\nType /help for available commands.`)
