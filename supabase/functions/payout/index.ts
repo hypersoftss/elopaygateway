@@ -156,61 +156,16 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Get admin settings
+    // Get admin settings for thresholds
     const { data: settings, error: settingsError } = await supabaseAdmin
       .from('admin_settings')
-      .select('master_merchant_id, master_payout_key, bondpay_base_url, large_payout_threshold')
+      .select('large_payout_threshold')
       .limit(1)
 
-    if (settingsError || !settings || settings.length === 0) {
-      console.error('Admin settings not found')
-      return new Response(
-        JSON.stringify({ code: 500, message: 'System configuration error' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    const adminSettings = settings[0]
+    const adminSettings = settings?.[0]
     const orderNo = generateOrderNo()
-    const internalCallbackUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/callback-handler`
 
-    // Generate BondPay signature
-    const bondPaySignature = generateBondPayPayoutSignature(
-      account_number,
-      amount.toString(),
-      bank_name,
-      internalCallbackUrl,
-      ifsc,
-      adminSettings.master_merchant_id,
-      name,
-      orderNo,
-      adminSettings.master_payout_key
-    )
-
-    console.log('Calling BondPay Payout API...')
-
-    // Call BondPay API
-    const formData = new URLSearchParams()
-    formData.append('merchant_id', adminSettings.master_merchant_id)
-    formData.append('amount', amount.toString())
-    formData.append('transaction_id', orderNo)
-    formData.append('account_number', account_number)
-    formData.append('ifsc', ifsc)
-    formData.append('name', name)
-    formData.append('bank_name', bank_name)
-    formData.append('callback_url', internalCallbackUrl)
-    formData.append('signature', bondPaySignature)
-
-    const bondPayResponse = await fetch(`${adminSettings.bondpay_base_url}/payout/payment.php`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: formData.toString()
-    })
-
-    const bondPayData = await bondPayResponse.json()
-    console.log('BondPay Payout response:', bondPayData)
-
-    // Create transaction
+    // Create transaction in PENDING state - admin must approve before BondPay call
     const { data: txData, error: txError } = await supabaseAdmin
       .from('transactions')
       .insert({
@@ -226,10 +181,7 @@ Deno.serve(async (req) => {
         account_number,
         account_holder_name: name,
         ifsc_code: ifsc,
-        extra: JSON.stringify({
-          bondpay_response: bondPayData,
-          merchant_callback: callback_url
-        })
+        callback_data: { merchant_callback: callback_url }
       })
       .select('id')
       .single()
@@ -242,7 +194,7 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Deduct balance and freeze
+    // Deduct balance and freeze - will be processed when admin approves
     const { error: balanceError } = await supabaseAdmin
       .from('merchants')
       .update({
@@ -255,8 +207,19 @@ Deno.serve(async (req) => {
       console.error('Balance update error:', balanceError)
     }
 
-    // Check for large transaction and create notification
-    if (amountNum >= (adminSettings.large_payout_threshold || 5000)) {
+    // Create notification for admin
+    await createNotification(
+      supabaseAdmin,
+      'new_payout_request',
+      `New Payout: ₹${amountNum.toLocaleString()}`,
+      `Merchant ${merchant.merchant_name} (${merchant_id}) requested payout of ₹${amountNum.toLocaleString()} to ${bank_name} - ${account_number}`,
+      amountNum,
+      merchant.id,
+      txData?.id
+    )
+
+    // Also check for large transaction notification
+    if (amountNum >= (adminSettings?.large_payout_threshold || 5000)) {
       await createNotification(
         supabaseAdmin,
         'large_payout',
@@ -268,7 +231,7 @@ Deno.serve(async (req) => {
       )
     }
 
-    console.log('Payout order created successfully:', orderNo)
+    console.log('Payout order created (pending admin approval):', orderNo)
 
     return new Response(
       JSON.stringify({
@@ -281,7 +244,8 @@ Deno.serve(async (req) => {
           amount: amountNum,
           fee,
           total_amount: totalDeduction,
-          status: 'pending'
+          status: 'pending',
+          note: 'Awaiting admin approval'
         }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
