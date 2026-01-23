@@ -13,9 +13,15 @@ import {
   BarChart3,
   Clock,
   Activity,
-  Shield
+  Shield,
+  Zap,
+  Globe,
+  Server,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -201,191 +207,227 @@ const AdminDashboard = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-4 md:space-y-6 animate-fade-in">
-        {/* Header */}
-        <div className="flex flex-col gap-4">
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold">{t('dashboard.title')}</h1>
-            <p className="text-xs md:text-sm text-muted-foreground">
-              {language === 'zh' ? '欢迎回来！这是您的业务概览。' : "Welcome back! Here's your business overview."}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" onClick={fetchData} className="flex-1 sm:flex-none">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              {t('common.refresh')}
-            </Button>
-            <Button
-              variant={isLive ? "default" : "outline"}
-              size="sm"
-              onClick={() => setIsLive(!isLive)}
-              className={`flex-1 sm:flex-none ${isLive ? "bg-green-600 hover:bg-green-700" : ""}`}
-            >
-              <Radio className="h-4 w-4 mr-2" />
-              {language === 'zh' ? '实时' : 'Live'}
-            </Button>
+      <div className="space-y-6 animate-fade-in">
+        {/* Premium Header */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 p-6 text-white">
+          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzRjMC0yIDItNCAyLTRzLTItMi00LTJsLTIgMnYtNGgtNHY0bC0yLTJjLTIgMC00IDItNCAyczIgMiAyIDR2Mmg0di00bDIgMmMyIDAgNC0yIDQtMnYtMnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-30" />
+          <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                <BarChart3 className="h-8 w-8" />
+              </div>
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold">{t('dashboard.title')}</h1>
+                <p className="text-white/80 text-sm mt-1">
+                  {language === 'zh' ? '欢迎回来！这是您的业务概览。' : "Welcome back! Here's your business overview."}
+                </p>
+              </div>
+              {isLive && (
+                <Badge className="bg-green-400 text-green-900 hover:bg-green-400 animate-pulse">
+                  <Radio className="h-3 w-3 mr-1" />
+                  LIVE
+                </Badge>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" size="sm" onClick={fetchData} className="bg-white/20 hover:bg-white/30 border-white/20 text-white">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                {t('common.refresh')}
+              </Button>
+              <Button
+                variant={isLive ? "secondary" : "outline"}
+                size="sm"
+                onClick={() => setIsLive(!isLive)}
+                className={isLive ? "bg-green-400 text-green-900 hover:bg-green-500" : "bg-white/20 hover:bg-white/30 border-white/20 text-white"}
+              >
+                <Radio className="h-4 w-4 mr-2" />
+                {language === 'zh' ? '实时' : 'Live'}
+              </Button>
+            </div>
           </div>
         </div>
 
-        {/* Top Stats Cards - 2x2 on mobile, 4 cols on desktop */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        {/* Hero Stats Cards - 2x2 on mobile, 4 cols on desktop */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Today's Pay-In */}
-          <Card className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground overflow-hidden relative">
-            <CardContent className="p-4 md:p-6">
-              <div className="flex flex-col gap-2">
+          <Card className="premium-card overflow-hidden group hover:scale-[1.02] transition-transform duration-300">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent" />
+            <CardContent className="p-5 relative">
+              <div className="flex flex-col gap-3">
                 <div className="flex justify-between items-start">
-                  <p className="text-xs md:text-sm opacity-80">{t('dashboard.todayPayin')}</p>
-                  <div className="p-1.5 md:p-2 bg-white/20 rounded-lg">
-                    <ArrowDownToLine className="h-4 w-4 md:h-5 md:w-5" />
+                  <p className="text-xs md:text-sm text-muted-foreground font-medium">{t('dashboard.todayPayin')}</p>
+                  <div className="p-2 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors">
+                    <ArrowDownToLine className="h-4 w-4 md:h-5 md:w-5 text-primary" />
                   </div>
                 </div>
-                <p className="text-lg md:text-2xl lg:text-3xl font-bold truncate">₹{stats?.todayPayinAmount.toLocaleString()}</p>
-                <p className="text-xs opacity-80">{stats?.todayPayinCount} {language === 'zh' ? '笔' : 'txns'}</p>
-              </div>
-              <div className="absolute -bottom-4 -right-4 opacity-10">
-                <CircleDollarSign className="h-16 w-16 md:h-20 md:w-20" />
+                <p className="text-xl md:text-2xl lg:text-3xl font-bold truncate">₹{stats?.todayPayinAmount.toLocaleString()}</p>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="text-xs">
+                    {stats?.todayPayinCount} {language === 'zh' ? '笔' : 'txns'}
+                  </Badge>
+                </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Today's Pay-Out */}
-          <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white overflow-hidden relative">
-            <CardContent className="p-4 md:p-6">
-              <div className="flex flex-col gap-2">
+          <Card className="premium-card overflow-hidden group hover:scale-[1.02] transition-transform duration-300">
+            <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-transparent" />
+            <CardContent className="p-5 relative">
+              <div className="flex flex-col gap-3">
                 <div className="flex justify-between items-start">
-                  <p className="text-xs md:text-sm opacity-80">{t('dashboard.todayPayout')}</p>
-                  <div className="p-1.5 md:p-2 bg-white/20 rounded-lg">
-                    <ArrowUpFromLine className="h-4 w-4 md:h-5 md:w-5" />
+                  <p className="text-xs md:text-sm text-muted-foreground font-medium">{t('dashboard.todayPayout')}</p>
+                  <div className="p-2 bg-orange-500/10 rounded-lg group-hover:bg-orange-500/20 transition-colors">
+                    <ArrowUpFromLine className="h-4 w-4 md:h-5 md:w-5 text-orange-500" />
                   </div>
                 </div>
-                <p className="text-lg md:text-2xl lg:text-3xl font-bold truncate">₹{stats?.todayPayoutAmount.toLocaleString()}</p>
-                <p className="text-xs opacity-80">{stats?.todayPayoutCount} {language === 'zh' ? '笔' : 'txns'}</p>
-              </div>
-              <div className="absolute -bottom-4 -right-4 opacity-10">
-                <CircleDollarSign className="h-16 w-16 md:h-20 md:w-20" />
+                <p className="text-xl md:text-2xl lg:text-3xl font-bold truncate text-orange-500">₹{stats?.todayPayoutAmount.toLocaleString()}</p>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="text-xs bg-orange-500/10 text-orange-600">
+                    {stats?.todayPayoutCount} {language === 'zh' ? '笔' : 'txns'}
+                  </Badge>
+                </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Total Balance */}
-          <Card className="bg-gradient-to-br from-teal-500 to-teal-600 text-white overflow-hidden relative">
-            <CardContent className="p-4 md:p-6">
-              <div className="flex flex-col gap-2">
+          <Card className="premium-card overflow-hidden group hover:scale-[1.02] transition-transform duration-300">
+            <div className="absolute inset-0 bg-gradient-to-br from-teal-500/10 to-transparent" />
+            <CardContent className="p-5 relative">
+              <div className="flex flex-col gap-3">
                 <div className="flex justify-between items-start">
-                  <p className="text-xs md:text-sm opacity-80">{t('dashboard.totalBalance')}</p>
-                  <div className="p-1.5 md:p-2 bg-white/20 rounded-lg">
-                    <Wallet className="h-4 w-4 md:h-5 md:w-5" />
+                  <p className="text-xs md:text-sm text-muted-foreground font-medium">{t('dashboard.totalBalance')}</p>
+                  <div className="p-2 bg-teal-500/10 rounded-lg group-hover:bg-teal-500/20 transition-colors">
+                    <Wallet className="h-4 w-4 md:h-5 md:w-5 text-teal-500" />
                   </div>
                 </div>
-                <p className="text-lg md:text-2xl lg:text-3xl font-bold truncate">₹{stats?.totalBalance.toLocaleString()}</p>
-                <p className="text-xs opacity-80">{language === 'zh' ? '所有商户' : 'All merchants'}</p>
-              </div>
-              <div className="absolute -bottom-4 -right-4 opacity-10">
-                <Wallet className="h-16 w-16 md:h-20 md:w-20" />
+                <p className="text-xl md:text-2xl lg:text-3xl font-bold truncate text-teal-500">₹{stats?.totalBalance.toLocaleString()}</p>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="text-xs bg-teal-500/10 text-teal-600">
+                    {language === 'zh' ? '所有商户' : 'All merchants'}
+                  </Badge>
+                </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Total Merchants */}
-          <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white overflow-hidden relative">
-            <CardContent className="p-4 md:p-6">
-              <div className="flex flex-col gap-2">
+          <Card className="premium-card overflow-hidden group hover:scale-[1.02] transition-transform duration-300">
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent" />
+            <CardContent className="p-5 relative">
+              <div className="flex flex-col gap-3">
                 <div className="flex justify-between items-start">
-                  <p className="text-xs md:text-sm opacity-80">{t('dashboard.totalMerchants')}</p>
-                  <div className="p-1.5 md:p-2 bg-white/20 rounded-lg">
-                    <Users className="h-4 w-4 md:h-5 md:w-5" />
+                  <p className="text-xs md:text-sm text-muted-foreground font-medium">{t('dashboard.totalMerchants')}</p>
+                  <div className="p-2 bg-purple-500/10 rounded-lg group-hover:bg-purple-500/20 transition-colors">
+                    <Users className="h-4 w-4 md:h-5 md:w-5 text-purple-500" />
                   </div>
                 </div>
-                <p className="text-lg md:text-2xl lg:text-3xl font-bold">{stats?.totalMerchants}</p>
-                <p className="text-xs opacity-80">{stats?.activeMerchants} {language === 'zh' ? '活跃' : 'active'}</p>
-              </div>
-              <div className="absolute -bottom-4 -right-4 opacity-10">
-                <Users className="h-16 w-16 md:h-20 md:w-20" />
+                <p className="text-xl md:text-2xl lg:text-3xl font-bold text-purple-500">{stats?.totalMerchants}</p>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="text-xs bg-purple-500/10 text-purple-600">
+                    {stats?.activeMerchants} {language === 'zh' ? '活跃' : 'active'}
+                  </Badge>
+                </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
         {/* Secondary Stats - Stack on mobile */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Yesterday's Summary */}
-          <Card className="border-l-4 border-l-blue-500">
-            <CardHeader className="pb-2 px-4 pt-4">
+          <Card className="glass-card border-l-4 border-l-blue-500">
+            <CardHeader className="pb-2 p-4">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Clock className="h-4 w-4 text-blue-500" />
                 {language === 'zh' ? '昨日汇总' : "Yesterday"}
               </CardTitle>
             </CardHeader>
-            <CardContent className="px-4 pb-4 space-y-2">
+            <CardContent className="p-4 pt-0 space-y-3">
               <div className="flex justify-between items-center">
                 <span className="text-xs text-muted-foreground">{t('transactions.payin')}</span>
-                <span className="text-sm font-medium text-primary">₹{stats?.yesterdayPayin.toLocaleString()}</span>
+                <span className="text-sm font-semibold text-primary">+₹{stats?.yesterdayPayin.toLocaleString()}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-xs text-muted-foreground">{t('transactions.payout')}</span>
-                <span className="text-sm font-medium text-orange-500">₹{stats?.yesterdayPayout.toLocaleString()}</span>
+                <span className="text-sm font-semibold text-orange-500">-₹{stats?.yesterdayPayout.toLocaleString()}</span>
               </div>
               <div className="flex justify-between items-center border-t pt-2">
                 <span className="text-xs font-medium">{language === 'zh' ? '净流入' : 'Net'}</span>
                 <span className={`text-sm font-bold ${netFlow >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                  ₹{netFlow.toLocaleString()}
+                  {netFlow >= 0 ? '+' : ''}₹{netFlow.toLocaleString()}
                 </span>
               </div>
             </CardContent>
           </Card>
 
-          {/* Pending Merchant Withdrawals */}
-          <Card className="border-l-4 border-l-purple-500">
-            <CardHeader className="pb-2 px-4 pt-4">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Wallet className="h-4 w-4 text-purple-500" />
-                {language === 'zh' ? '商户提现' : 'Withdrawals'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-4">
-              <div className="text-2xl font-bold text-purple-500">{stats?.pendingWithdrawals}</div>
-              <p className="text-xs text-muted-foreground">
-                ₹{stats?.pendingWithdrawalsAmount.toLocaleString()} {language === 'zh' ? '待处理' : 'pending'}
-              </p>
-              <Link to="/admin/withdrawals" className="text-xs text-primary hover:underline flex items-center gap-1 mt-2">
-                {language === 'zh' ? '管理' : 'Manage'}
-                <ArrowRight className="h-3 w-3" />
-              </Link>
-            </CardContent>
+          {/* Pending Payouts */}
+          <Card className="glass-card border-l-4 border-l-yellow-500 group cursor-pointer hover:shadow-lg transition-shadow">
+            <Link to="/admin/withdrawals">
+              <CardHeader className="pb-2 p-4">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-yellow-500" />
+                  {language === 'zh' ? '待审批代付' : 'Pending Payouts'}
+                  {(stats?.pendingPayouts || 0) > 0 && (
+                    <Badge variant="destructive" className="animate-pulse ml-auto">
+                      {stats?.pendingPayouts}
+                    </Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 pt-0">
+                <div className="text-2xl font-bold text-yellow-500">{stats?.pendingPayouts}</div>
+                <p className="text-xs text-muted-foreground">
+                  ₹{stats?.pendingPayoutsAmount.toLocaleString()} {language === 'zh' ? '待处理' : 'pending'}
+                </p>
+                <div className="flex items-center gap-1 mt-2 text-xs text-primary group-hover:underline">
+                  {language === 'zh' ? '立即处理' : 'Process now'}
+                  <ArrowRight className="h-3 w-3" />
+                </div>
+              </CardContent>
+            </Link>
           </Card>
 
-          {/* Pending BondPay Payouts */}
-          <Card className="border-l-4 border-l-yellow-500">
-            <CardHeader className="pb-2 px-4 pt-4">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Activity className="h-4 w-4 text-yellow-500" />
-                {language === 'zh' ? 'BondPay代付' : 'BondPay'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-4">
-              <div className="text-2xl font-bold text-yellow-500">{stats?.pendingPayouts}</div>
-              <p className="text-xs text-muted-foreground">
-                ₹{stats?.pendingPayoutsAmount.toLocaleString()} {language === 'zh' ? '待处理' : 'pending'}
-              </p>
-              <Link to="/admin/payout" className="text-xs text-primary hover:underline flex items-center gap-1 mt-2">
-                {language === 'zh' ? '管理' : 'Manage'}
-                <ArrowRight className="h-3 w-3" />
-              </Link>
-            </CardContent>
+          {/* Merchant Withdrawals */}
+          <Card className="glass-card border-l-4 border-l-purple-500 group cursor-pointer hover:shadow-lg transition-shadow">
+            <Link to="/admin/withdrawals">
+              <CardHeader className="pb-2 p-4">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Wallet className="h-4 w-4 text-purple-500" />
+                  {language === 'zh' ? '商户提现' : 'Withdrawals'}
+                  {(stats?.pendingWithdrawals || 0) > 0 && (
+                    <Badge className="bg-purple-500 ml-auto">
+                      {stats?.pendingWithdrawals}
+                    </Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 pt-0">
+                <div className="text-2xl font-bold text-purple-500">{stats?.pendingWithdrawals}</div>
+                <p className="text-xs text-muted-foreground">
+                  ₹{stats?.pendingWithdrawalsAmount.toLocaleString()} {language === 'zh' ? '待处理' : 'pending'}
+                </p>
+                <div className="flex items-center gap-1 mt-2 text-xs text-primary group-hover:underline">
+                  {language === 'zh' ? '管理' : 'Manage'}
+                  <ArrowRight className="h-3 w-3" />
+                </div>
+              </CardContent>
+            </Link>
           </Card>
 
           {/* Success Rate */}
-          <Card className="border-l-4 border-l-green-500">
-            <CardHeader className="pb-2 px-4 pt-4">
+          <Card className="glass-card border-l-4 border-l-green-500">
+            <CardHeader className="pb-2 p-4">
               <CardTitle className="text-sm flex items-center gap-2">
-                <BarChart3 className="h-4 w-4 text-green-500" />
+                <TrendingUp className="h-4 w-4 text-green-500" />
                 {language === 'zh' ? '成功率' : 'Success Rate'}
               </CardTitle>
             </CardHeader>
-            <CardContent className="px-4 pb-4">
+            <CardContent className="p-4 pt-0">
               <div className="text-2xl font-bold text-green-500">{stats?.successRate.toFixed(1)}%</div>
-              <Progress value={stats?.successRate || 0} className="mt-2 h-1.5" />
-              <p className="text-xs text-muted-foreground mt-1">
+              <Progress value={stats?.successRate || 0} className="mt-2 h-2" />
+              <p className="text-xs text-muted-foreground mt-2">
                 {language === 'zh' ? '总体交易成功率' : 'Overall success'}
               </p>
             </CardContent>
@@ -393,58 +435,63 @@ const AdminDashboard = () => {
         </div>
 
         {/* Recent Transactions */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between px-4 md:px-6 py-4">
-            <CardTitle className="text-base md:text-lg">{t('dashboard.recentTransactions')}</CardTitle>
+        <Card className="premium-card">
+          <CardHeader className="flex flex-row items-center justify-between p-4 md:p-6">
+            <div>
+              <CardTitle className="text-lg">{t('dashboard.recentTransactions')}</CardTitle>
+              <CardDescription>{language === 'zh' ? '最近10笔交易记录' : 'Last 10 transactions'}</CardDescription>
+            </div>
             <Link to="/admin/payin">
-              <Button variant="ghost" size="sm">
+              <Button variant="outline" size="sm" className="gap-1">
                 {language === 'zh' ? '查看全部' : 'View All'}
-                <ArrowRight className="h-4 w-4 ml-1" />
+                <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y divide-border">
               {recentTransactions.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  {t('common.noData')}
+                <div className="text-center py-12 text-muted-foreground">
+                  <Server className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                  <p>{t('common.noData')}</p>
                 </div>
               ) : (
                 recentTransactions.map((tx) => (
-                  <div key={tx.id} className="flex items-center justify-between p-3 md:p-4 hover:bg-muted/50 transition-colors">
+                  <div key={tx.id} className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className={`p-1.5 md:p-2 rounded-full shrink-0 ${
+                      <div className={`p-2 rounded-full shrink-0 ${
                         tx.transaction_type === 'payin' 
-                          ? 'bg-green-500/10 text-green-500' 
+                          ? 'bg-primary/10 text-primary' 
                           : 'bg-orange-500/10 text-orange-500'
                       }`}>
                         {tx.transaction_type === 'payin' 
-                          ? <ArrowDownToLine className="h-3 w-3 md:h-4 md:w-4" /> 
-                          : <ArrowUpFromLine className="h-3 w-3 md:h-4 md:w-4" />
+                          ? <ArrowDownToLine className="h-4 w-4" />
+                          : <ArrowUpFromLine className="h-4 w-4" />
                         }
                       </div>
-                      <div className="min-w-0 flex-1">
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm truncate">{tx.merchants?.merchant_name || 'Unknown'}</p>
                         <div className="flex items-center gap-2">
-                          <p className="font-mono text-xs md:text-sm font-medium truncate">{tx.order_no}</p>
-                          <span className={`text-xs px-1.5 py-0.5 rounded ${
-                            tx.transaction_type === 'payin' 
-                              ? 'bg-green-500/10 text-green-600' 
-                              : 'bg-orange-500/10 text-orange-600'
+                          <p className="text-xs text-muted-foreground font-mono">{tx.order_no.slice(0, 12)}...</p>
+                          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${
+                            tx.transaction_type === 'payin' ? 'border-primary/50 text-primary' : 'border-orange-500/50 text-orange-500'
                           }`}>
                             {tx.transaction_type === 'payin' ? 'IN' : 'OUT'}
-                          </span>
+                          </Badge>
                         </div>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {tx.merchants?.merchant_name} • {format(new Date(tx.created_at), 'HH:mm')}
-                        </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 md:gap-3 shrink-0">
-                      <span className={`text-xs md:text-sm font-semibold ${
-                        tx.transaction_type === 'payin' ? 'text-green-500' : 'text-orange-500'
-                      }`}>
-                        {tx.transaction_type === 'payin' ? '+' : '-'}₹{Number(tx.amount).toLocaleString()}
-                      </span>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <div className="text-right">
+                        <p className={`font-semibold text-sm ${
+                          tx.transaction_type === 'payin' ? 'text-primary' : 'text-orange-500'
+                        }`}>
+                          {tx.transaction_type === 'payin' ? '+' : '-'}₹{tx.amount.toLocaleString()}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(tx.created_at), 'HH:mm')}
+                        </p>
+                      </div>
                       <StatusBadge status={tx.status} />
                     </div>
                   </div>
