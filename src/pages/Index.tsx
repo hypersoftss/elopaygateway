@@ -29,6 +29,7 @@ import { LanguageSwitch } from '@/components/LanguageSwitch';
 import { useTranslation } from '@/lib/i18n';
 import { useGatewaySettings } from '@/hooks/useGatewaySettings';
 import { ScrollReveal } from '@/hooks/useScrollReveal';
+import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 
 // Enhanced floating particle component with 3D effects
 const FloatingParticle = ({ 
@@ -109,6 +110,23 @@ const Index = () => {
   // Use gateway name and logo from settings
   const gatewayName = settings.gatewayName;
   const logoUrl = settings.logoUrl;
+
+  // Dynamic document meta
+  useDocumentMeta({
+    title: gatewayName ? `${gatewayName} - ${isEnglish ? 'Professional Payment Gateway' : '专业支付网关'}` : undefined,
+    description: gatewayName 
+      ? (isEnglish 
+          ? `${gatewayName} - Secure, fast, and reliable payment processing with instant settlement and enterprise-grade security.`
+          : `${gatewayName} - 安全、快速、可靠的支付处理，即时结算，企业级安全。`)
+      : undefined,
+    ogTitle: gatewayName ? `${gatewayName} - ${isEnglish ? 'Payment Gateway' : '支付网关'}` : undefined,
+    ogDescription: gatewayName
+      ? (isEnglish
+          ? `Power your business with ${gatewayName}. Multi-channel payments, real-time analytics, and 24/7 support.`
+          : `使用${gatewayName}为您的业务赋能。多渠道支付、实时分析和全天候支持。`)
+      : undefined,
+    ogImage: logoUrl || undefined,
+  });
 
   const features = [
     {
