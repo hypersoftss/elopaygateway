@@ -53,6 +53,11 @@ interface Merchant {
   is_2fa_enabled: boolean;
   created_at: string;
   gateway_id: string | null;
+  payment_gateways?: {
+    gateway_code: string;
+    gateway_name: string;
+    currency: string;
+  } | null;
 }
 
 interface Gateway {
@@ -102,7 +107,7 @@ const AdminMerchants = () => {
     try {
       const { data, error: fetchError } = await supabase
         .from('merchants')
-        .select('*')
+        .select('*, payment_gateways(gateway_code, gateway_name, currency)')
         .order('created_at', { ascending: false });
 
       if (fetchError) throw fetchError;
@@ -588,6 +593,7 @@ const AdminMerchants = () => {
               <TableHeader>
                 <TableRow className="bg-muted/50">
                   <TableHead>{t('merchants.name')}</TableHead>
+                  <TableHead>{language === 'zh' ? '网关' : 'Gateway'}</TableHead>
                   <TableHead>{language === 'zh' ? 'API密钥' : 'API Key'}</TableHead>
                   <TableHead className="text-right">{t('merchants.balance')}</TableHead>
                   <TableHead className="text-center">{language === 'zh' ? '费率' : 'Fees'}</TableHead>
@@ -601,6 +607,7 @@ const AdminMerchants = () => {
                   Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i}>
                       <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-24" /></TableCell>
@@ -611,7 +618,7 @@ const AdminMerchants = () => {
                   ))
                 ) : filteredMerchants.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                       {t('common.noData')}
                     </TableCell>
                   </TableRow>
@@ -623,6 +630,17 @@ const AdminMerchants = () => {
                           <p className="font-medium">{merchant.merchant_name}</p>
                           <p className="text-xs text-muted-foreground font-mono">{merchant.account_number}</p>
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        {merchant.payment_gateways ? (
+                          <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/20">
+                            {merchant.payment_gateways.gateway_name} ({merchant.payment_gateways.currency})
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs bg-muted text-muted-foreground">
+                            {language === 'zh' ? '未设置' : 'Not Set'}
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">

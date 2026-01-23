@@ -63,11 +63,11 @@ function generateWithdrawalPassword(): string {
   return Math.random().toString(36).slice(2, 10).toUpperCase()
 }
 
-// Find merchant by telegram chat ID
+// Find merchant by telegram chat ID with gateway info
 async function findMerchantByChatId(supabaseAdmin: any, chatId: string) {
   const { data: merchant } = await supabaseAdmin
     .from('merchants')
-    .select('*')
+    .select('*, payment_gateways(gateway_code, gateway_name, currency)')
     .eq('telegram_chat_id', chatId)
     .maybeSingle()
   return merchant
@@ -211,13 +211,17 @@ Deno.serve(async (req) => {
         const status = m.is_active ? '✅ Active' : '❌ Inactive'
         const twoFa = m.is_2fa_enabled ? '🔐 Enabled' : '🔓 Disabled'
         const total = (m.balance || 0) + (m.frozen_balance || 0)
+        const gatewayDisplay = m.payment_gateways 
+          ? `${m.payment_gateways.gateway_name} (${m.payment_gateways.currency})`
+          : 'Default'
 
         const msg = `👤 <b>My Account</b>\n\n` +
           `━━━ 📋 INFO ━━━\n` +
           `📛 Name: ${m.merchant_name}\n` +
           `🆔 ID: <code>${m.account_number}</code>\n` +
           `📊 Status: ${status}\n` +
-          `🔐 2FA: ${twoFa}\n\n` +
+          `🔐 2FA: ${twoFa}\n` +
+          `🌐 Gateway: ${gatewayDisplay}\n\n` +
           `━━━ 💰 BALANCE ━━━\n` +
           `💵 Available: ${formatINR(m.balance || 0)}\n` +
           `🧊 Frozen: ${formatINR(m.frozen_balance || 0)}\n` +
@@ -502,23 +506,36 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // ============ CREATE MERCHANT (with callback_url support) ============
+    // ============ CREATE MERCHANT (with callback_url and gateway support) ============
     if (command === '/create_merchant') {
-      // Parse: /create_merchant "Name" email group_id [callback_url]
-      const match = text.match(/\/create_merchant\s+"([^"]+)"\s+(\S+)\s+(-?\d+)(?:\s+(\S+))?/i)
+      // Parse: /create_merchant "Name" email group_id [gateway_code] [callback_url]
+      const match = text.match(/\/create_merchant\s+"([^"]+)"\s+(\S+)\s+(-?\d+)(?:\s+(\S+))?(?:\s+(\S+))?/i)
       
       if (!match) {
+        // Get available gateways
+        const { data: availableGateways } = await supabaseAdmin
+          .from('payment_gateways')
+          .select('gateway_code, gateway_name, currency')
+          .eq('is_active', true)
+        
+        let gatewayList = 'Available gateways:\n'
+        availableGateways?.forEach(g => {
+          gatewayList += `• <code>${g.gateway_code}</code> - ${g.gateway_name} (${g.currency})\n`
+        })
+        
         await sendMessage(botToken, chatId, 
           `❌ <b>Invalid Format</b>\n\n` +
           `Usage:\n` +
-          `<code>/create_merchant "Merchant Name" email@example.com -1001234567890</code>\n\n` +
+          `<code>/create_merchant "Merchant Name" email@example.com -1001234567890 gateway_code</code>\n\n` +
           `With callback URL:\n` +
-          `<code>/create_merchant "Merchant Name" email@example.com -1001234567890 https://callback.url/api</code>\n\n` +
+          `<code>/create_merchant "Merchant Name" email@example.com -1001234567890 gateway_code https://callback.url/api</code>\n\n` +
           `<b>Parameters:</b>\n` +
           `• Name: In quotes "..."\n` +
           `• Email: Valid email address\n` +
           `• Group ID: Telegram group ID (use /tg_id in group)\n` +
-          `• Callback URL: Optional API callback endpoint`
+          `• Gateway Code: Payment gateway to use\n` +
+          `• Callback URL: Optional API callback endpoint\n\n` +
+          `${gatewayList}`
         )
         return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
       }
@@ -526,7 +543,8 @@ Deno.serve(async (req) => {
       const merchantName = match[1]
       const email = match[2]
       const groupId = match[3]
-      const callbackUrl = match[4] || null
+      const gatewayCode = match[4] || null
+      const callbackUrl = match[5] || null
 
       // Validate email
       if (!email.includes('@') || !email.includes('.')) {
@@ -543,6 +561,25 @@ Deno.serve(async (req) => {
       }
 
       await sendMessage(botToken, chatId, `⏳ Creating merchant <b>${merchantName}</b>...`)
+
+      // Find gateway if provided
+      let gatewayId = null
+      let gatewayInfo = null
+      if (gatewayCode) {
+        const { data: gateway } = await supabaseAdmin
+          .from('payment_gateways')
+          .select('id, gateway_name, currency')
+          .eq('gateway_code', gatewayCode)
+          .eq('is_active', true)
+          .maybeSingle()
+        
+        if (!gateway) {
+          await sendMessage(botToken, chatId, `❌ Gateway <code>${gatewayCode}</code> not found or inactive`)
+          return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+        }
+        gatewayId = gateway.id
+        gatewayInfo = gateway
+      }
 
       // Generate credentials
       const password = generatePassword()
@@ -573,6 +610,7 @@ Deno.serve(async (req) => {
           telegram_chat_id: groupId,
           callback_url: callbackUrl,
           withdrawal_password: withdrawalPassword,
+          gateway_id: gatewayId,
           is_active: true,
         })
         .select('*')
@@ -597,6 +635,7 @@ Deno.serve(async (req) => {
         `📧 Email: <code>${email}</code>\n` +
         `🆔 Account: <code>${accountNum}</code>\n` +
         `📱 Telegram: <code>${groupId}</code>\n` +
+        `🌐 Gateway: ${gatewayInfo ? `${gatewayInfo.gateway_name} (${gatewayInfo.currency})` : 'Not Set'}\n` +
         `🔗 Callback: ${callbackUrl || 'Not Set'}\n` +
         `💳 Payin: ${merchant.payin_fee}%\n` +
         `💸 Payout: ${merchant.payout_fee}%\n` +
@@ -610,7 +649,8 @@ Deno.serve(async (req) => {
         `Your merchant account has been created.\n\n` +
         `━━━ 📋 ACCOUNT DETAILS ━━━\n` +
         `👤 Name: ${merchantName}\n` +
-        `🆔 Merchant ID: <code>${accountNum}</code>\n\n` +
+        `🆔 Merchant ID: <code>${accountNum}</code>\n` +
+        `🌐 Gateway: ${gatewayInfo ? `${gatewayInfo.gateway_name} (${gatewayInfo.currency})` : 'Default'}\n\n` +
         `━━━ 🔐 LOGIN CREDENTIALS ━━━\n` +
         `📧 Email: <code>${email}</code>\n` +
         `🔑 Password: <code>${password}</code>\n\n` +
@@ -705,7 +745,7 @@ Deno.serve(async (req) => {
 
       const { data: merchant, error } = await supabaseAdmin
         .from('merchants')
-        .select('*')
+        .select('*, payment_gateways(gateway_code, gateway_name, currency)')
         .eq('account_number', args[0])
         .maybeSingle()
 
@@ -716,13 +756,17 @@ Deno.serve(async (req) => {
 
       const status = merchant.is_active ? '✅ Active' : '❌ Inactive'
       const twoFa = merchant.is_2fa_enabled ? '🔐 Enabled' : '🔓 Disabled'
+      const gatewayDisplay = merchant.payment_gateways 
+        ? `${merchant.payment_gateways.gateway_name} (${merchant.payment_gateways.currency})`
+        : 'Not Set'
 
       const msg = `👤 <b>Merchant Details</b>\n\n` +
         `━━━ 📋 INFO ━━━\n` +
         `📛 Name: ${merchant.merchant_name}\n` +
         `🆔 Account: <code>${merchant.account_number}</code>\n` +
         `📊 Status: ${status}\n` +
-        `🔐 2FA: ${twoFa}\n\n` +
+        `🔐 2FA: ${twoFa}\n` +
+        `🌐 Gateway: ${gatewayDisplay}\n\n` +
         `━━━ 💰 BALANCE ━━━\n` +
         `💵 Available: ${formatINR(merchant.balance || 0)}\n` +
         `🧊 Frozen: ${formatINR(merchant.frozen_balance || 0)}\n` +
