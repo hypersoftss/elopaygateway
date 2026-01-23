@@ -23,6 +23,7 @@ import {
   UserCog,
   BookOpen,
   Layers,
+  MessageSquare,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -91,6 +92,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     },
     { label: t('sidebar.withdrawals'), icon: <Wallet className="h-5 w-5" />, href: '/admin/withdrawals' },
     { label: language === 'zh' ? '网关管理' : 'Gateways', icon: <Layers className="h-5 w-5" />, href: '/admin/gateways' },
+    { label: language === 'zh' ? 'Telegram Bot' : 'Telegram Bot', icon: <MessageSquare className="h-5 w-5" />, href: '/admin/telegram' },
     { label: t('sidebar.apiTesting'), icon: <TestTube className="h-5 w-5" />, href: '/admin/api-testing' },
     { 
       label: language === 'zh' ? 'SDK文档' : 'SDK Documentation',
