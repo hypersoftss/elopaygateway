@@ -73,7 +73,13 @@ const AdminLogin = () => {
   };
 
   useEffect(() => {
-    if (!isLoading && user && !show2FAStep) {
+    // Only redirect if:
+    // 1. Not loading
+    // 2. User exists
+    // 3. Not in 2FA step
+    // 4. Not currently submitting (prevents race condition during 2FA check)
+    // 5. No pending 2FA session
+    if (!isLoading && user && !show2FAStep && !isSubmitting && !pendingSession) {
       if (user.role === 'admin') {
         navigate('/admin');
       } else {
@@ -85,7 +91,7 @@ const AdminLogin = () => {
         supabase.auth.signOut();
       }
     }
-  }, [user, isLoading, navigate, toast, t, language, show2FAStep]);
+  }, [user, isLoading, navigate, toast, t, language, show2FAStep, isSubmitting, pendingSession]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -227,7 +233,7 @@ const AdminLogin = () => {
   if (show2FAStep) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <div className="w-full max-w-sm space-y-6">
+        <div className="w-full max-w-md space-y-6">
           {/* Header */}
           <div className="text-center">
             <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-primary/10 mb-4">
@@ -280,6 +286,40 @@ const AdminLogin = () => {
               <ArrowLeft className="h-4 w-4 mr-2" />
               {language === 'zh' ? '返回登录' : 'Back to Login'}
             </Button>
+          </div>
+
+          {/* Troubleshooting Section */}
+          <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+            <h3 className="text-sm font-medium flex items-center gap-2">
+              <Shield className="h-4 w-4 text-primary" />
+              {language === 'zh' ? '验证码无效？' : 'Code not working?'}
+            </h3>
+            <ul className="text-xs text-muted-foreground space-y-2">
+              <li className="flex items-start gap-2">
+                <span className="text-primary font-bold">1.</span>
+                <span>
+                  {language === 'zh' 
+                    ? '检查手机时间是否同步 - 打开设置 > 日期与时间 > 自动设置时间' 
+                    : 'Check phone time sync - Go to Settings > Date & Time > Enable automatic time'}
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-primary font-bold">2.</span>
+                <span>
+                  {language === 'zh' 
+                    ? '在Google Authenticator中点击右上角菜单 > 时间校正 > 立即同步' 
+                    : 'In Google Authenticator, tap menu > Time correction > Sync now'}
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-primary font-bold">3.</span>
+                <span>
+                  {language === 'zh' 
+                    ? '确保输入时验证码未过期（30秒有效期）' 
+                    : 'Make sure the code hasn\'t expired (30 second validity)'}
+                </span>
+              </li>
+            </ul>
           </div>
 
           {/* Security Badge */}
