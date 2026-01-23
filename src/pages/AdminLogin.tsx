@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Eye, EyeOff, ShieldCheck, Users, Globe, Sun, Moon, Shield, ArrowRight, BarChart3, Wallet, Activity } from 'lucide-react';
+import { Eye, EyeOff, ShieldCheck, Users, Globe, Sun, Moon, Shield, ArrowRight, BarChart3, Wallet, Activity, Smartphone, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +10,7 @@ import { useTranslation } from '@/lib/i18n';
 import { useAuthStore, initializeAuth } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import * as OTPAuth from 'otpauth';
 
 interface GatewaySettings {
   gatewayName: string;
@@ -31,6 +32,11 @@ const AdminLogin = () => {
   const [isDark, setIsDark] = useState(true);
   const [settings, setSettings] = useState<GatewaySettings>({ gatewayName: '', logoUrl: null });
   const [settingsLoading, setSettingsLoading] = useState(true);
+
+  // 2FA State
+  const [show2FAStep, setShow2FAStep] = useState(false);
+  const [twoFACode, setTwoFACode] = useState('');
+  const [pendingSession, setPendingSession] = useState<{ userId: string; secret: string } | null>(null);
 
   useEffect(() => {
     initializeAuth();
@@ -67,7 +73,7 @@ const AdminLogin = () => {
   };
 
   useEffect(() => {
-    if (!isLoading && user) {
+    if (!isLoading && user && !show2FAStep) {
       if (user.role === 'admin') {
         navigate('/admin');
       } else {
@@ -79,7 +85,7 @@ const AdminLogin = () => {
         supabase.auth.signOut();
       }
     }
-  }, [user, isLoading, navigate, toast, t, language]);
+  }, [user, isLoading, navigate, toast, t, language, show2FAStep]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,7 +102,7 @@ const AdminLogin = () => {
     setIsSubmitting(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data: authData, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -105,6 +111,80 @@ const AdminLogin = () => {
         toast({
           title: t('auth.loginFailed'),
           description: t('auth.invalidCredentials'),
+          variant: 'destructive',
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (authData.user) {
+        // Check if admin has 2FA enabled
+        const { data: adminProfiles } = await supabase
+          .from('admin_profiles')
+          .select('is_2fa_enabled, google_2fa_secret')
+          .eq('user_id', authData.user.id)
+          .limit(1);
+
+        const adminProfile = adminProfiles?.[0];
+        
+        if (adminProfile?.is_2fa_enabled && adminProfile?.google_2fa_secret) {
+          await supabase.auth.signOut();
+          setPendingSession({
+            userId: authData.user.id,
+            secret: adminProfile.google_2fa_secret,
+          });
+          setShow2FAStep(true);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+    } catch (error) {
+      toast({
+        title: t('auth.loginFailed'),
+        description: String(error),
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handle2FAVerify = async () => {
+    if (!pendingSession || twoFACode.length !== 6) return;
+
+    setIsSubmitting(true);
+    try {
+      const totp = new OTPAuth.TOTP({
+        issuer: settings.gatewayName || 'PayGate',
+        label: email,
+        algorithm: 'SHA1',
+        digits: 6,
+        period: 30,
+        secret: OTPAuth.Secret.fromBase32(pendingSession.secret),
+      });
+
+      const isValid = totp.validate({ token: twoFACode, window: 1 }) !== null;
+
+      if (!isValid) {
+        toast({
+          title: language === 'zh' ? '验证失败' : 'Verification Failed',
+          description: language === 'zh' ? '验证码不正确' : 'Invalid authentication code',
+          variant: 'destructive',
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Re-login after successful 2FA
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        toast({
+          title: t('auth.loginFailed'),
+          description: error.message,
           variant: 'destructive',
         });
       }
@@ -119,12 +199,89 @@ const AdminLogin = () => {
     }
   };
 
+  const handleBack = () => {
+    setShow2FAStep(false);
+    setTwoFACode('');
+    setPendingSession(null);
+  };
+
   if (isLoading || settingsLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
           <div className="h-10 w-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 2FA Verification Step
+  if (show2FAStep) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="w-full max-w-sm space-y-6">
+          {/* Header */}
+          <div className="text-center">
+            <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-primary/10 mb-4">
+              <Smartphone className="h-8 w-8 text-primary" />
+            </div>
+            <h1 className="text-2xl font-bold">
+              {language === 'zh' ? '双重认证' : 'Two-Factor Authentication'}
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              {language === 'zh' 
+                ? '请输入Google Authenticator中的6位验证码' 
+                : 'Enter the 6-digit code from Google Authenticator'}
+            </p>
+          </div>
+
+          {/* Code Input */}
+          <div className="space-y-4">
+            <Input
+              value={twoFACode}
+              onChange={(e) => setTwoFACode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="000000"
+              className="text-center text-3xl font-mono tracking-[0.5em] h-14"
+              maxLength={6}
+              autoFocus
+            />
+
+            <Button 
+              onClick={handle2FAVerify}
+              disabled={twoFACode.length !== 6 || isSubmitting}
+              className="w-full h-12"
+            >
+              {isSubmitting ? (
+                <span className="flex items-center gap-2">
+                  <div className="h-4 w-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                  {language === 'zh' ? '验证中...' : 'Verifying...'}
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  {language === 'zh' ? '验证并登录' : 'Verify & Login'}
+                  <ArrowRight className="h-4 w-4" />
+                </span>
+              )}
+            </Button>
+
+            <Button 
+              variant="ghost" 
+              className="w-full" 
+              onClick={handleBack}
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              {language === 'zh' ? '返回登录' : 'Back to Login'}
+            </Button>
+          </div>
+
+          {/* Security Badge */}
+          <div className="flex justify-center">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/50 text-xs text-muted-foreground">
+              <Shield className="h-3 w-3 text-primary" />
+              <span>{language === 'zh' ? '安全验证' : 'Secure Verification'}</span>
+            </div>
+          </div>
         </div>
       </div>
     );
