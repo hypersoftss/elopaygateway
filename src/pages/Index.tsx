@@ -28,6 +28,7 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { LanguageSwitch } from '@/components/LanguageSwitch';
 import { useTranslation } from '@/lib/i18n';
 import { useGatewaySettings } from '@/hooks/useGatewaySettings';
+import { ScrollReveal } from '@/hooks/useScrollReveal';
 
 // Enhanced floating particle component with 3D effects
 const FloatingParticle = ({ 
@@ -102,8 +103,12 @@ const FloatingOrb = ({
 
 const Index = () => {
   const { language } = useTranslation();
-  const { settings } = useGatewaySettings();
+  const { settings, isLoading } = useGatewaySettings();
   const isEnglish = language === 'en';
+
+  // Use gateway name and logo from settings
+  const gatewayName = settings.gatewayName;
+  const logoUrl = settings.logoUrl;
 
   const features = [
     {
@@ -208,20 +213,26 @@ const Index = () => {
       <header className="border-b border-border/50 bg-background/60 backdrop-blur-xl sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {settings.logoUrl ? (
+            {logoUrl ? (
               <img 
-                src={settings.logoUrl} 
+                src={logoUrl} 
                 alt="Logo" 
                 className="h-10 w-10 rounded-xl object-contain shadow-lg ring-2 ring-primary/20"
               />
-            ) : (
+            ) : !isLoading ? (
               <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg shadow-primary/25 ring-2 ring-primary/20">
                 <Zap className="h-5 w-5 text-primary-foreground" />
               </div>
+            ) : (
+              <div className="h-10 w-10 rounded-xl bg-muted animate-pulse" />
             )}
-            <span className="text-xl font-bold bg-gradient-to-r from-foreground via-foreground to-foreground/70 bg-clip-text">
-              {settings.gatewayName}
-            </span>
+            {gatewayName ? (
+              <span className="text-xl font-bold bg-gradient-to-r from-foreground via-foreground to-foreground/70 bg-clip-text">
+                {gatewayName}
+              </span>
+            ) : (
+              <div className="h-6 w-32 bg-muted rounded animate-pulse" />
+            )}
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
@@ -251,7 +262,7 @@ const Index = () => {
                     textShadow: '0 4px 12px hsl(var(--primary) / 0.3)',
                   }}
                 >
-                  {settings.gatewayName}
+                  {gatewayName || <span className="inline-block h-12 w-48 bg-muted/50 rounded animate-pulse" />}
                 </span>
               </>
             ) : (
@@ -262,7 +273,7 @@ const Index = () => {
                     textShadow: '0 4px 12px hsl(var(--primary) / 0.3)',
                   }}
                 >
-                  {settings.gatewayName}
+                  {gatewayName || <span className="inline-block h-12 w-48 bg-muted/50 rounded animate-pulse" />}
                 </span>
                 <br />
                 为您的业务赋能
@@ -314,84 +325,86 @@ const Index = () => {
 
       {/* Features Section with 3D grid */}
       <section className="relative container mx-auto px-4 py-20">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            {isEnglish ? 'Why Choose Us' : '为什么选择我们'}
-          </h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            {isEnglish 
-              ? 'Everything you need to process payments efficiently and securely'
-              : '您所需的一切，高效安全地处理支付'}
-          </p>
-        </div>
+        <ScrollReveal>
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              {isEnglish ? 'Why Choose Us' : '为什么选择我们'}
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              {isEnglish 
+                ? 'Everything you need to process payments efficiently and securely'
+                : '您所需的一切，高效安全地处理支付'}
+            </p>
+          </div>
+        </ScrollReveal>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
           {features.map((feature, index) => (
-            <Card 
-              key={index} 
-              className="group relative overflow-hidden border-border/50 bg-gradient-to-br from-card/90 to-card/50 backdrop-blur-md hover:border-primary/50 transition-all duration-500 animate-fade-in hover:-translate-y-2 hover:shadow-2xl hover:shadow-primary/10"
-              style={{ 
-                animationDelay: `${index * 0.1}s`,
-                transform: 'perspective(1000px)',
-              }}
-            >
-              <CardContent className="p-6 relative z-10">
-                <div className="mb-4 inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 text-primary group-hover:from-primary group-hover:to-primary/80 group-hover:text-primary-foreground transition-all duration-500 shadow-lg group-hover:shadow-primary/25 group-hover:scale-110">
-                  {feature.icon}
-                </div>
-                <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
-              </CardContent>
-              {/* 3D shine effect on hover */}
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <div className="absolute -inset-px bg-gradient-to-br from-primary/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-lg" />
-            </Card>
+            <ScrollReveal key={index} delay={index * 100}>
+              <Card 
+                className="group relative overflow-hidden border-border/50 bg-gradient-to-br from-card/90 to-card/50 backdrop-blur-md hover:border-primary/50 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-primary/10 h-full"
+                style={{ transform: 'perspective(1000px)' }}
+              >
+                <CardContent className="p-6 relative z-10">
+                  <div className="mb-4 inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 text-primary group-hover:from-primary group-hover:to-primary/80 group-hover:text-primary-foreground transition-all duration-500 shadow-lg group-hover:shadow-primary/25 group-hover:scale-110">
+                    {feature.icon}
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
+                </CardContent>
+                {/* 3D shine effect on hover */}
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <div className="absolute -inset-px bg-gradient-to-br from-primary/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-lg" />
+              </Card>
+            </ScrollReveal>
           ))}
         </div>
       </section>
 
       {/* Merchant Portal Highlight with 3D effect */}
       <section className="relative container mx-auto px-4 py-20">
-        <div className="max-w-2xl mx-auto" style={{ perspective: '1000px' }}>
-          <Link to="/merchant-login" className="group block">
-            <Card 
-              className="relative overflow-hidden border-2 border-primary/20 bg-gradient-to-br from-card via-card/80 to-primary/5 hover:border-primary/50 transition-all duration-700 hover:shadow-[0_25px_60px_-15px_hsl(var(--primary)/0.4)]"
-              style={{
-                transform: 'rotateX(2deg)',
-                transformStyle: 'preserve-3d',
-              }}
-            >
-              <CardContent className="p-10 text-center relative z-10">
-                <div 
-                  className="w-28 h-28 rounded-3xl bg-gradient-to-br from-primary via-primary/90 to-primary/70 flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-primary/40 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500"
-                  style={{ transform: 'translateZ(20px)' }}
-                >
-                  <Store className="w-14 h-14 text-primary-foreground" />
-                </div>
-                <h3 
-                  className="text-3xl font-bold mb-4"
-                  style={{ transform: 'translateZ(10px)' }}
-                >
-                  {isEnglish ? 'Merchant Portal' : '商户入口'}
-                </h3>
-                <p className="text-muted-foreground mb-8 text-lg leading-relaxed">
-                  {isEnglish 
-                    ? 'Access your dashboard, view transactions, manage withdrawals, and integrate our API'
-                    : '访问您的仪表板、查看交易、管理提现并集成我们的API'}
-                </p>
-                <div className="inline-flex items-center gap-3 text-primary font-semibold text-xl bg-primary/10 px-6 py-3 rounded-full group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
-                  {isEnglish ? 'Login Now' : '立即登录'}
-                  <ArrowRight className="h-6 w-6 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </CardContent>
-              
-              {/* 3D glow effects */}
-              <div className="absolute -top-32 -right-32 w-80 h-80 bg-primary/20 rounded-full blur-3xl group-hover:bg-primary/30 transition-colors duration-700" />
-              <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-primary/10 rounded-full blur-3xl group-hover:bg-primary/20 transition-colors duration-700" />
-              <div className="absolute inset-0 bg-gradient-to-t from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            </Card>
-          </Link>
-        </div>
+        <ScrollReveal>
+          <div className="max-w-2xl mx-auto" style={{ perspective: '1000px' }}>
+            <Link to="/merchant-login" className="group block">
+              <Card 
+                className="relative overflow-hidden border-2 border-primary/20 bg-gradient-to-br from-card via-card/80 to-primary/5 hover:border-primary/50 transition-all duration-700 hover:shadow-[0_25px_60px_-15px_hsl(var(--primary)/0.4)]"
+                style={{
+                  transform: 'rotateX(2deg)',
+                  transformStyle: 'preserve-3d',
+                }}
+              >
+                <CardContent className="p-10 text-center relative z-10">
+                  <div 
+                    className="w-28 h-28 rounded-3xl bg-gradient-to-br from-primary via-primary/90 to-primary/70 flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-primary/40 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500"
+                    style={{ transform: 'translateZ(20px)' }}
+                  >
+                    <Store className="w-14 h-14 text-primary-foreground" />
+                  </div>
+                  <h3 
+                    className="text-3xl font-bold mb-4"
+                    style={{ transform: 'translateZ(10px)' }}
+                  >
+                    {isEnglish ? 'Merchant Portal' : '商户入口'}
+                  </h3>
+                  <p className="text-muted-foreground mb-8 text-lg leading-relaxed">
+                    {isEnglish 
+                      ? 'Access your dashboard, view transactions, manage withdrawals, and integrate our API'
+                      : '访问您的仪表板、查看交易、管理提现并集成我们的API'}
+                  </p>
+                  <div className="inline-flex items-center gap-3 text-primary font-semibold text-xl bg-primary/10 px-6 py-3 rounded-full group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
+                    {isEnglish ? 'Login Now' : '立即登录'}
+                    <ArrowRight className="h-6 w-6 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </CardContent>
+                
+                {/* 3D glow effects */}
+                <div className="absolute -top-32 -right-32 w-80 h-80 bg-primary/20 rounded-full blur-3xl group-hover:bg-primary/30 transition-colors duration-700" />
+                <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-primary/10 rounded-full blur-3xl group-hover:bg-primary/20 transition-colors duration-700" />
+                <div className="absolute inset-0 bg-gradient-to-t from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              </Card>
+            </Link>
+          </div>
+        </ScrollReveal>
       </section>
 
       {/* Trust Indicators with 3D badges */}
@@ -419,14 +432,16 @@ const Index = () => {
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              {settings.logoUrl ? (
-                <img src={settings.logoUrl} alt="Logo" className="h-8 w-8 rounded-lg object-contain" />
-              ) : (
+              {logoUrl ? (
+                <img src={logoUrl} alt="Logo" className="h-8 w-8 rounded-lg object-contain" />
+              ) : !isLoading ? (
                 <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
                   <Zap className="h-4 w-4 text-primary-foreground" />
                 </div>
+              ) : (
+                <div className="h-8 w-8 rounded-lg bg-muted animate-pulse" />
               )}
-              <span className="font-semibold">{settings.gatewayName}</span>
+              <span className="font-semibold">{gatewayName}</span>
             </div>
             
             <div className="flex items-center gap-6 text-sm">
@@ -444,7 +459,7 @@ const Index = () => {
             </div>
 
             <p className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} {settings.gatewayName}. {isEnglish ? 'All rights reserved.' : '版权所有'}
+              © {new Date().getFullYear()} {gatewayName}. {isEnglish ? 'All rights reserved.' : '版权所有'}
             </p>
           </div>
         </div>
