@@ -216,15 +216,22 @@ Deno.serve(async (req) => {
 
     // Route to appropriate gateway
     if (gateway.gateway_type === 'lgpay') {
-      // LG Pay integration - use gateway's trade_type for API (PKRPH, BDTBNK, etc.)
-      // Merchant's trade_type (easypaisa, jazzcash, nagad, bkash) is for internal categorization only
-      const tradeType = gateway.trade_type || 'test'
+      // LG Pay integration - trade_type logic varies by currency:
+      // - PKR: Use gateway's trade_type (PKRPH) for all merchants
+      // - BDT: Use merchant's trade_type directly (Nagad, bKash)
+      // - INR: Use gateway's trade_type (inr)
+      let tradeType = gateway.trade_type || 'test'
       
-      console.log('LG Pay payin - Gateway trade_type:', tradeType, 'Merchant trade_type:', merchant.trade_type)
+      if (gateway.currency === 'BDT' && merchant.trade_type) {
+        // For BDT, deposit codes ARE the merchant's trade_type (Nagad/bKash)
+        tradeType = merchant.trade_type
+      }
+      
+      console.log('LG Pay payin v2 - Currency:', gateway.currency, 'Trade type:', tradeType, 'Merchant trade_type:', merchant.trade_type)
       
       const lgParams: Record<string, any> = {
         app_id: gateway.app_id,
-        trade_type: tradeType, // Use gateway's deposit code (PKRPH, BDTBNK, etc.)
+        trade_type: tradeType,
         order_sn: orderNo,
         money: Math.round(amountNum * 100), // LG Pay uses cents
         notify_url: internalCallbackUrl,
