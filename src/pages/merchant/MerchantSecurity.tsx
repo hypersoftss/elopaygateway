@@ -32,6 +32,7 @@ const MerchantSecurity = () => {
   const [hasWithdrawalPassword, setHasWithdrawalPassword] = useState(false);
   const [is2FAEnabled, setIs2FAEnabled] = useState(false);
   const [merchantName, setMerchantName] = useState('');
+  const [gatewayName, setGatewayName] = useState('PayGate');
 
   // 2FA State
   const [show2FASetup, setShow2FASetup] = useState(false);
@@ -56,6 +57,7 @@ const MerchantSecurity = () => {
       if (!user?.merchantId) return;
       
       try {
+        // Fetch merchant data
         const { data, error } = await supabase
           .from('merchants')
           .select('withdrawal_password, is_2fa_enabled, google_2fa_secret, merchant_name')
@@ -66,6 +68,16 @@ const MerchantSecurity = () => {
         setHasWithdrawalPassword(!!data.withdrawal_password);
         setIs2FAEnabled(!!data.is_2fa_enabled);
         setMerchantName(data.merchant_name || 'Merchant');
+
+        // Fetch gateway name from admin_settings
+        const { data: settingsData } = await supabase
+          .from('admin_settings')
+          .select('gateway_name')
+          .limit(1);
+        
+        if (settingsData && settingsData.length > 0) {
+          setGatewayName(settingsData[0].gateway_name || 'PayGate');
+        }
       } catch (error) {
         console.error('Error fetching settings:', error);
       } finally {
@@ -80,7 +92,7 @@ const MerchantSecurity = () => {
     // Generate a random secret
     const secret = new OTPAuth.Secret({ size: 20 });
     const totp = new OTPAuth.TOTP({
-      issuer: 'PayGate',
+      issuer: gatewayName,
       label: merchantName,
       algorithm: 'SHA1',
       digits: 6,
@@ -100,7 +112,7 @@ const MerchantSecurity = () => {
     try {
       // Verify the code
       const totp = new OTPAuth.TOTP({
-        issuer: 'PayGate',
+        issuer: gatewayName,
         label: merchantName,
         algorithm: 'SHA1',
         digits: 6,

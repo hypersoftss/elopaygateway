@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, Settings, CreditCard, Percent, Eye, EyeOff, Upload, AlertTriangle, Globe, Mail, Image, Bell } from 'lucide-react';
+import { Save, Settings, CreditCard, Percent, Eye, EyeOff, Upload, AlertTriangle, Globe, Mail, Image, Bell, Shield, Smartphone, Check, X, QrCode } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,9 +8,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 import { useTranslation } from '@/lib/i18n';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuthStore } from '@/lib/auth';
+import { QRCodeSVG } from 'qrcode.react';
+import * as OTPAuth from 'otpauth';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 
 interface AdminSettings {
   id: string;
@@ -32,6 +44,7 @@ interface AdminSettings {
 const AdminSettingsPage = () => {
   const { t, language } = useTranslation();
   const { toast } = useToast();
+  const { user } = useAuthStore();
   const [settings, setSettings] = useState<AdminSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -39,6 +52,14 @@ const AdminSettingsPage = () => {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
   const [showPayoutKey, setShowPayoutKey] = useState(false);
+
+  // 2FA State
+  const [is2FAEnabled, setIs2FAEnabled] = useState(false);
+  const [show2FASetup, setShow2FASetup] = useState(false);
+  const [totpSecret, setTotpSecret] = useState('');
+  const [totpUri, setTotpUri] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
 
   const fetchSettings = async () => {
     setIsLoading(true);
@@ -57,6 +78,19 @@ const AdminSettingsPage = () => {
         } as AdminSettings);
         setLogoPreview(data[0].logo_url);
       }
+
+      // Fetch admin 2FA status
+      if (user?.id) {
+        const { data: profileData } = await supabase
+          .from('admin_profiles')
+          .select('is_2fa_enabled')
+          .eq('user_id', user.id)
+          .limit(1);
+        
+        if (profileData && profileData.length > 0) {
+          setIs2FAEnabled(!!profileData[0].is_2fa_enabled);
+        }
+      }
     } catch (error) {
       console.error('Error fetching settings:', error);
     } finally {
@@ -66,13 +100,117 @@ const AdminSettingsPage = () => {
 
   useEffect(() => {
     fetchSettings();
-  }, []);
+  }, [user?.id]);
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setLogoFile(file);
       setLogoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  // 2FA Functions
+  const generateTOTPSecret = () => {
+    const gatewayName = settings?.gateway_name || 'PayGate';
+    const secret = new OTPAuth.Secret({ size: 20 });
+    const totp = new OTPAuth.TOTP({
+      issuer: gatewayName,
+      label: 'Admin',
+      algorithm: 'SHA1',
+      digits: 6,
+      period: 30,
+      secret: secret,
+    });
+    
+    setTotpSecret(secret.base32);
+    setTotpUri(totp.toString());
+    setShow2FASetup(true);
+  };
+
+  const verifyAndEnable2FA = async () => {
+    if (!user?.id || verificationCode.length !== 6) return;
+
+    setIsVerifying(true);
+    try {
+      const gatewayName = settings?.gateway_name || 'PayGate';
+      const totp = new OTPAuth.TOTP({
+        issuer: gatewayName,
+        label: 'Admin',
+        algorithm: 'SHA1',
+        digits: 6,
+        period: 30,
+        secret: OTPAuth.Secret.fromBase32(totpSecret),
+      });
+
+      const isValid = totp.validate({ token: verificationCode, window: 1 }) !== null;
+
+      if (!isValid) {
+        toast({
+          title: language === 'zh' ? '验证失败' : 'Verification Failed',
+          description: language === 'zh' ? '验证码不正确，请重试' : 'Invalid code, please try again',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Save to admin_profiles
+      const { error } = await supabase
+        .from('admin_profiles')
+        .update({
+          google_2fa_secret: totpSecret,
+          is_2fa_enabled: true,
+        })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setIs2FAEnabled(true);
+      setShow2FASetup(false);
+      setVerificationCode('');
+      toast({
+        title: language === 'zh' ? '2FA已启用' : '2FA Enabled',
+        description: language === 'zh' ? '双重认证已成功启用' : 'Two-factor authentication is now active',
+      });
+    } catch (error: any) {
+      toast({
+        title: language === 'zh' ? '错误' : 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const disable2FA = async () => {
+    if (!user?.id) return;
+
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from('admin_profiles')
+        .update({
+          google_2fa_secret: null,
+          is_2fa_enabled: false,
+        })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setIs2FAEnabled(false);
+      toast({
+        title: language === 'zh' ? '2FA已禁用' : '2FA Disabled',
+        description: language === 'zh' ? '双重认证已关闭' : 'Two-factor authentication has been disabled',
+      });
+    } catch (error: any) {
+      toast({
+        title: language === 'zh' ? '错误' : 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -171,22 +309,26 @@ const AdminSettingsPage = () => {
 
         {/* Tabs */}
         <Tabs defaultValue="branding" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="branding" className="flex items-center gap-2">
               <Globe className="h-4 w-4" />
-              {language === 'zh' ? '网关品牌' : 'Branding'}
+              <span className="hidden sm:inline">{language === 'zh' ? '品牌' : 'Brand'}</span>
             </TabsTrigger>
             <TabsTrigger value="api" className="flex items-center gap-2">
               <CreditCard className="h-4 w-4" />
-              {language === 'zh' ? 'API' : 'API'}
+              <span className="hidden sm:inline">{language === 'zh' ? 'API' : 'API'}</span>
             </TabsTrigger>
             <TabsTrigger value="fees" className="flex items-center gap-2">
               <Percent className="h-4 w-4" />
-              {language === 'zh' ? '费率' : 'Fees'}
+              <span className="hidden sm:inline">{language === 'zh' ? '费率' : 'Fees'}</span>
             </TabsTrigger>
             <TabsTrigger value="alerts" className="flex items-center gap-2">
               <Bell className="h-4 w-4" />
-              {language === 'zh' ? '通知' : 'Alerts'}
+              <span className="hidden sm:inline">{language === 'zh' ? '通知' : 'Alerts'}</span>
+            </TabsTrigger>
+            <TabsTrigger value="security" className="flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              <span className="hidden sm:inline">{language === 'zh' ? '安全' : 'Security'}</span>
             </TabsTrigger>
           </TabsList>
 
@@ -571,8 +713,165 @@ const AdminSettingsPage = () => {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Security Tab */}
+          <TabsContent value="security">
+            <Card className="border-2 border-primary/20 overflow-hidden">
+              <CardHeader className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-primary/20">
+                      <Smartphone className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        {language === 'zh' ? 'Google双重认证 (2FA)' : 'Google Two-Factor Authentication'}
+                        {is2FAEnabled ? (
+                          <Badge className="bg-[hsl(var(--success))]/10 text-[hsl(var(--success))] border-[hsl(var(--success))]/20">
+                            <Check className="h-3 w-3 mr-1" />
+                            {language === 'zh' ? '已启用' : 'Enabled'}
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary">
+                            <X className="h-3 w-3 mr-1" />
+                            {language === 'zh' ? '未启用' : 'Disabled'}
+                          </Badge>
+                        )}
+                      </CardTitle>
+                      <CardDescription>
+                        {language === 'zh' 
+                          ? '使用Google Authenticator添加额外的安全层' 
+                          : 'Add an extra layer of security using Google Authenticator'}
+                      </CardDescription>
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6">
+                {is2FAEnabled ? (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-full bg-[hsl(var(--success))]/10 flex items-center justify-center">
+                        <Check className="h-6 w-6 text-[hsl(var(--success))]" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{language === 'zh' ? '2FA已激活' : '2FA is Active'}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {language === 'zh' ? '您的账户受到双重认证保护' : 'Your account is protected with 2FA'}
+                        </p>
+                      </div>
+                    </div>
+                    <Button variant="destructive" onClick={disable2FA} disabled={isSaving}>
+                      {language === 'zh' ? '禁用2FA' : 'Disable 2FA'}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                        <QrCode className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{language === 'zh' ? '启用2FA保护' : 'Enable 2FA Protection'}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {language === 'zh' ? '扫描二维码设置Google Authenticator' : 'Scan QR code to setup Google Authenticator'}
+                        </p>
+                      </div>
+                    </div>
+                    <Button onClick={generateTOTPSecret} className="btn-gradient-primary">
+                      <Smartphone className="h-4 w-4 mr-2" />
+                      {language === 'zh' ? '设置2FA' : 'Setup 2FA'}
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Security Tips */}
+            <Card className="bg-card border-border mt-6">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Shield className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">{language === 'zh' ? '安全提示' : 'Security Tips'}</h3>
+                    <ul className="mt-2 space-y-1 text-sm text-muted-foreground list-disc list-inside">
+                      <li>{language === 'zh' ? '使用强大、唯一的密码' : 'Use a strong, unique password'}</li>
+                      <li>{language === 'zh' ? '启用2FA以获得额外安全' : 'Enable 2FA for additional security'}</li>
+                      <li>{language === 'zh' ? '切勿与任何人分享您的密码' : 'Never share your passwords with anyone'}</li>
+                      <li>{language === 'zh' ? '定期更改密码' : 'Change passwords regularly'}</li>
+                    </ul>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
+
+      {/* 2FA Setup Dialog */}
+      <Dialog open={show2FASetup} onOpenChange={setShow2FASetup}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Smartphone className="h-5 w-5" />
+              {language === 'zh' ? '设置Google Authenticator' : 'Setup Google Authenticator'}
+            </DialogTitle>
+            <DialogDescription>
+              {language === 'zh' 
+                ? '使用Google Authenticator应用扫描下方二维码' 
+                : 'Scan the QR code below with your Google Authenticator app'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {/* QR Code */}
+            <div className="flex justify-center p-4 bg-white rounded-lg">
+              {totpUri && (
+                <QRCodeSVG value={totpUri} size={200} level="H" />
+              )}
+            </div>
+
+            {/* Manual entry */}
+            <div className="space-y-2">
+              <Label className="text-sm text-muted-foreground">
+                {language === 'zh' ? '或手动输入密钥:' : 'Or enter this code manually:'}
+              </Label>
+              <div className="p-3 bg-muted rounded-lg font-mono text-sm break-all text-center">
+                {totpSecret}
+              </div>
+            </div>
+
+            {/* Verification */}
+            <div className="space-y-2">
+              <Label>
+                {language === 'zh' ? '输入6位验证码' : 'Enter 6-digit verification code'}
+              </Label>
+              <Input
+                value={verificationCode}
+                onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="000000"
+                className="text-center text-2xl font-mono tracking-widest"
+                maxLength={6}
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShow2FASetup(false)}>
+              {language === 'zh' ? '取消' : 'Cancel'}
+            </Button>
+            <Button 
+              onClick={verifyAndEnable2FA} 
+              disabled={verificationCode.length !== 6 || isVerifying}
+              className="btn-gradient-primary"
+            >
+              {isVerifying ? (language === 'zh' ? '验证中...' : 'Verifying...') : (language === 'zh' ? '验证并启用' : 'Verify & Enable')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };
