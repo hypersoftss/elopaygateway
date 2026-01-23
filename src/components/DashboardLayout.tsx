@@ -63,8 +63,11 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     location.pathname.includes('/channel-price') || 
     location.pathname.includes('/security')
   );
+  const [adminOrdersOpen, setAdminOrdersOpen] = useState(
+    location.pathname.includes('/admin/payin') || location.pathname.includes('/admin/payout')
+  );
   const [ordersOpen, setOrdersOpen] = useState(
-    location.pathname.includes('/payin') || location.pathname.includes('/payout')
+    location.pathname.includes('/merchant/payin') || location.pathname.includes('/merchant/payout')
   );
   const [settlementOpen, setSettlementOpen] = useState(
     location.pathname.includes('/withdrawal')
@@ -78,8 +81,14 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const adminNavItems: NavItem[] = [
     { label: t('sidebar.dashboard'), icon: <LayoutDashboard className="h-5 w-5" />, href: '/admin' },
     { label: t('sidebar.merchants'), icon: <Users className="h-5 w-5" />, href: '/admin/merchants' },
-    { label: t('sidebar.payinOrders'), icon: <ArrowDownToLine className="h-5 w-5" />, href: '/admin/payin' },
-    { label: t('sidebar.payoutOrders'), icon: <ArrowUpFromLine className="h-5 w-5" />, href: '/admin/payout' },
+    { 
+      label: language === 'zh' ? '订单管理' : 'Orders',
+      icon: <ClipboardList className="h-5 w-5" />,
+      children: [
+        { label: t('sidebar.payinOrders'), icon: <ArrowDownToLine className="h-4 w-4" />, href: '/admin/payin' },
+        { label: t('sidebar.payoutOrders'), icon: <ArrowUpFromLine className="h-4 w-4" />, href: '/admin/payout' },
+      ]
+    },
     { label: t('sidebar.withdrawals'), icon: <Wallet className="h-5 w-5" />, href: '/admin/withdrawals' },
     { label: language === 'zh' ? '网关管理' : 'Gateways', icon: <Layers className="h-5 w-5" />, href: '/admin/gateways' },
     { label: t('sidebar.apiTesting'), icon: <TestTube className="h-5 w-5" />, href: '/admin/api-testing' },
@@ -145,11 +154,18 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const renderNavItem = (item: NavItem, collapsed: boolean) => {
     if (item.children) {
       const isMerchants = item.label.includes('商户') || item.label.includes('Merchants');
-      const isOrders = item.label.includes('订单') || item.label.includes('Orders');
+      const isAdminOrders = (item.label.includes('订单') || item.label.includes('Orders')) && isAdmin;
+      const isMerchantOrders = (item.label.includes('订单') || item.label.includes('Orders')) && !isAdmin;
       const isSettlement = item.label.includes('结算') || item.label.includes('Settlement');
       const isSDK = item.label.includes('SDK');
-      const isOpen = isMerchants ? merchantsOpen : isOrders ? ordersOpen : isSettlement ? settlementOpen : sdkDocsOpen;
-      const setOpen = isMerchants ? setMerchantsOpen : isOrders ? setOrdersOpen : isSettlement ? setSettlementOpen : setSdkDocsOpen;
+      const isOpen = isMerchants ? merchantsOpen : 
+                     isAdminOrders ? adminOrdersOpen : 
+                     isMerchantOrders ? ordersOpen : 
+                     isSettlement ? settlementOpen : sdkDocsOpen;
+      const setOpen = isMerchants ? setMerchantsOpen : 
+                      isAdminOrders ? setAdminOrdersOpen : 
+                      isMerchantOrders ? setOrdersOpen : 
+                      isSettlement ? setSettlementOpen : setSdkDocsOpen;
       const hasActiveChild = isChildActive(item);
 
       return (

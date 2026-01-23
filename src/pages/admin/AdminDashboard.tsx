@@ -58,6 +58,17 @@ interface Gateway {
   trade_type: string | null;
 }
 
+interface GatewayBalance {
+  gateway_id: string;
+  gateway_name: string;
+  gateway_code: string;
+  currency: string;
+  balance: number | null;
+  status: 'online' | 'offline' | 'error';
+  message: string;
+  last_checked: string;
+}
+
 interface Transaction {
   id: string;
   order_no: string;
@@ -76,9 +87,25 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [gateways, setGateways] = useState<Gateway[]>([]);
+  const [gatewayBalances, setGatewayBalances] = useState<GatewayBalance[]>([]);
+  const [isLoadingBalances, setIsLoadingBalances] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isLive, setIsLive] = useState(true);
+
+  const fetchGatewayBalances = async () => {
+    setIsLoadingBalances(true);
+    try {
+      const response = await supabase.functions.invoke('check-gateway-balance');
+      if (response.data?.success && response.data?.balances) {
+        setGatewayBalances(response.data.balances);
+      }
+    } catch (err) {
+      console.error('Failed to fetch gateway balances:', err);
+    } finally {
+      setIsLoadingBalances(false);
+    }
+  };
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -195,12 +222,19 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     fetchData();
+    fetchGatewayBalances();
     
     // Auto refresh every 30 seconds if live mode
     let interval: NodeJS.Timeout;
+    let balanceInterval: NodeJS.Timeout;
     if (isLive) {
       interval = setInterval(fetchData, 30000);
+      balanceInterval = setInterval(fetchGatewayBalances, 60000); // Check balance every minute
     }
+    return () => {
+      clearInterval(interval);
+      clearInterval(balanceInterval);
+    };
     return () => clearInterval(interval);
   }, [isLive]);
 
@@ -420,14 +454,25 @@ const AdminDashboard = () => {
           <CardHeader className="flex flex-row items-center justify-between px-4 md:px-6 py-4">
             <CardTitle className="text-base md:text-lg flex items-center gap-2">
               <Server className="h-5 w-5" />
-              {language === 'zh' ? '网关状态' : 'Gateway Status'}
+              {language === 'zh' ? '网关余额' : 'Gateway Balances'}
             </CardTitle>
-            <Link to="/admin/gateways">
-              <Button variant="ghost" size="sm">
-                {language === 'zh' ? '管理' : 'Manage'}
-                <ArrowRight className="h-4 w-4 ml-1" />
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={fetchGatewayBalances}
+                disabled={isLoadingBalances}
+              >
+                <RefreshCw className={`h-4 w-4 mr-1 ${isLoadingBalances ? 'animate-spin' : ''}`} />
+                {language === 'zh' ? '刷新' : 'Refresh'}
               </Button>
-            </Link>
+              <Link to="/admin/gateways">
+                <Button variant="ghost" size="sm">
+                  {language === 'zh' ? '管理' : 'Manage'}
+                  <ArrowRight className="h-4 w-4 ml-1" />
+                </Button>
+              </Link>
+            </div>
           </CardHeader>
           <CardContent className="px-4 md:px-6 pb-4">
             {gateways.length === 0 ? (
@@ -436,56 +481,103 @@ const AdminDashboard = () => {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {gateways.map((gateway) => (
-                  <div 
-                    key={gateway.id} 
-                    className={`p-3 rounded-lg border ${
-                      gateway.is_active 
-                        ? 'border-green-500/30 bg-green-500/5' 
-                        : 'border-muted bg-muted/30'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        {gateway.is_active ? (
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                {gateways.map((gateway) => {
+                  const balanceInfo = gatewayBalances.find(b => b.gateway_id === gateway.id);
+                  const currencySymbol = gateway.currency === 'INR' ? '₹' : 
+                                        gateway.currency === 'PKR' ? 'Rs.' : 
+                                        gateway.currency === 'BDT' ? '৳' : '$';
+                  
+                  return (
+                    <div 
+                      key={gateway.id} 
+                      className={`p-3 rounded-lg border ${
+                        gateway.is_active 
+                          ? balanceInfo?.status === 'online' 
+                            ? 'border-green-500/30 bg-green-500/5' 
+                            : balanceInfo?.status === 'error'
+                              ? 'border-amber-500/30 bg-amber-500/5'
+                              : 'border-muted bg-muted/30'
+                          : 'border-muted bg-muted/30'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {balanceInfo?.status === 'online' ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          ) : balanceInfo?.status === 'error' ? (
+                            <AlertCircle className="h-4 w-4 text-amber-500" />
+                          ) : gateway.is_active ? (
+                            <Activity className="h-4 w-4 text-muted-foreground animate-pulse" />
+                          ) : (
+                            <XCircle className="h-4 w-4 text-muted-foreground" />
+                          )}
+                          <span className="font-medium text-sm">{gateway.gateway_name}</span>
+                        </div>
+                        <Badge variant={gateway.is_active ? "default" : "secondary"} className="text-xs">
+                          {gateway.currency}
+                        </Badge>
+                      </div>
+                      
+                      {/* Balance Display */}
+                      <div className="mt-3 p-2 rounded bg-muted/50">
+                        {isLoadingBalances && !balanceInfo ? (
+                          <div className="flex items-center gap-2">
+                            <RefreshCw className="h-3 w-3 animate-spin text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">
+                              {language === 'zh' ? '加载中...' : 'Loading...'}
+                            </span>
+                          </div>
+                        ) : balanceInfo?.balance !== null && balanceInfo?.balance !== undefined ? (
+                          <div>
+                            <div className="text-lg font-bold">
+                              {currencySymbol}{balanceInfo.balance.toLocaleString()}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {language === 'zh' ? '网关余额' : 'Gateway Balance'}
+                            </div>
+                          </div>
                         ) : (
-                          <XCircle className="h-4 w-4 text-muted-foreground" />
+                          <div className="text-xs text-muted-foreground">
+                            {balanceInfo?.message || (language === 'zh' ? '无法获取余额' : 'Unable to fetch balance')}
+                          </div>
                         )}
-                        <span className="font-medium text-sm">{gateway.gateway_name}</span>
                       </div>
-                      <Badge variant={gateway.is_active ? "default" : "secondary"} className="text-xs">
-                        {gateway.currency}
-                      </Badge>
-                    </div>
-                    <div className="mt-2 flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">
-                        {gateway.gateway_type === 'lgpay' ? 'LG Pay' : 'BondPay'}
-                      </span>
-                      <span className={gateway.is_active ? 'text-green-500' : 'text-muted-foreground'}>
-                        {gateway.is_active 
-                          ? (language === 'zh' ? '运行中' : 'Active') 
-                          : (language === 'zh' ? '已停用' : 'Inactive')
-                        }
-                      </span>
-                    </div>
-                    {gateway.trade_type && (
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        Trade: {gateway.trade_type.toUpperCase()}
+
+                      <div className="mt-2 flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">
+                          {gateway.gateway_type === 'lgpay' ? 'LG Pay' : 'BondPay'}
+                        </span>
+                        <span className={
+                          balanceInfo?.status === 'online' ? 'text-green-500' : 
+                          balanceInfo?.status === 'error' ? 'text-amber-500' : 
+                          'text-muted-foreground'
+                        }>
+                          {balanceInfo?.status === 'online' 
+                            ? (language === 'zh' ? '在线' : 'Online') 
+                            : balanceInfo?.status === 'error'
+                              ? (language === 'zh' ? '错误' : 'Error')
+                              : (language === 'zh' ? '离线' : 'Offline')
+                          }
+                        </span>
                       </div>
-                    )}
-                  </div>
-                ))}
+                      {gateway.trade_type && (
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          Trade: {gateway.trade_type.toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
             <div className="mt-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
               <div className="flex items-start gap-2">
                 <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
                 <div className="text-xs text-amber-600 dark:text-amber-400">
-                  <strong>{language === 'zh' ? '注意：' : 'Note:'}</strong>{' '}
+                  <strong>{language === 'zh' ? '自动告警：' : 'Auto Alerts:'}</strong>{' '}
                   {language === 'zh' 
-                    ? 'PKR和INR代付通道需联系LG Pay激活，BDT通道需充值余额。' 
-                    : 'Contact LG Pay to activate PKR & INR payout channels. BDT requires balance top-up.'
+                    ? '当网关余额低于阈值时，将自动发送Telegram通知。' 
+                    : 'Telegram alerts are sent automatically when gateway balance falls below threshold.'
                   }
                 </div>
               </div>
