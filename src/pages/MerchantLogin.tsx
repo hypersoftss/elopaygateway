@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Store, Smartphone, Sparkles, Shield, Lock } from 'lucide-react';
+import { Eye, EyeOff, Store, Smartphone, Shield, Lock, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Captcha } from '@/components/Captcha';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -84,7 +83,6 @@ const MerchantLogin = () => {
         return;
       }
 
-      // Check if user is a merchant and has 2FA enabled
       if (authData.user) {
         const { data: merchants } = await supabase
           .from('merchants')
@@ -95,7 +93,6 @@ const MerchantLogin = () => {
         const merchant = merchants?.[0];
         
         if (merchant?.is_2fa_enabled && merchant?.google_2fa_secret) {
-          // Sign out temporarily and require 2FA
           await supabase.auth.signOut();
           setPendingSession({
             userId: authData.user.id,
@@ -123,7 +120,6 @@ const MerchantLogin = () => {
 
     setIsSubmitting(true);
     try {
-      // Verify the 2FA code
       const totp = new OTPAuth.TOTP({
         issuer: settings.gatewayName || 'PayGate',
         label: email,
@@ -145,7 +141,6 @@ const MerchantLogin = () => {
         return;
       }
 
-      // Code is valid, sign in again
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -158,7 +153,6 @@ const MerchantLogin = () => {
           variant: 'destructive',
         });
       } else {
-        // Successfully logged in
         setShow2FAStep(false);
         setPendingSession(null);
       }
@@ -181,34 +175,33 @@ const MerchantLogin = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background cinematic-bg">
-        <div className="animate-pulse text-muted-foreground">{t('common.loading')}</div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        <div className="animate-pulse text-slate-400">{t('common.loading')}</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col cinematic-bg relative overflow-hidden">
-      {/* Cinematic Background Effects */}
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 relative overflow-hidden">
+      {/* Background Effects */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-[600px] h-[600px] bg-[hsl(var(--success))]/15 rounded-full blur-[150px] animate-pulse" />
-        <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '1s' }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[hsl(var(--success))]/5 rounded-full blur-[200px]" />
+        <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[120px]" />
+        <div className="absolute -bottom-40 -left-40 w-[400px] h-[400px] bg-teal-500/10 rounded-full blur-[100px]" />
       </div>
 
       {/* Header */}
-      <header className="flex items-center justify-between p-4 md:p-6 relative z-10">
+      <header className="flex items-center justify-between p-4 relative z-10">
         <div className="flex items-center gap-3">
           {settings.logoUrl ? (
-            <img src={settings.logoUrl} alt="Logo" className="h-12 w-12 object-contain rounded-xl shadow-lg" />
+            <img src={settings.logoUrl} alt="Logo" className="h-10 w-10 object-contain rounded-xl" />
           ) : (
-            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-[hsl(var(--success))] to-[hsl(var(--success))]/70 flex items-center justify-center shadow-lg">
-              <Store className="h-7 w-7 text-white" />
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+              <Store className="h-5 w-5 text-white" />
             </div>
           )}
           <div>
-            <span className="font-bold text-xl">{settings.gatewayName}</span>
-            <p className="text-xs text-muted-foreground">
+            <span className="font-bold text-lg text-white">{settings.gatewayName}</span>
+            <p className="text-xs text-slate-400">
               {language === 'zh' ? '商户入口' : 'Merchant Portal'}
             </p>
           </div>
@@ -221,43 +214,45 @@ const MerchantLogin = () => {
 
       {/* Login Form */}
       <div className="flex-1 flex items-center justify-center p-4 relative z-10">
-        <div className="w-full max-w-md animate-fade-in">
-          <Card className="premium-card border-0 shadow-2xl backdrop-blur-xl bg-background/80 dark:bg-background/60 overflow-hidden">
-            {/* Gradient top border */}
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[hsl(var(--success))] via-primary to-[hsl(var(--success))]" />
+        <div className="w-full max-w-md">
+          {/* Card */}
+          <div className="bg-slate-800/60 backdrop-blur-xl rounded-3xl border border-slate-700/50 overflow-hidden shadow-2xl">
+            {/* Top Gradient Line */}
+            <div className="h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-500" />
             
-            <CardHeader className="text-center pb-2 pt-8">
-              <div className="mx-auto mb-4 relative">
-                <div className="absolute inset-0 rounded-2xl bg-[hsl(var(--success))]/30 blur-xl animate-pulse" />
-                <div className="relative h-20 w-20 rounded-2xl bg-gradient-to-br from-[hsl(var(--success))] to-[hsl(var(--success))]/70 flex items-center justify-center shadow-xl">
+            {/* Header */}
+            <div className="text-center pt-8 pb-4 px-6">
+              <div className="mx-auto mb-4 relative inline-block">
+                <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
                   {show2FAStep ? (
-                    <Smartphone className="h-10 w-10 text-white" />
+                    <Smartphone className="h-8 w-8 text-white" />
                   ) : (
-                    <Store className="h-10 w-10 text-white" />
+                    <Store className="h-8 w-8 text-white" />
                   )}
-                  <Sparkles className="absolute -top-1 -right-1 h-5 w-5 text-[hsl(var(--success))] animate-pulse" />
                 </div>
+                <Sparkles className="absolute -top-1 -right-1 h-4 w-4 text-emerald-400" />
               </div>
-              <CardTitle className="text-2xl font-bold">
+              <h1 className="text-xl font-bold text-white">
                 {show2FAStep
-                  ? (language === 'zh' ? '双重认证' : 'Two-Factor Authentication')
+                  ? (language === 'zh' ? '双重认证' : 'Two-Factor Auth')
                   : (language === 'zh' ? '商户登录' : 'Merchant Login')}
-              </CardTitle>
-              <CardDescription className="text-muted-foreground">
+              </h1>
+              <p className="text-sm text-slate-400 mt-1">
                 {show2FAStep
-                  ? (language === 'zh' ? '请输入Google Authenticator中的验证码' : 'Enter the code from your Google Authenticator app')
-                  : (language === 'zh' ? '使用商户账户登录系统' : 'Sign in with your merchant account')}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-4 px-6 pb-8">
+                  ? (language === 'zh' ? '请输入验证码' : 'Enter verification code')
+                  : (language === 'zh' ? '登录您的商户账户' : 'Sign in to your account')}
+              </p>
+            </div>
+
+            {/* Form Content */}
+            <div className="px-6 pb-8">
               {show2FAStep ? (
-                <div className="space-y-5">
+                <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="2fa-code" className="text-sm font-medium">
-                      {language === 'zh' ? '验证码' : 'Authentication Code'}
+                    <Label className="text-sm text-slate-300">
+                      {language === 'zh' ? '验证码' : 'Code'}
                     </Label>
                     <Input
-                      id="2fa-code"
                       type="text"
                       inputMode="numeric"
                       pattern="[0-9]*"
@@ -265,71 +260,66 @@ const MerchantLogin = () => {
                       value={twoFACode}
                       onChange={(e) => setTwoFACode(e.target.value.replace(/\D/g, ''))}
                       placeholder="000000"
-                      className="h-16 text-center text-3xl tracking-[0.5em] font-mono bg-muted/30 border-border/50 focus:border-[hsl(var(--success))]"
+                      className="h-14 text-center text-2xl tracking-[0.4em] font-mono bg-slate-700/50 border-slate-600 focus:border-emerald-500 text-white"
                       autoFocus
                     />
-                    <p className="text-xs text-muted-foreground text-center mt-2">
-                      {language === 'zh' ? '打开Google Authenticator应用获取6位验证码' : 'Open your Google Authenticator app to get the 6-digit code'}
-                    </p>
                   </div>
 
                   <Button
                     onClick={handle2FAVerify}
-                    className="w-full h-12 bg-[hsl(var(--success))] hover:bg-[hsl(var(--success))]/90 text-white font-semibold"
+                    className="w-full h-12 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl"
                     disabled={isSubmitting || twoFACode.length !== 6}
                   >
-                    {isSubmitting ? t('common.loading') : (language === 'zh' ? '验证并登录' : 'Verify & Login')}
+                    {isSubmitting ? t('common.loading') : (language === 'zh' ? '验证' : 'Verify')}
                   </Button>
 
                   <Button
                     type="button"
                     variant="ghost"
-                    className="w-full"
+                    className="w-full text-slate-400 hover:text-white"
                     onClick={handleBack}
                   >
-                    {language === 'zh' ? '返回登录' : 'Back to Login'}
+                    {language === 'zh' ? '返回' : 'Back'}
                   </Button>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit} className="space-y-5">
+                <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-sm font-medium">{t('auth.email')}</Label>
+                    <Label className="text-sm text-slate-300">{t('auth.email')}</Label>
                     <Input
-                      id="email"
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="merchant@example.com"
-                      className="h-12 bg-muted/30 border-border/50 focus:border-[hsl(var(--success))]"
+                      className="h-12 bg-slate-700/50 border-slate-600 focus:border-emerald-500 text-white placeholder:text-slate-500"
                       required
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="password" className="text-sm font-medium">{t('auth.password')}</Label>
+                    <Label className="text-sm text-slate-300">{t('auth.password')}</Label>
                     <div className="relative">
                       <Input
-                        id="password"
                         type={showPassword ? 'text' : 'password'}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="h-12 pr-12 bg-muted/30 border-border/50 focus:border-[hsl(var(--success))]"
+                        className="h-12 pr-12 bg-slate-700/50 border-slate-600 focus:border-emerald-500 text-white"
                         required
                       />
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                        className="absolute right-0 top-0 h-full px-3 text-slate-400 hover:text-white hover:bg-transparent"
                         onClick={() => setShowPassword(!showPassword)}
                       >
-                        {showPassword ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </Button>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium">{t('auth.captcha')}</Label>
+                    <Label className="text-sm text-slate-300">{t('auth.captcha')}</Label>
                     <Captcha
                       value={captchaValue}
                       onChange={setCaptchaValue}
@@ -342,15 +332,16 @@ const MerchantLogin = () => {
                       id="rememberMe"
                       checked={rememberMe}
                       onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                      className="border-slate-600 data-[state=checked]:bg-emerald-500"
                     />
-                    <Label htmlFor="rememberMe" className="text-sm cursor-pointer text-muted-foreground">
+                    <Label htmlFor="rememberMe" className="text-sm cursor-pointer text-slate-400">
                       {t('auth.rememberMe')}
                     </Label>
                   </div>
 
                   <Button 
                     type="submit" 
-                    className="w-full h-12 bg-[hsl(var(--success))] hover:bg-[hsl(var(--success))]/90 text-white font-semibold shadow-lg" 
+                    className="w-full h-12 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl shadow-lg shadow-emerald-500/20" 
                     disabled={isSubmitting}
                   >
                     <Lock className="h-4 w-4 mr-2" />
@@ -360,21 +351,19 @@ const MerchantLogin = () => {
               )}
 
               {/* Security Badge */}
-              <div className="mt-6 pt-6 border-t border-border/50 text-center">
-                <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                  <Shield className="h-4 w-4 text-[hsl(var(--success))]" />
-                  <span>{language === 'zh' ? '安全加密登录' : 'Secure Encrypted Login'}</span>
+              <div className="mt-6 pt-4 border-t border-slate-700/50 text-center">
+                <div className="flex items-center justify-center gap-2 text-xs text-slate-500">
+                  <Shield className="h-3.5 w-3.5 text-emerald-500" />
+                  <span>{language === 'zh' ? '安全加密' : 'Secure & Encrypted'}</span>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Footer Branding */}
-          <div className="text-center mt-6">
-            <p className="text-xs text-muted-foreground">
-              {language === 'zh' ? '由' : 'Powered by'} <span className="font-semibold">{settings.gatewayName}</span>
-            </p>
+            </div>
           </div>
+
+          {/* Footer */}
+          <p className="text-center mt-6 text-xs text-slate-500">
+            {language === 'zh' ? '由' : 'Powered by'} {settings.gatewayName}
+          </p>
         </div>
       </div>
     </div>
