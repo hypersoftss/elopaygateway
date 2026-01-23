@@ -20,6 +20,8 @@ Deno.serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
+    let redirectUrl: string | null = null
+
     // Handle payin callback
     // BondPay sends: { orderNo, merchantOrder, status, amount, createtime, updatetime }
     if (body.orderNo && body.merchantOrder) {
@@ -76,7 +78,6 @@ Deno.serve(async (req) => {
         const unfreezeAmount = transaction.amount + (transaction.fee || 0)
         
         if (newStatus === 'success') {
-          // Success: just unfreeze, money already deducted
           const { error: balanceError } = await supabaseAdmin
             .from('merchants')
             .update({
@@ -88,7 +89,6 @@ Deno.serve(async (req) => {
             console.error('Failed to update frozen balance:', balanceError)
           }
         } else if (newStatus === 'failed') {
-          // Failed: unfreeze and return to balance
           const { error: balanceError } = await supabaseAdmin
             .from('merchants')
             .update({
@@ -103,8 +103,10 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Forward callback to merchant's callback URL if configured
+      // Parse extra data for callback and redirect URLs
       const extraData = transaction.extra ? JSON.parse(transaction.extra) : {}
+      
+      // Forward callback to merchant's callback URL if configured
       if (extraData.merchant_callback) {
         try {
           await fetch(extraData.merchant_callback, {
@@ -126,15 +128,35 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Build redirect URL based on payment status
+      if (newStatus === 'success' && extraData.success_url) {
+        const params = new URLSearchParams({
+          order_no: transaction.order_no,
+          amount: transaction.amount.toString(),
+          merchant: transaction.merchants?.merchant_name || '',
+          description: extraData.payment_link_code ? `Payment Link: ${extraData.payment_link_code}` : ''
+        })
+        redirectUrl = `${extraData.success_url}?${params.toString()}`
+        console.log('Success redirect URL:', redirectUrl)
+      } else if (newStatus === 'failed' && extraData.failure_url) {
+        const params = new URLSearchParams({
+          order_no: transaction.order_no,
+          amount: transaction.amount.toString(),
+          merchant: transaction.merchants?.merchant_name || '',
+          reason: 'Payment was declined',
+          link_code: extraData.payment_link_code || ''
+        })
+        redirectUrl = `${extraData.failure_url}?${params.toString()}`
+        console.log('Failure redirect URL:', redirectUrl)
+      }
+
       console.log('Callback processed successfully for order:', merchantOrder)
     }
 
     // Handle payout callback
-    // BondPay sends: { merchant_id, transaction_id, amount, status, timestamp }
     if (body.transaction_id && body.merchant_id && !body.orderNo) {
-      const { transaction_id, status, amount } = body
+      const { transaction_id, status } = body
 
-      // Find our transaction by order_no
       const { data: transactions, error: txFindError } = await supabaseAdmin
         .from('transactions')
         .select('*, merchants(*)')
@@ -153,7 +175,6 @@ Deno.serve(async (req) => {
       const newStatus = status.toUpperCase() === 'SUCCESS' ? 'success' : 
                        status.toUpperCase() === 'FAILED' ? 'failed' : 'pending'
 
-      // Update transaction status
       const { error: updateError } = await supabaseAdmin
         .from('transactions')
         .update({
@@ -166,11 +187,9 @@ Deno.serve(async (req) => {
         console.error('Failed to update transaction:', updateError)
       }
 
-      // Handle balance updates for payout
       const unfreezeAmount = transaction.amount + (transaction.fee || 0)
       
       if (newStatus === 'success') {
-        // Success: just unfreeze
         const { error: balanceError } = await supabaseAdmin
           .from('merchants')
           .update({
@@ -182,7 +201,6 @@ Deno.serve(async (req) => {
           console.error('Failed to update frozen balance:', balanceError)
         }
       } else if (newStatus === 'failed') {
-        // Failed: return funds to balance
         const { error: balanceError } = await supabaseAdmin
           .from('merchants')
           .update({
@@ -196,7 +214,6 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Forward callback to merchant
       const extraData = transaction.extra ? JSON.parse(transaction.extra) : {}
       if (extraData.merchant_callback) {
         try {
@@ -218,6 +235,18 @@ Deno.serve(async (req) => {
       }
 
       console.log('Payout callback processed successfully for order:', transaction_id)
+    }
+
+    // Return redirect URL if available, otherwise return success
+    if (redirectUrl) {
+      return new Response(
+        JSON.stringify({ 
+          status: 'ok', 
+          message: 'Callback processed',
+          redirect_url: redirectUrl 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
 
     return new Response(
