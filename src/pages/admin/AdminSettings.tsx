@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Save, Settings, Percent, Eye, EyeOff, Upload, AlertTriangle, Globe, Mail, Image, Bell, Shield, Smartphone, Check, X, QrCode, Send, Layers, Plus, Trash2, Edit, Power } from 'lucide-react';
+import { Save, Settings, Percent, Eye, EyeOff, Upload, AlertTriangle, Globe, Mail, Image, Bell, Shield, Smartphone, Check, X, QrCode, Send, Layers, Plus, Trash2, Edit } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Switch } from '@/components/ui/switch';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -738,88 +739,84 @@ const AdminSettingsPage = () => {
                 </div>
               </CardHeader>
               <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead>{language === 'zh' ? '网关名称' : 'Gateway Name'}</TableHead>
-                      <TableHead>{language === 'zh' ? '类型' : 'Type'}</TableHead>
-                      <TableHead>{language === 'zh' ? '货币' : 'Currency'}</TableHead>
-                      <TableHead>{language === 'zh' ? 'App ID' : 'App ID'}</TableHead>
-                      <TableHead>{language === 'zh' ? 'API Key' : 'API Key'}</TableHead>
-                      <TableHead className="text-center">{language === 'zh' ? '状态' : 'Status'}</TableHead>
-                      <TableHead>{language === 'zh' ? '操作' : 'Actions'}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {isLoadingGateways ? (
-                      Array.from({ length: 3 }).map((_, i) => (
-                        <TableRow key={i}>
-                          <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-12" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                          <TableCell><Skeleton className="h-6 w-16" /></TableCell>
-                          <TableCell><Skeleton className="h-8 w-20" /></TableCell>
-                        </TableRow>
-                      ))
-                    ) : gateways.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                          {language === 'zh' ? '暂无网关配置' : 'No gateways configured'}
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      gateways.map((gw) => (
-                        <TableRow key={gw.id} className="hover:bg-muted/50">
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">{gw.gateway_name}</p>
-                              <p className="text-xs text-muted-foreground font-mono">{gw.gateway_code}</p>
+                {isLoadingGateways ? (
+                  <div className="p-6 space-y-4">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <Skeleton key={i} className="h-20 w-full" />
+                    ))}
+                  </div>
+                ) : gateways.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    {language === 'zh' ? '暂无网关配置' : 'No gateways configured'}
+                  </div>
+                ) : (
+                  <div className="divide-y">
+                    {gateways.map((gw) => (
+                      <div key={gw.id} className="p-4 hover:bg-muted/30 transition-colors">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            {/* Toggle Switch */}
+                            <Switch
+                              checked={gw.is_active}
+                              onCheckedChange={() => handleToggleGatewayStatus(gw)}
+                              className="data-[state=checked]:bg-green-500"
+                            />
+                            
+                            {/* Gateway Info */}
+                            <div className="flex items-center gap-3">
+                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white text-xs font-bold ${
+                                gw.gateway_type === 'bondpay' ? 'bg-orange-500' : 'bg-purple-500'
+                              }`}>
+                                {gw.currency}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium">{gw.gateway_name}</p>
+                                  <Badge variant="outline" className={gw.gateway_type === 'bondpay' ? 'bg-orange-500/10 text-orange-600 border-orange-500/20' : 'bg-purple-500/10 text-purple-600 border-purple-500/20'}>
+                                    {gw.gateway_type.toUpperCase()}
+                                  </Badge>
+                                  {gw.trade_type && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      {gw.trade_type}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground font-mono">{gw.gateway_code}</p>
+                              </div>
                             </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className={gw.gateway_type === 'bondpay' ? 'bg-orange-500/10 text-orange-600 border-orange-500/20' : 'bg-purple-500/10 text-purple-600 border-purple-500/20'}>
-                              {gw.gateway_type.toUpperCase()}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline">{gw.currency}</Badge>
-                          </TableCell>
-                          <TableCell className="font-mono text-sm">{gw.app_id}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono text-sm">
-                                {showGatewayApiKey.has(gw.id) ? gw.api_key.slice(0, 16) + '...' : '••••••••••••'}
-                              </span>
-                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toggleGatewayApiKeyVisibility(gw.id)}>
-                                {showGatewayApiKey.has(gw.id) ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                              </Button>
+                          </div>
+
+                          {/* Credentials & Actions */}
+                          <div className="flex items-center gap-4">
+                            <div className="text-right hidden md:block">
+                              <p className="text-xs text-muted-foreground">App ID</p>
+                              <p className="font-mono text-sm">{gw.app_id}</p>
                             </div>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Badge className={gw.is_active ? 'bg-green-500 hover:bg-green-600' : 'bg-muted text-muted-foreground'}>
-                              {gw.is_active ? (language === 'zh' ? '启用' : 'Active') : (language === 'zh' ? '禁用' : 'Inactive')}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
+                            <div className="text-right hidden lg:block">
+                              <p className="text-xs text-muted-foreground">API Key</p>
+                              <div className="flex items-center gap-1">
+                                <span className="font-mono text-sm">
+                                  {showGatewayApiKey.has(gw.id) ? gw.api_key.slice(0, 12) + '...' : '••••••••'}
+                                </span>
+                                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => toggleGatewayApiKeyVisibility(gw.id)}>
+                                  {showGatewayApiKey.has(gw.id) ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                                </Button>
+                              </div>
+                            </div>
                             <div className="flex items-center gap-1">
                               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditGateway(gw)}>
                                 <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleToggleGatewayStatus(gw)}>
-                                <Power className={`h-4 w-4 ${gw.is_active ? 'text-red-500' : 'text-green-500'}`} />
                               </Button>
                               <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteGateway(gw)}>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
 

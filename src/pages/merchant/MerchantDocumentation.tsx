@@ -18,6 +18,10 @@ interface MerchantCredentials {
   payoutKey: string;
   payinFee: number;
   payoutFee: number;
+  gatewayName: string | null;
+  gatewayType: string | null;
+  currency: string | null;
+  tradeType: string | null;
 }
 
 const MerchantDocumentation = () => {
@@ -41,17 +45,25 @@ const MerchantDocumentation = () => {
       try {
         const { data } = await supabase
           .from('merchants')
-          .select('account_number, api_key, payout_key, payin_fee, payout_fee')
+          .select(`
+            account_number, api_key, payout_key, payin_fee, payout_fee, trade_type,
+            payment_gateways (gateway_name, gateway_type, currency)
+          `)
           .eq('id', user.merchantId)
           .single();
 
         if (data) {
+          const gateway = data.payment_gateways as any;
           setCredentials({
             accountNumber: data.account_number,
             apiKey: data.api_key,
             payoutKey: data.payout_key,
             payinFee: data.payin_fee || 0,
             payoutFee: data.payout_fee || 0,
+            gatewayName: gateway?.gateway_name || null,
+            gatewayType: gateway?.gateway_type || null,
+            currency: gateway?.currency || 'INR',
+            tradeType: data.trade_type || null,
           });
         }
       } catch (error) {
@@ -142,6 +154,31 @@ const MerchantDocumentation = () => {
               </div>
             ) : (
               <div className="grid gap-4">
+                {/* Gateway Info */}
+                {credentials?.gatewayName && (
+                  <div className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-500/10 to-transparent rounded-lg border border-purple-500/20">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white text-sm font-bold ${
+                        credentials.gatewayType === 'bondpay' ? 'bg-orange-500' : 'bg-purple-500'
+                      }`}>
+                        {credentials.currency}
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">{language === 'zh' ? '支付网关' : 'Payment Gateway'}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{credentials.gatewayName}</p>
+                          <Badge variant="outline" className={credentials.gatewayType === 'bondpay' ? 'bg-orange-500/10 text-orange-600 border-orange-500/20' : 'bg-purple-500/10 text-purple-600 border-purple-500/20'}>
+                            {credentials.gatewayType?.toUpperCase()}
+                          </Badge>
+                          {credentials.tradeType && (
+                            <Badge variant="secondary">{credentials.tradeType}</Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Merchant ID */}
                 <div className="flex items-center justify-between p-4 bg-card rounded-lg border">
                   <div>
@@ -213,13 +250,13 @@ const MerchantDocumentation = () => {
 
                 {/* Fee Information */}
                 <div className="grid grid-cols-2 gap-4 mt-2">
-                  <div className="p-4 bg-green-500/10 rounded-lg border border-green-500/20">
+                  <div className="p-4 bg-[hsl(var(--success))]/10 rounded-lg border border-[hsl(var(--success))]/20">
                     <p className="text-sm text-muted-foreground">{t('merchants.payinFee')}</p>
-                    <p className="text-2xl font-bold text-green-500">{credentials?.payinFee}%</p>
+                    <p className="text-2xl font-bold text-[hsl(var(--success))]">{credentials?.payinFee}%</p>
                   </div>
-                  <div className="p-4 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                  <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
                     <p className="text-sm text-muted-foreground">{t('merchants.payoutFee')}</p>
-                    <p className="text-2xl font-bold text-blue-500">{credentials?.payoutFee}%</p>
+                    <p className="text-2xl font-bold text-primary">{credentials?.payoutFee}%</p>
                   </div>
                 </div>
               </div>
@@ -236,8 +273,11 @@ const MerchantDocumentation = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="payin">
-              <TabsList className="grid w-full grid-cols-5">
+            <Tabs defaultValue="gateway">
+              <TabsList className="grid w-full grid-cols-6">
+                <TabsTrigger value="gateway" className="flex items-center gap-1">
+                  🌐 {language === 'zh' ? '网关' : 'Gateway'}
+                </TabsTrigger>
                 <TabsTrigger value="payin">{t('docs.payinApi')}</TabsTrigger>
                 <TabsTrigger value="payout">{t('docs.payoutApi')}</TabsTrigger>
                 <TabsTrigger value="callback">{t('docs.callback')}</TabsTrigger>
@@ -250,6 +290,156 @@ const MerchantDocumentation = () => {
                   SDK
                 </TabsTrigger>
               </TabsList>
+
+              {/* Gateway Specific Documentation */}
+              <TabsContent value="gateway" className="space-y-6 mt-6">
+                <div className="p-4 bg-gradient-to-r from-primary/10 to-transparent border border-primary/20 rounded-lg">
+                  <h3 className="font-semibold mb-2 flex items-center gap-2">
+                    🌐 {language === 'zh' ? '您的网关配置' : 'Your Gateway Configuration'}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {language === 'zh' 
+                      ? '以下是您账户分配的支付网关的具体技术信息'
+                      : 'Below is the specific technical information for your assigned payment gateway'}
+                  </p>
+                </div>
+
+                {credentials?.gatewayType === 'bondpay' ? (
+                  /* BondPay Documentation */
+                  <div className="space-y-6">
+                    <Card className="border-orange-500/20">
+                      <CardHeader className="bg-orange-500/5">
+                        <CardTitle className="flex items-center gap-2 text-orange-600">
+                          <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center text-white text-xs font-bold">BP</div>
+                          BondPay (India - INR)
+                        </CardTitle>
+                        <CardDescription>
+                          {language === 'zh' ? '印度卢比支付通道' : 'Indian Rupee payment gateway'}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="pt-4 space-y-4">
+                        <div>
+                          <h4 className="font-semibold mb-2">{language === 'zh' ? '签名算法' : 'Signature Algorithm'}</h4>
+                          <div className="p-3 bg-muted rounded-lg">
+                            <p className="text-sm font-mono">Payin: MD5(merchant_id + amount + merchant_order_no + api_key + callback_url)</p>
+                            <p className="text-sm font-mono mt-2">Payout: MD5(account_number + amount + bank_name + callback_url + ifsc + merchant_id + name + transaction_id + payout_key)</p>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-2">⚠️ {language === 'zh' ? '字段按顺序拼接，无分隔符' : 'Fields concatenated in order, no separator'}</p>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold mb-2">{language === 'zh' ? '支持的银行' : 'Supported Banks'}</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {['HDFC', 'ICICI', 'SBI', 'Axis', 'Kotak', 'Yes Bank', 'PNB', 'BOB', 'IndusInd', 'IDFC'].map(bank => (
+                              <Badge key={bank} variant="outline">{bank}</Badge>
+                            ))}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                ) : credentials?.gatewayType === 'lgpay' ? (
+                  /* LG Pay Documentation */
+                  <div className="space-y-6">
+                    <Card className="border-purple-500/20">
+                      <CardHeader className="bg-purple-500/5">
+                        <CardTitle className="flex items-center gap-2 text-purple-600">
+                          <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center text-white text-xs font-bold">LG</div>
+                          LG Pay ({credentials.currency})
+                          {credentials.tradeType && <Badge variant="secondary">{credentials.tradeType}</Badge>}
+                        </CardTitle>
+                        <CardDescription>
+                          {credentials.currency === 'INR' && (language === 'zh' ? '印度卢比 - UPI支付' : 'Indian Rupee - UPI Payment')}
+                          {credentials.currency === 'PKR' && (language === 'zh' ? '巴基斯坦卢比 - Easypaisa/JazzCash' : 'Pakistan Rupee - Easypaisa/JazzCash')}
+                          {credentials.currency === 'BDT' && (language === 'zh' ? '孟加拉塔卡 - Nagad/bKash' : 'Bangladesh Taka - Nagad/bKash')}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="pt-4 space-y-4">
+                        <div>
+                          <h4 className="font-semibold mb-2">{language === 'zh' ? '签名算法 (ASCII排序 + MD5大写)' : 'Signature Algorithm (ASCII Sorted + MD5 Uppercase)'}</h4>
+                          <div className="p-3 bg-muted rounded-lg space-y-2">
+                            <p className="text-sm">1. {language === 'zh' ? '过滤空值参数' : 'Filter out empty parameters'}</p>
+                            <p className="text-sm">2. {language === 'zh' ? '按参数名ASCII排序' : 'Sort by parameter name (ASCII)'}</p>
+                            <p className="text-sm">3. {language === 'zh' ? '拼接: key1=value1&key2=value2&key=YOUR_API_KEY' : 'Concatenate: key1=value1&key2=value2&key=YOUR_API_KEY'}</p>
+                            <p className="text-sm">4. {language === 'zh' ? 'MD5哈希后转大写' : 'MD5 hash and convert to uppercase'}</p>
+                          </div>
+                          <pre className="mt-2 p-3 bg-muted rounded-lg text-xs overflow-x-auto font-mono">
+{`// JavaScript Example
+function generateLGPaySign(params, apiKey) {
+  const filtered = Object.entries(params)
+    .filter(([k, v]) => v !== '' && v != null && k !== 'sign')
+    .sort(([a], [b]) => a.localeCompare(b));
+  
+  const str = filtered.map(([k,v]) => \`\${k}=\${v}\`).join('&') + '&key=' + apiKey;
+  return md5(str).toUpperCase();
+}`}
+                          </pre>
+                        </div>
+
+                        {credentials.currency === 'PKR' && (
+                          <div>
+                            <h4 className="font-semibold mb-2">{language === 'zh' ? '支持的支付方式' : 'Supported Payment Methods'}</h4>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="p-3 border rounded-lg">
+                                <p className="font-medium text-green-600">Easypaisa</p>
+                                <p className="text-xs text-muted-foreground">Pakistan Mobile Wallet</p>
+                              </div>
+                              <div className="p-3 border rounded-lg">
+                                <p className="font-medium text-red-600">JazzCash</p>
+                                <p className="text-xs text-muted-foreground">Pakistan Mobile Wallet</p>
+                              </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-2">Trade Type: PKRPH | Withdrawal Code: PKR</p>
+                          </div>
+                        )}
+
+                        {credentials.currency === 'BDT' && (
+                          <div>
+                            <h4 className="font-semibold mb-2">{language === 'zh' ? '支持的支付方式' : 'Supported Payment Methods'}</h4>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="p-3 border rounded-lg">
+                                <p className="font-medium text-orange-600">Nagad</p>
+                                <p className="text-xs text-muted-foreground">Bangladesh Mobile Wallet</p>
+                              </div>
+                              <div className="p-3 border rounded-lg">
+                                <p className="font-medium text-pink-600">bKash</p>
+                                <p className="text-xs text-muted-foreground">Bangladesh Mobile Wallet</p>
+                              </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-2">
+                              {language === 'zh' ? '您的支付方式' : 'Your payment method'}: <Badge>{credentials.tradeType || 'Not set'}</Badge> | Withdrawal Code: BDT
+                            </p>
+                          </div>
+                        )}
+
+                        {credentials.currency === 'INR' && (
+                          <div>
+                            <h4 className="font-semibold mb-2">{language === 'zh' ? '支持的支付方式' : 'Supported Payment Methods'}</h4>
+                            <div className="grid grid-cols-3 gap-3">
+                              <div className="p-3 border rounded-lg">
+                                <p className="font-medium text-blue-600">UPI</p>
+                                <p className="text-xs text-muted-foreground">Unified Payments Interface</p>
+                              </div>
+                              <div className="p-3 border rounded-lg">
+                                <p className="font-medium text-green-600">IMPS</p>
+                                <p className="text-xs text-muted-foreground">Bank Transfer</p>
+                              </div>
+                              <div className="p-3 border rounded-lg">
+                                <p className="font-medium text-purple-600">NEFT</p>
+                                <p className="text-xs text-muted-foreground">Bank Transfer</p>
+                              </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-2">Trade Type: INRUPI | Withdrawal Code: INR</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    {language === 'zh' ? '未分配支付网关' : 'No payment gateway assigned'}
+                  </div>
+                )}
+              </TabsContent>
 
               <TabsContent value="payin" className="space-y-6 mt-6">
                 <div>
