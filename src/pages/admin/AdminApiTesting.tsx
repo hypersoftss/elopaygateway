@@ -20,6 +20,10 @@ interface Merchant {
   api_key: string;
   payout_key: string;
   balance: number;
+  trade_type: string | null;
+  gateway_id: string | null;
+  gateway_type: string | null;
+  currency: string | null;
 }
 
 const AdminApiTesting = () => {
@@ -54,13 +58,23 @@ const AdminApiTesting = () => {
     try {
       const { data, error } = await supabase
         .from('merchants')
-        .select('id, account_number, merchant_name, api_key, payout_key, balance')
+        .select(`
+          id, account_number, merchant_name, api_key, payout_key, balance, trade_type, gateway_id,
+          payment_gateways (gateway_type, currency)
+        `)
         .order('merchant_name');
 
       if (error) throw error;
-      setMerchants(data || []);
-      if (data && data.length > 0) {
-        setSelectedMerchant(data[0]);
+      
+      const formattedData = data?.map(m => ({
+        ...m,
+        gateway_type: (m.payment_gateways as any)?.gateway_type || null,
+        currency: (m.payment_gateways as any)?.currency || 'INR',
+      })) || [];
+      
+      setMerchants(formattedData);
+      if (formattedData.length > 0) {
+        setSelectedMerchant(formattedData[0]);
       }
     } catch (error: any) {
       toast({
@@ -288,7 +302,7 @@ const AdminApiTesting = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="space-y-2">
                 <Label>{language === 'zh' ? '商户' : 'Merchant'}</Label>
                 <Select
@@ -321,9 +335,27 @@ const AdminApiTesting = () => {
                 </div>
               </div>
               <div className="space-y-2">
+                <Label>{language === 'zh' ? '网关/Trade Type' : 'Gateway/Trade Type'}</Label>
+                <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-purple-600">
+                      {selectedMerchant?.gateway_type?.toUpperCase() || 'DEFAULT'}
+                    </span>
+                    <span className="text-muted-foreground">|</span>
+                    <span className="text-sm">{selectedMerchant?.currency || 'INR'}</span>
+                    {selectedMerchant?.trade_type && (
+                      <>
+                        <span className="text-muted-foreground">|</span>
+                        <span className="text-xs bg-primary/10 px-2 py-0.5 rounded">{selectedMerchant.trade_type}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2">
                 <Label>{language === 'zh' ? '当前余额' : 'Current Balance'}</Label>
-                <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
-                  <span className="text-2xl font-bold text-green-600">
+                <div className="p-3 rounded-lg bg-[hsl(var(--success))]/10 border border-[hsl(var(--success))]/20">
+                  <span className="text-2xl font-bold text-[hsl(var(--success))]">
                     ₹{selectedMerchant?.balance?.toLocaleString() || '0'}
                   </span>
                 </div>
