@@ -67,7 +67,21 @@ interface Gateway {
   gateway_type: string;
   currency: string;
   is_active: boolean;
+  trade_type: string | null;
 }
+
+// Trade type options based on gateway currency
+const TRADE_TYPE_OPTIONS: Record<string, { value: string; label: string }[]> = {
+  BDT: [
+    { value: 'nagad', label: 'Nagad' },
+    { value: 'bkash', label: 'bKash' },
+  ],
+  PKR: [
+    { value: 'easypaisa', label: 'Easypaisa' },
+    { value: 'jazzcash', label: 'JazzCash' },
+  ],
+  INR: [], // No trade type selection for India
+};
 
 const AdminMerchants = () => {
   const { t, language } = useTranslation();
@@ -98,6 +112,7 @@ const AdminMerchants = () => {
     payoutFee: '4.0',
     callbackUrl: '',
     gatewayId: '',
+    tradeType: '',
   });
 
   const fetchMerchants = async () => {
@@ -123,7 +138,7 @@ const AdminMerchants = () => {
     try {
       const { data } = await supabase
         .from('payment_gateways')
-        .select('id, gateway_code, gateway_name, gateway_type, currency, is_active')
+        .select('id, gateway_code, gateway_name, gateway_type, currency, is_active, trade_type')
         .eq('is_active', true)
         .order('gateway_name');
       setGateways(data || []);
@@ -159,6 +174,7 @@ const AdminMerchants = () => {
             payoutFee: parseFloat(newMerchant.payoutFee),
             callbackUrl: newMerchant.callbackUrl || null,
             gatewayId: newMerchant.gatewayId || null,
+            tradeType: newMerchant.tradeType || null,
           }),
         }
       );
@@ -183,6 +199,7 @@ const AdminMerchants = () => {
         payoutFee: '4.0',
         callbackUrl: '',
         gatewayId: '',
+        tradeType: '',
       });
       fetchMerchants();
     } catch (err: any) {
@@ -490,7 +507,14 @@ const AdminMerchants = () => {
                   <select
                     className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
                     value={newMerchant.gatewayId}
-                    onChange={(e) => setNewMerchant({ ...newMerchant, gatewayId: e.target.value })}
+                    onChange={(e) => {
+                      const selectedGateway = gateways.find(g => g.id === e.target.value);
+                      setNewMerchant({ 
+                        ...newMerchant, 
+                        gatewayId: e.target.value,
+                        tradeType: '' // Reset trade type when gateway changes
+                      });
+                    }}
                   >
                     <option value="">{language === 'zh' ? '选择网关...' : 'Select gateway...'}</option>
                     {gateways.map((gw) => (
@@ -500,6 +524,29 @@ const AdminMerchants = () => {
                     ))}
                   </select>
                 </div>
+                {/* Trade Type Selection - Only show for BDT/PKR gateways */}
+                {(() => {
+                  const selectedGateway = gateways.find(g => g.id === newMerchant.gatewayId);
+                  const tradeTypes = selectedGateway ? TRADE_TYPE_OPTIONS[selectedGateway.currency] || [] : [];
+                  if (tradeTypes.length === 0) return null;
+                  return (
+                    <div className="space-y-2">
+                      <Label>{language === 'zh' ? '支付方式' : 'Trade Type'} *</Label>
+                      <select
+                        className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                        value={newMerchant.tradeType}
+                        onChange={(e) => setNewMerchant({ ...newMerchant, tradeType: e.target.value })}
+                      >
+                        <option value="">{language === 'zh' ? '选择支付方式...' : 'Select trade type...'}</option>
+                        {tradeTypes.map((tt) => (
+                          <option key={tt.value} value={tt.value}>
+                            {tt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                })()}
                 <div className="flex gap-2">
                   <Button
                     className="flex-1 btn-gradient-primary"

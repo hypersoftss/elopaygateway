@@ -176,6 +176,7 @@ export type Database = {
           payout_fee: number | null
           payout_key: string | null
           telegram_chat_id: string | null
+          trade_type: string | null
           updated_at: string | null
           user_id: string
           withdrawal_password: string | null
@@ -200,6 +201,7 @@ export type Database = {
           payout_fee?: number | null
           payout_key?: string | null
           telegram_chat_id?: string | null
+          trade_type?: string | null
           updated_at?: string | null
           user_id: string
           withdrawal_password?: string | null
@@ -224,6 +226,7 @@ export type Database = {
           payout_fee?: number | null
           payout_key?: string | null
           telegram_chat_id?: string | null
+          trade_type?: string | null
           updated_at?: string | null
           user_id?: string
           withdrawal_password?: string | null
