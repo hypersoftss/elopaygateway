@@ -62,6 +62,24 @@ async function createNotification(
   }
 }
 
+async function sendTelegramNotification(type: string, merchantId: string, data: any) {
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    
+    await fetch(`${supabaseUrl}/functions/v1/send-telegram`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${serviceKey}`,
+      },
+      body: JSON.stringify({ type, merchantId, data }),
+    })
+  } catch (error) {
+    console.error('Failed to send Telegram notification:', error)
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -230,6 +248,14 @@ Deno.serve(async (req) => {
         txData?.id
       )
     }
+
+    // Send Telegram notification for payout created
+    await sendTelegramNotification('payout_created', merchant.id, {
+      orderNo,
+      amount: amountNum,
+      bankName: bank_name,
+      accountNumber: account_number,
+    })
 
     console.log('Payout order created (pending admin approval):', orderNo)
 

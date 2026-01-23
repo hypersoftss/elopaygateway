@@ -237,10 +237,14 @@ const MerchantDocumentation = () => {
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="payin">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="payin">{t('docs.payinApi')}</TabsTrigger>
                 <TabsTrigger value="payout">{t('docs.payoutApi')}</TabsTrigger>
                 <TabsTrigger value="callback">{t('docs.callback')}</TabsTrigger>
+                <TabsTrigger value="curl" className="flex items-center gap-1">
+                  <Terminal className="h-3 w-3" />
+                  cURL
+                </TabsTrigger>
                 <TabsTrigger value="sdk" className="flex items-center gap-1">
                   <Package className="h-3 w-3" />
                   SDK
@@ -495,6 +499,153 @@ Content-Type: application/json
   "status": "ok",
   "message": "Callback received successfully"
 }`}
+                  </pre>
+                </div>
+              </TabsContent>
+
+              {/* cURL Examples Tab */}
+              <TabsContent value="curl" className="space-y-6 mt-6">
+                <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                  <h3 className="font-semibold mb-2 flex items-center gap-2">
+                    <Terminal className="h-5 w-5" />
+                    {language === 'zh' ? 'cURL 命令示例' : 'cURL Command Examples'}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {language === 'zh' 
+                      ? '直接在终端中测试API请求' 
+                      : 'Test API requests directly from your terminal'}
+                  </p>
+                </div>
+
+                {/* Payin cURL */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-semibold flex items-center gap-2">
+                      <Badge className="bg-green-500">POST</Badge>
+                      {language === 'zh' ? '代收请求' : 'Pay-in Request'}
+                    </h3>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyToClipboard(`curl -X POST '${apiBaseUrl}/payin' \\
+  -H 'Content-Type: application/json' \\
+  -d '{
+    "merchant_id": "${credentials?.accountNumber || 'YOUR_MERCHANT_ID'}",
+    "amount": "500.00",
+    "merchant_order_no": "ORDER_${Date.now()}",
+    "callback_url": "https://your-domain.com/callback",
+    "sign": "YOUR_MD5_SIGNATURE"
+  }'`, 'curlPayin')}
+                    >
+                      {copiedField === 'curlPayin' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <pre className="p-4 bg-muted rounded-lg text-sm overflow-x-auto font-mono whitespace-pre-wrap">
+{`curl -X POST '${apiBaseUrl}/payin' \\
+  -H 'Content-Type: application/json' \\
+  -d '{
+    "merchant_id": "${credentials?.accountNumber || 'YOUR_MERCHANT_ID'}",
+    "amount": "500.00",
+    "merchant_order_no": "ORDER_${Date.now()}",
+    "callback_url": "https://your-domain.com/callback",
+    "sign": "YOUR_MD5_SIGNATURE"
+  }'`}
+                  </pre>
+                </div>
+
+                {/* Payout cURL */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-semibold flex items-center gap-2">
+                      <Badge className="bg-blue-500">POST</Badge>
+                      {language === 'zh' ? '代付请求' : 'Pay-out Request'}
+                    </h3>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyToClipboard(`curl -X POST '${apiBaseUrl}/payout' \\
+  -H 'Content-Type: application/json' \\
+  -d '{
+    "merchant_id": "${credentials?.accountNumber || 'YOUR_MERCHANT_ID'}",
+    "amount": 1500,
+    "transaction_id": "WD_${Date.now()}",
+    "account_number": "1234567890",
+    "ifsc": "HDFC0001234",
+    "name": "Account Holder Name",
+    "bank_name": "HDFC Bank",
+    "callback_url": "https://your-domain.com/payout-callback",
+    "sign": "YOUR_MD5_SIGNATURE"
+  }'`, 'curlPayout')}
+                    >
+                      {copiedField === 'curlPayout' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <pre className="p-4 bg-muted rounded-lg text-sm overflow-x-auto font-mono whitespace-pre-wrap">
+{`curl -X POST '${apiBaseUrl}/payout' \\
+  -H 'Content-Type: application/json' \\
+  -d '{
+    "merchant_id": "${credentials?.accountNumber || 'YOUR_MERCHANT_ID'}",
+    "amount": 1500,
+    "transaction_id": "WD_${Date.now()}",
+    "account_number": "1234567890",
+    "ifsc": "HDFC0001234",
+    "name": "Account Holder Name",
+    "bank_name": "HDFC Bank",
+    "callback_url": "https://your-domain.com/payout-callback",
+    "sign": "YOUR_MD5_SIGNATURE"
+  }'`}
+                  </pre>
+                </div>
+
+                {/* Signature Generation Tip */}
+                <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                  <h4 className="font-semibold mb-2 text-yellow-600">
+                    {language === 'zh' ? '签名生成提示' : 'Signature Generation Tip'}
+                  </h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    {language === 'zh' 
+                      ? '使用以下命令在终端生成MD5签名:' 
+                      : 'Generate MD5 signature in terminal:'}
+                  </p>
+                  <div className="flex items-center justify-between mb-2">
+                    <Badge variant="outline">Bash / Linux / Mac</Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyToClipboard(`echo -n "${credentials?.accountNumber || 'MERCHANT_ID'}500.00ORDER_123${credentials?.apiKey || 'API_KEY'}https://callback.url" | md5sum`, 'bashMd5')}
+                    >
+                      {copiedField === 'bashMd5' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <pre className="p-3 bg-muted rounded text-xs font-mono">
+{`# Payin signature
+echo -n "${credentials?.accountNumber || 'MERCHANT_ID'}500.00ORDER_123${credentials?.apiKey || 'API_KEY'}https://callback.url" | md5sum
+
+# Payout signature (alphabetical order)
+echo -n "1234567890150HDFC Bankhttps://callbackHDFC0001234${credentials?.accountNumber || 'MERCHANT_ID'}NameWD_123${credentials?.payoutKey || 'PAYOUT_KEY'}" | md5sum`}
+                  </pre>
+                </div>
+
+                {/* Windows PowerShell */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <Badge variant="outline">Windows PowerShell</Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyToClipboard(`$str = "${credentials?.accountNumber || 'MERCHANT_ID'}500.00ORDER_123${credentials?.apiKey || 'API_KEY'}https://callback.url"
+$md5 = [System.Security.Cryptography.MD5]::Create()
+$hash = $md5.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($str))
+[BitConverter]::ToString($hash).Replace("-","").ToLower()`, 'psMd5')}
+                    >
+                      {copiedField === 'psMd5' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <pre className="p-3 bg-muted rounded text-xs font-mono overflow-x-auto">
+{`$str = "${credentials?.accountNumber || 'MERCHANT_ID'}500.00ORDER_123${credentials?.apiKey || 'API_KEY'}https://callback.url"
+$md5 = [System.Security.Cryptography.MD5]::Create()
+$hash = $md5.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($str))
+[BitConverter]::ToString($hash).Replace("-","").ToLower()`}
                   </pre>
                 </div>
               </TabsContent>

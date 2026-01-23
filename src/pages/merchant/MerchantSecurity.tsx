@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Lock, Key, AlertCircle, Shield, Smartphone, Check, X, QrCode } from 'lucide-react';
+import { Lock, Key, AlertCircle, Shield, Smartphone, Check, X, QrCode, Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { QRCodeSVG } from 'qrcode.react';
 import * as OTPAuth from 'otpauth';
@@ -33,6 +33,7 @@ const MerchantSecurity = () => {
   const [is2FAEnabled, setIs2FAEnabled] = useState(false);
   const [merchantName, setMerchantName] = useState('');
   const [gatewayName, setGatewayName] = useState('PayGate');
+  const [telegramChatId, setTelegramChatId] = useState('');
 
   // 2FA State
   const [show2FASetup, setShow2FASetup] = useState(false);
@@ -60,7 +61,7 @@ const MerchantSecurity = () => {
         // Fetch merchant data
         const { data, error } = await supabase
           .from('merchants')
-          .select('withdrawal_password, is_2fa_enabled, google_2fa_secret, merchant_name')
+          .select('withdrawal_password, is_2fa_enabled, google_2fa_secret, merchant_name, telegram_chat_id')
           .eq('id', user.merchantId)
           .single();
 
@@ -68,6 +69,7 @@ const MerchantSecurity = () => {
         setHasWithdrawalPassword(!!data.withdrawal_password);
         setIs2FAEnabled(!!data.is_2fa_enabled);
         setMerchantName(data.merchant_name || 'Merchant');
+        setTelegramChatId(data.telegram_chat_id || '');
 
         // Fetch gateway name from admin_settings
         const { data: settingsData } = await supabase
@@ -241,6 +243,29 @@ const MerchantSecurity = () => {
       setHasWithdrawalPassword(true);
       toast({ title: t('common.success'), description: language === 'zh' ? '提现密码已设置' : 'Withdrawal password set successfully' });
       setWithdrawalForm({ password: '', confirm: '' });
+    } catch (error: any) {
+      toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
+    } finally {
+    setIsSaving(false);
+    }
+  };
+
+  const handleSaveTelegramId = async () => {
+    if (!user?.merchantId) return;
+
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from('merchants')
+        .update({ telegram_chat_id: telegramChatId || null })
+        .eq('id', user.merchantId);
+
+      if (error) throw error;
+
+      toast({ 
+        title: t('common.success'), 
+        description: language === 'zh' ? 'Telegram ID 已保存' : 'Telegram ID saved successfully' 
+      });
     } catch (error: any) {
       toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
     } finally {
@@ -478,6 +503,69 @@ const MerchantSecurity = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Telegram Notifications Card */}
+        <Card className="border-border overflow-hidden">
+          <CardHeader className="bg-gradient-to-r from-blue-500/10 via-blue-500/5 to-transparent border-b">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-blue-500/20">
+                <Send className="h-5 w-5 text-blue-500" />
+              </div>
+              <div>
+                <CardTitle className="text-base">
+                  {language === 'zh' ? 'Telegram 通知' : 'Telegram Notifications'}
+                </CardTitle>
+                <CardDescription>
+                  {language === 'zh' 
+                    ? '设置Telegram群组接收交易通知' 
+                    : 'Set up Telegram group to receive transaction notifications'}
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-6 space-y-4">
+            {isLoading ? (
+              <Skeleton className="h-20 w-full" />
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground text-xs">
+                    {language === 'zh' ? 'Telegram 群组/频道 ID' : 'Telegram Group/Channel ID'}
+                  </Label>
+                  <Input
+                    value={telegramChatId}
+                    onChange={(e) => setTelegramChatId(e.target.value)}
+                    placeholder={language === 'zh' ? '例如: -1001234567890' : 'e.g., -1001234567890'}
+                    className="bg-muted/50 border-border font-mono"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {language === 'zh' 
+                      ? '从 @userinfobot 获取群组ID，将机器人添加到群组后发送消息获取' 
+                      : 'Get group ID from @userinfobot - add bot to group and send a message'}
+                  </p>
+                </div>
+
+                <div className="p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                  <p className="text-sm text-blue-600 dark:text-blue-400">
+                    {language === 'zh' 
+                      ? '💡 您将收到: 充值成功、提现状态更新、余额变动等通知' 
+                      : '💡 You will receive: Deposit success, withdrawal status updates, balance changes'}
+                  </p>
+                </div>
+
+                <Button
+                  onClick={handleSaveTelegramId}
+                  disabled={isSaving}
+                  className="w-full"
+                  variant="outline"
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  {language === 'zh' ? '保存 Telegram ID' : 'Save Telegram ID'}
+                </Button>
+              </>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Security Tips */}
         <Card className="bg-card border-border">

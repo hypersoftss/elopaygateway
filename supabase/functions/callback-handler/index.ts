@@ -5,6 +5,25 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Helper function to send Telegram notification
+async function sendTelegramNotification(supabaseAdmin: any, type: string, merchantId: string, data: any) {
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    
+    await fetch(`${supabaseUrl}/functions/v1/send-telegram`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${serviceKey}`,
+      },
+      body: JSON.stringify({ type, merchantId, data }),
+    })
+  } catch (error) {
+    console.error('Failed to send Telegram notification:', error)
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -71,6 +90,20 @@ Deno.serve(async (req) => {
         if (balanceError) {
           console.error('Failed to update balance:', balanceError)
         }
+
+        // Send Telegram notification for payin success
+        await sendTelegramNotification(supabaseAdmin, 'payin_success', transaction.merchant_id, {
+          orderNo: transaction.order_no,
+          amount: transaction.amount,
+          fee: transaction.fee,
+          netAmount: transaction.net_amount,
+        })
+      } else if (newStatus === 'failed' && transaction.transaction_type === 'payin') {
+        // Send Telegram notification for payin failed
+        await sendTelegramNotification(supabaseAdmin, 'payin_failed', transaction.merchant_id, {
+          orderNo: transaction.order_no,
+          amount: transaction.amount,
+        })
       }
 
       // If payout completed, unfreeze the amount
@@ -88,6 +121,13 @@ Deno.serve(async (req) => {
           if (balanceError) {
             console.error('Failed to update frozen balance:', balanceError)
           }
+
+          // Send Telegram notification for payout success
+          await sendTelegramNotification(supabaseAdmin, 'payout_success', transaction.merchant_id, {
+            orderNo: transaction.order_no,
+            amount: transaction.amount,
+            bankName: transaction.bank_name,
+          })
         } else if (newStatus === 'failed') {
           const { error: balanceError } = await supabaseAdmin
             .from('merchants')
@@ -100,6 +140,13 @@ Deno.serve(async (req) => {
           if (balanceError) {
             console.error('Failed to restore balance:', balanceError)
           }
+
+          // Send Telegram notification for payout failed
+          await sendTelegramNotification(supabaseAdmin, 'payout_failed', transaction.merchant_id, {
+            orderNo: transaction.order_no,
+            amount: transaction.amount,
+            reason: 'Transaction declined',
+          })
         }
       }
 
@@ -200,6 +247,13 @@ Deno.serve(async (req) => {
         if (balanceError) {
           console.error('Failed to update frozen balance:', balanceError)
         }
+
+        // Send Telegram notification
+        await sendTelegramNotification(supabaseAdmin, 'payout_success', transaction.merchant_id, {
+          orderNo: transaction.order_no,
+          amount: transaction.amount,
+          bankName: transaction.bank_name,
+        })
       } else if (newStatus === 'failed') {
         const { error: balanceError } = await supabaseAdmin
           .from('merchants')
@@ -212,6 +266,13 @@ Deno.serve(async (req) => {
         if (balanceError) {
           console.error('Failed to restore balance:', balanceError)
         }
+
+        // Send Telegram notification
+        await sendTelegramNotification(supabaseAdmin, 'payout_failed', transaction.merchant_id, {
+          orderNo: transaction.order_no,
+          amount: transaction.amount,
+          reason: 'Transaction failed',
+        })
       }
 
       const extraData = transaction.extra ? JSON.parse(transaction.extra) : {}

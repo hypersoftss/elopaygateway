@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, Settings, CreditCard, Percent, Eye, EyeOff, Upload, AlertTriangle, Globe, Mail, Image, Bell, Shield, Smartphone, Check, X, QrCode } from 'lucide-react';
+import { Save, Settings, CreditCard, Percent, Eye, EyeOff, Upload, AlertTriangle, Globe, Mail, Image, Bell, Shield, Smartphone, Check, X, QrCode, Send } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,6 +40,7 @@ interface AdminSettings {
   large_payin_threshold: number;
   large_payout_threshold: number;
   large_withdrawal_threshold: number;
+  admin_telegram_chat_id: string | null;
 }
 
 const AdminSettingsPage = () => {
@@ -80,6 +81,7 @@ const AdminSettingsPage = () => {
           large_payout_threshold: settingsData.large_payout_threshold || 5000,
           large_withdrawal_threshold: settingsData.large_withdrawal_threshold || 10000,
           favicon_url: settingsData.favicon_url || null,
+          admin_telegram_chat_id: settingsData.admin_telegram_chat_id || null,
         } as AdminSettings);
         setLogoPreview(settingsData.logo_url);
         setFaviconPreview(settingsData.favicon_url);
@@ -286,6 +288,7 @@ const AdminSettingsPage = () => {
           large_payin_threshold: settings.large_payin_threshold,
           large_payout_threshold: settings.large_payout_threshold,
           large_withdrawal_threshold: settings.large_withdrawal_threshold,
+          admin_telegram_chat_id: settings.admin_telegram_chat_id,
         } as any)
         .eq('id', settings.id);
 
@@ -780,6 +783,61 @@ const AdminSettingsPage = () => {
                     </CardContent>
                   </Card>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Telegram Notifications Card */}
+            <Card className="mt-6 border-border overflow-hidden">
+              <CardHeader className="bg-gradient-to-r from-blue-500/10 via-blue-500/5 to-transparent border-b">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-blue-500/20">
+                    <Send className="h-5 w-5 text-blue-500" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base">
+                      {language === 'zh' ? 'Telegram 通知' : 'Telegram Notifications'}
+                    </CardTitle>
+                    <CardDescription>
+                      {language === 'zh' 
+                        ? '设置Telegram群组接收所有交易通知' 
+                        : 'Set up Telegram group to receive all transaction notifications'}
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6 space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground text-xs">
+                    {language === 'zh' ? 'Admin Telegram 群组/频道 ID' : 'Admin Telegram Group/Channel ID'}
+                  </Label>
+                  <Input
+                    value={settings?.admin_telegram_chat_id || ''}
+                    onChange={(e) => setSettings(s => s ? { ...s, admin_telegram_chat_id: e.target.value || null } : null)}
+                    placeholder={language === 'zh' ? '例如: -1001234567890' : 'e.g., -1001234567890'}
+                    className="bg-muted/50 border-border font-mono"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {language === 'zh' 
+                      ? '从 @userinfobot 获取群组ID。将机器人添加到群组后发送消息获取ID' 
+                      : 'Get group ID from @userinfobot - add the bot to your group and send a message to get the ID'}
+                  </p>
+                </div>
+
+                <div className="p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                  <p className="text-sm text-blue-600 dark:text-blue-400">
+                    {language === 'zh' 
+                      ? '💡 您将收到: 所有商户的充值、提现、大额交易等通知' 
+                      : '💡 You will receive: All deposits, withdrawals, large transactions from all merchants'}
+                  </p>
+                </div>
+
+                <Alert>
+                  <AlertDescription className="text-muted-foreground text-sm">
+                    {language === 'zh' 
+                      ? '点击顶部的"保存所有更改"按钮保存Telegram ID'
+                      : 'Click "Save All Changes" button at top to save the Telegram ID'}
+                  </AlertDescription>
+                </Alert>
               </CardContent>
             </Card>
           </TabsContent>
