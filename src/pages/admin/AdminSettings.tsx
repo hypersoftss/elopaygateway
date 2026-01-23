@@ -41,6 +41,8 @@ interface AdminSettings {
   large_payout_threshold: number;
   large_withdrawal_threshold: number;
   admin_telegram_chat_id: string | null;
+  telegram_bot_token: string | null;
+  telegram_webhook_url: string | null;
 }
 
 const AdminSettingsPage = () => {
@@ -56,6 +58,7 @@ const AdminSettingsPage = () => {
   const [faviconPreview, setFaviconPreview] = useState<string | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
   const [showPayoutKey, setShowPayoutKey] = useState(false);
+  const [showBotToken, setShowBotToken] = useState(false);
 
   // 2FA State
   const [is2FAEnabled, setIs2FAEnabled] = useState(false);
@@ -64,6 +67,9 @@ const AdminSettingsPage = () => {
   const [totpUri, setTotpUri] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
+  
+  // Telegram Bot State
+  const [isSettingWebhook, setIsSettingWebhook] = useState(false);
 
   const fetchSettings = async () => {
     setIsLoading(true);
@@ -82,6 +88,8 @@ const AdminSettingsPage = () => {
           large_withdrawal_threshold: settingsData.large_withdrawal_threshold || 10000,
           favicon_url: settingsData.favicon_url || null,
           admin_telegram_chat_id: settingsData.admin_telegram_chat_id || null,
+          telegram_bot_token: settingsData.telegram_bot_token || null,
+          telegram_webhook_url: settingsData.telegram_webhook_url || null,
         } as AdminSettings);
         setLogoPreview(settingsData.logo_url);
         setFaviconPreview(settingsData.favicon_url);
@@ -289,6 +297,8 @@ const AdminSettingsPage = () => {
           large_payout_threshold: settings.large_payout_threshold,
           large_withdrawal_threshold: settings.large_withdrawal_threshold,
           admin_telegram_chat_id: settings.admin_telegram_chat_id,
+          telegram_bot_token: settings.telegram_bot_token,
+          telegram_webhook_url: settings.telegram_webhook_url,
         } as any)
         .eq('id', settings.id);
 
@@ -349,7 +359,7 @@ const AdminSettingsPage = () => {
 
         {/* Tabs */}
         <Tabs defaultValue="branding" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="branding" className="flex items-center gap-2">
               <Globe className="h-4 w-4" />
               <span className="hidden sm:inline">{language === 'zh' ? '品牌' : 'Brand'}</span>
@@ -361,6 +371,10 @@ const AdminSettingsPage = () => {
             <TabsTrigger value="fees" className="flex items-center gap-2">
               <Percent className="h-4 w-4" />
               <span className="hidden sm:inline">{language === 'zh' ? '费率' : 'Fees'}</span>
+            </TabsTrigger>
+            <TabsTrigger value="telegram" className="flex items-center gap-2">
+              <Send className="h-4 w-4" />
+              <span className="hidden sm:inline">Telegram</span>
             </TabsTrigger>
             <TabsTrigger value="alerts" className="flex items-center gap-2">
               <Bell className="h-4 w-4" />
@@ -684,6 +698,210 @@ const AdminSettingsPage = () => {
             </Card>
           </TabsContent>
 
+          {/* Telegram Bot Tab */}
+          <TabsContent value="telegram">
+            <div className="space-y-6">
+              {/* Bot Token Card */}
+              <Card className="border-border overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-blue-500/10 via-blue-500/5 to-transparent border-b">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-blue-500/20">
+                      <Send className="h-5 w-5 text-blue-500" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">
+                        {language === 'zh' ? 'Telegram Bot 配置' : 'Telegram Bot Configuration'}
+                      </CardTitle>
+                      <CardDescription>
+                        {language === 'zh' 
+                          ? '配置您的 Telegram Bot Token 和 Webhook' 
+                          : 'Configure your Telegram Bot Token and Webhook'}
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6 space-y-6">
+                  {/* Bot Token */}
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      🤖 {language === 'zh' ? 'Bot Token' : 'Bot Token'}
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        type={showBotToken ? 'text' : 'password'}
+                        value={settings?.telegram_bot_token || ''}
+                        onChange={(e) => setSettings(s => s ? { ...s, telegram_bot_token: e.target.value || null } : null)}
+                        placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+                        className="bg-muted/50 border-border font-mono pr-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-1 top-1/2 -translate-y-1/2"
+                        onClick={() => setShowBotToken(!showBotToken)}
+                      >
+                        {showBotToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {language === 'zh' 
+                        ? '从 @BotFather 获取 Bot Token' 
+                        : 'Get Bot Token from @BotFather on Telegram'}
+                    </p>
+                  </div>
+
+                  {/* Webhook URL */}
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      🔗 {language === 'zh' ? 'Webhook URL' : 'Webhook URL'}
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={settings?.telegram_webhook_url || `https://ttywuskboaranphxxgtr.supabase.co/functions/v1/telegram-bot`}
+                        onChange={(e) => setSettings(s => s ? { ...s, telegram_webhook_url: e.target.value || null } : null)}
+                        placeholder="https://your-domain.com/functions/v1/telegram-bot"
+                        className="bg-muted/50 border-border font-mono flex-1"
+                      />
+                      <Button
+                        variant="outline"
+                        onClick={async () => {
+                          const webhookUrl = settings?.telegram_webhook_url || `https://ttywuskboaranphxxgtr.supabase.co/functions/v1/telegram-bot`;
+                          const botToken = settings?.telegram_bot_token;
+                          
+                          if (!botToken) {
+                            toast({
+                              title: language === 'zh' ? '错误' : 'Error',
+                              description: language === 'zh' ? '请先输入 Bot Token' : 'Please enter Bot Token first',
+                              variant: 'destructive',
+                            });
+                            return;
+                          }
+                          
+                          setIsSettingWebhook(true);
+                          try {
+                            const response = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ url: webhookUrl }),
+                            });
+                            const result = await response.json();
+                            
+                            if (result.ok) {
+                              toast({
+                                title: language === 'zh' ? 'Webhook 设置成功' : 'Webhook Set Successfully',
+                                description: language === 'zh' ? 'Bot 已连接' : 'Bot is now connected',
+                              });
+                            } else {
+                              throw new Error(result.description || 'Failed to set webhook');
+                            }
+                          } catch (error: any) {
+                            toast({
+                              title: language === 'zh' ? '错误' : 'Error',
+                              description: error.message,
+                              variant: 'destructive',
+                            });
+                          } finally {
+                            setIsSettingWebhook(false);
+                          }
+                        }}
+                        disabled={isSettingWebhook || !settings?.telegram_bot_token}
+                      >
+                        {isSettingWebhook ? '...' : (language === 'zh' ? '设置 Webhook' : 'Set Webhook')}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {language === 'zh' 
+                        ? '点击"设置 Webhook"按钮激活 Bot' 
+                        : 'Click "Set Webhook" button to activate the bot'}
+                    </p>
+                  </div>
+
+                  {/* Admin Group ID */}
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      👑 {language === 'zh' ? 'Admin Group ID' : 'Admin Group ID'}
+                    </Label>
+                    <Input
+                      value={settings?.admin_telegram_chat_id || ''}
+                      onChange={(e) => setSettings(s => s ? { ...s, admin_telegram_chat_id: e.target.value || null } : null)}
+                      placeholder="-1001234567890"
+                      className="bg-muted/50 border-border font-mono"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {language === 'zh' 
+                        ? '在群组中使用 /tg_id 获取群组 ID' 
+                        : 'Use /tg_id in your group to get the Group ID'}
+                    </p>
+                  </div>
+
+                  <Alert className="border-blue-500/30 bg-blue-500/10">
+                    <Send className="h-4 w-4 text-blue-500" />
+                    <AlertDescription className="text-blue-600 dark:text-blue-400">
+                      <b>{language === 'zh' ? '设置步骤:' : 'Setup Steps:'}</b>
+                      <ol className="list-decimal list-inside mt-2 space-y-1 text-sm">
+                        <li>{language === 'zh' ? '从 @BotFather 创建 Bot 并获取 Token' : 'Create a bot with @BotFather and get the Token'}</li>
+                        <li>{language === 'zh' ? '将 Token 粘贴到上方' : 'Paste the Token above'}</li>
+                        <li>{language === 'zh' ? '点击"保存所有更改"' : 'Click "Save All Changes"'}</li>
+                        <li>{language === 'zh' ? '点击"设置 Webhook"激活 Bot' : 'Click "Set Webhook" to activate the bot'}</li>
+                        <li>{language === 'zh' ? '将 Bot 添加到您的 Admin 群组' : 'Add the bot to your Admin group'}</li>
+                        <li>{language === 'zh' ? '在群组中发送 /tg_id 获取群组 ID' : 'Send /tg_id in the group to get Group ID'}</li>
+                        <li>{language === 'zh' ? '将群组 ID 填入上方并保存' : 'Enter the Group ID above and save'}</li>
+                      </ol>
+                    </AlertDescription>
+                  </Alert>
+                </CardContent>
+              </Card>
+
+              {/* Bot Commands Reference */}
+              <Card className="border-border">
+                <CardHeader className="bg-muted/30 border-b">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    📋 {language === 'zh' ? 'Bot 命令参考' : 'Bot Commands Reference'}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-muted-foreground">📋 General</h4>
+                      <div className="space-y-1 font-mono text-xs">
+                        <p><code>/tg_id</code> - Get chat/group ID</p>
+                        <p><code>/help</code> - Show all commands</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-muted-foreground">👤 Merchant</h4>
+                      <div className="space-y-1 font-mono text-xs">
+                        <p><code>/create_merchant "Name" email group_id</code></p>
+                        <p><code>/merchants</code> - List all</p>
+                        <p><code>/merchant [account_no]</code> - Details</p>
+                        <p><code>/search [name]</code> - Search</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-muted-foreground">💰 Transactions</h4>
+                      <div className="space-y-1 font-mono text-xs">
+                        <p><code>/balance [account_no]</code></p>
+                        <p><code>/history [account_no]</code></p>
+                        <p><code>/status [order_no]</code></p>
+                        <p><code>/today [account_no]</code></p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-muted-foreground">🔧 Actions</h4>
+                      <div className="space-y-1 font-mono text-xs">
+                        <p><code>/reset_2fa [account_no]</code></p>
+                        <p><code>/reset_password [account_no]</code></p>
+                        <p><code>/set_fee [acc] [type] [%]</code></p>
+                        <p><code>/activate [account_no]</code></p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
           {/* Notification Thresholds Tab */}
           <TabsContent value="alerts">
             <Card>
@@ -783,61 +1001,6 @@ const AdminSettingsPage = () => {
                     </CardContent>
                   </Card>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Telegram Notifications Card */}
-            <Card className="mt-6 border-border overflow-hidden">
-              <CardHeader className="bg-gradient-to-r from-blue-500/10 via-blue-500/5 to-transparent border-b">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-blue-500/20">
-                    <Send className="h-5 w-5 text-blue-500" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-base">
-                      {language === 'zh' ? 'Telegram 通知' : 'Telegram Notifications'}
-                    </CardTitle>
-                    <CardDescription>
-                      {language === 'zh' 
-                        ? '设置Telegram群组接收所有交易通知' 
-                        : 'Set up Telegram group to receive all transaction notifications'}
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6 space-y-4">
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground text-xs">
-                    {language === 'zh' ? 'Admin Telegram 群组/频道 ID' : 'Admin Telegram Group/Channel ID'}
-                  </Label>
-                  <Input
-                    value={settings?.admin_telegram_chat_id || ''}
-                    onChange={(e) => setSettings(s => s ? { ...s, admin_telegram_chat_id: e.target.value || null } : null)}
-                    placeholder={language === 'zh' ? '例如: -1001234567890' : 'e.g., -1001234567890'}
-                    className="bg-muted/50 border-border font-mono"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {language === 'zh' 
-                      ? '从 @userinfobot 获取群组ID。将机器人添加到群组后发送消息获取ID' 
-                      : 'Get group ID from @userinfobot - add the bot to your group and send a message to get the ID'}
-                  </p>
-                </div>
-
-                <div className="p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
-                  <p className="text-sm text-blue-600 dark:text-blue-400">
-                    {language === 'zh' 
-                      ? '💡 您将收到: 所有商户的充值、提现、大额交易等通知' 
-                      : '💡 You will receive: All deposits, withdrawals, large transactions from all merchants'}
-                  </p>
-                </div>
-
-                <Alert>
-                  <AlertDescription className="text-muted-foreground text-sm">
-                    {language === 'zh' 
-                      ? '点击顶部的"保存所有更改"按钮保存Telegram ID'
-                      : 'Click "Save All Changes" button at top to save the Telegram ID'}
-                  </AlertDescription>
-                </Alert>
               </CardContent>
             </Card>
           </TabsContent>

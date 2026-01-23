@@ -107,6 +107,8 @@ export type Database = {
           master_merchant_id: string
           master_payout_key: string
           support_email: string | null
+          telegram_bot_token: string | null
+          telegram_webhook_url: string | null
           updated_at: string | null
         }
         Insert: {
@@ -126,6 +128,8 @@ export type Database = {
           master_merchant_id?: string
           master_payout_key?: string
           support_email?: string | null
+          telegram_bot_token?: string | null
+          telegram_webhook_url?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -145,6 +149,8 @@ export type Database = {
           master_merchant_id?: string
           master_payout_key?: string
           support_email?: string | null
+          telegram_bot_token?: string | null
+          telegram_webhook_url?: string | null
           updated_at?: string | null
         }
         Relationships: []
