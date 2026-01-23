@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, Settings, CreditCard, Percent, Eye, EyeOff, Upload, AlertTriangle, Globe, Mail, Image, Bell, Shield, Smartphone, Check, X, QrCode, Send, Layers, Plus, Trash2, Edit, Power } from 'lucide-react';
+import { Save, Settings, Percent, Eye, EyeOff, Upload, AlertTriangle, Globe, Mail, Image, Bell, Shield, Smartphone, Check, X, QrCode, Send, Layers, Plus, Trash2, Edit, Power } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,10 +34,6 @@ import {
 
 interface AdminSettings {
   id: string;
-  master_merchant_id: string;
-  master_api_key: string;
-  master_payout_key: string;
-  bondpay_base_url: string;
   default_payin_fee: number;
   default_payout_fee: number;
   gateway_name: string;
@@ -79,9 +75,6 @@ const AdminSettingsPage = () => {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [faviconFile, setFaviconFile] = useState<File | null>(null);
   const [faviconPreview, setFaviconPreview] = useState<string | null>(null);
-  const [showApiKey, setShowApiKey] = useState(false);
-  const [showPayoutKey, setShowPayoutKey] = useState(false);
-  const [showBotToken, setShowBotToken] = useState(false);
 
   // 2FA State
   const [is2FAEnabled, setIs2FAEnabled] = useState(false);
@@ -93,6 +86,7 @@ const AdminSettingsPage = () => {
   
   // Telegram Bot State
   const [isSettingWebhook, setIsSettingWebhook] = useState(false);
+  const [showBotToken, setShowBotToken] = useState(false);
 
   // Gateway Management State
   const [gateways, setGateways] = useState<PaymentGateway[]>([]);
@@ -474,10 +468,6 @@ const AdminSettingsPage = () => {
       const { error } = await supabase
         .from('admin_settings')
         .update({
-          master_merchant_id: settings.master_merchant_id,
-          master_api_key: settings.master_api_key,
-          master_payout_key: settings.master_payout_key,
-          bondpay_base_url: settings.bondpay_base_url,
           default_payin_fee: settings.default_payin_fee,
           default_payout_fee: settings.default_payout_fee,
           gateway_name: settings.gateway_name,
@@ -551,7 +541,7 @@ const AdminSettingsPage = () => {
 
         {/* Tabs */}
         <Tabs defaultValue="branding" className="w-full">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="branding" className="flex items-center gap-2">
               <Globe className="h-4 w-4" />
               <span className="hidden sm:inline">{language === 'zh' ? '品牌' : 'Brand'}</span>
@@ -559,10 +549,6 @@ const AdminSettingsPage = () => {
             <TabsTrigger value="gateways" className="flex items-center gap-2">
               <Layers className="h-4 w-4" />
               <span className="hidden sm:inline">{language === 'zh' ? '网关' : 'Gateways'}</span>
-            </TabsTrigger>
-            <TabsTrigger value="api" className="flex items-center gap-2">
-              <CreditCard className="h-4 w-4" />
-              <span className="hidden sm:inline">{language === 'zh' ? 'API' : 'API'}</span>
             </TabsTrigger>
             <TabsTrigger value="fees" className="flex items-center gap-2">
               <Percent className="h-4 w-4" />
@@ -847,92 +833,6 @@ const AdminSettingsPage = () => {
             </Alert>
           </TabsContent>
 
-          {/* BondPay API Tab */}
-          <TabsContent value="api">
-            <Card>
-              <CardHeader className="bg-orange-500/5 border-b">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-orange-500/10 rounded-lg flex items-center justify-center">
-                    <CreditCard className="h-5 w-5 text-orange-500" />
-                  </div>
-                  <div>
-                    <CardTitle>{language === 'zh' ? 'BondPay API配置' : 'BondPay API Configuration'}</CardTitle>
-                    <CardDescription>
-                      {language === 'zh' ? '用于处理支付的主凭证' : 'Master credentials for processing payments'}
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-6 space-y-6">
-                <Alert className="border-yellow-500/50 bg-yellow-500/10">
-                  <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                  <AlertDescription className="text-yellow-700 dark:text-yellow-400">
-                    {language === 'zh' 
-                      ? '请妥善保管这些凭证。它们拥有处理支付的完全访问权限。'
-                      : 'Keep these credentials secure. They have full access to process payments.'}
-                  </AlertDescription>
-                </Alert>
-
-                <div className="space-y-2">
-                  <Label>{language === 'zh' ? 'BondPay基础URL' : 'BondPay Base URL'}</Label>
-                  <Input
-                    value={settings?.bondpay_base_url || ''}
-                    onChange={(e) => setSettings(s => s ? { ...s, bondpay_base_url: e.target.value } : null)}
-                    placeholder="https://api.bond-pays.com"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>{language === 'zh' ? '主商户ID' : 'Master Merchant ID'}</Label>
-                  <Input
-                    value={settings?.master_merchant_id || ''}
-                    onChange={(e) => setSettings(s => s ? { ...s, master_merchant_id: e.target.value } : null)}
-                    placeholder="100888140"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>{language === 'zh' ? '主Payin API密钥' : 'Master Payin API Key'}</Label>
-                  <div className="relative">
-                    <Input
-                      type={showApiKey ? 'text' : 'password'}
-                      value={settings?.master_api_key || ''}
-                      onChange={(e) => setSettings(s => s ? { ...s, master_api_key: e.target.value } : null)}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-1 top-1/2 -translate-y-1/2"
-                      onClick={() => setShowApiKey(!showApiKey)}
-                    >
-                      {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>{language === 'zh' ? '主Payout API密钥' : 'Master Payout API Key'}</Label>
-                  <div className="relative">
-                    <Input
-                      type={showPayoutKey ? 'text' : 'password'}
-                      value={settings?.master_payout_key || ''}
-                      onChange={(e) => setSettings(s => s ? { ...s, master_payout_key: e.target.value } : null)}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-1 top-1/2 -translate-y-1/2"
-                      onClick={() => setShowPayoutKey(!showPayoutKey)}
-                    >
-                      {showPayoutKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
           {/* Default Fees Tab */}
           <TabsContent value="fees">
