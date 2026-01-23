@@ -35,6 +35,8 @@ import PaymentPage from "./pages/PaymentPage";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentFailed from "./pages/PaymentFailed";
 import NotFound from "./pages/NotFound";
+import About from "./pages/About";
+import PublicDocs from "./pages/PublicDocs";
 
 const queryClient = new QueryClient();
 
@@ -75,6 +77,8 @@ const AppRoutes = () => {
       <Route path="/pay/:linkCode" element={<PaymentPage />} />
       <Route path="/payment-success" element={<PaymentSuccess />} />
       <Route path="/payment-failed" element={<PaymentFailed />} />
+      <Route path="/about" element={<About />} />
+      <Route path="/docs" element={<PublicDocs />} />
       
       {/* Admin Routes */}
       <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
