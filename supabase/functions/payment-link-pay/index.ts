@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { link_code } = await req.json()
+    const { link_code, success_url, failure_url } = await req.json()
 
     if (!link_code) {
       return new Response(
@@ -149,7 +149,7 @@ Deno.serve(async (req) => {
     const bondPayData = await bondPayResponse.json()
     console.log('BondPay response:', bondPayData)
 
-    // Create transaction record
+    // Create transaction record with return URLs
     const { data: txData, error: txError } = await supabaseAdmin
       .from('transactions')
       .insert({
@@ -166,7 +166,9 @@ Deno.serve(async (req) => {
           bondpay_order: bondPayData.order_no,
           payment_link_code: link_code,
           payment_link_id: link.id,
-          merchant_callback: merchant?.callback_url
+          merchant_callback: merchant?.callback_url,
+          success_url: success_url || null,
+          failure_url: failure_url || null
         })
       })
       .select('id')
