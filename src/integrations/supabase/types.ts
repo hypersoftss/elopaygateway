@@ -91,6 +91,7 @@ export type Database = {
       }
       admin_settings: {
         Row: {
+          admin_telegram_chat_id: string | null
           bondpay_base_url: string | null
           default_payin_fee: number | null
           default_payout_fee: number | null
@@ -109,6 +110,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          admin_telegram_chat_id?: string | null
           bondpay_base_url?: string | null
           default_payin_fee?: number | null
           default_payout_fee?: number | null
@@ -127,6 +129,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          admin_telegram_chat_id?: string | null
           bondpay_base_url?: string | null
           default_payin_fee?: number | null
           default_payout_fee?: number | null
@@ -165,6 +168,7 @@ export type Database = {
           payin_fee: number | null
           payout_fee: number | null
           payout_key: string | null
+          telegram_chat_id: string | null
           updated_at: string | null
           user_id: string
           withdrawal_password: string | null
@@ -187,6 +191,7 @@ export type Database = {
           payin_fee?: number | null
           payout_fee?: number | null
           payout_key?: string | null
+          telegram_chat_id?: string | null
           updated_at?: string | null
           user_id: string
           withdrawal_password?: string | null
@@ -209,6 +214,7 @@ export type Database = {
           payin_fee?: number | null
           payout_fee?: number | null
           payout_key?: string | null
+          telegram_chat_id?: string | null
           updated_at?: string | null
           user_id?: string
           withdrawal_password?: string | null
