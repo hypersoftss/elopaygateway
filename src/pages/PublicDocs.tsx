@@ -8,20 +8,23 @@ import {
   Code2,
   FileJson,
   ArrowRight,
-  CheckCircle2,
-  Copy,
-  ExternalLink
+  Copy
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { LanguageSwitch } from '@/components/LanguageSwitch';
 import { useTranslation } from '@/lib/i18n';
 import { useGatewaySettings } from '@/hooks/useGatewaySettings';
+import { ScrollReveal } from '@/hooks/useScrollReveal';
 import { toast } from 'sonner';
 
 const PublicDocs = () => {
   const { language } = useTranslation();
   const { settings } = useGatewaySettings();
   const isEnglish = language === 'en';
+
+  // Use gateway name from settings
+  const gatewayName = settings.gatewayName;
+  const logoUrl = settings.logoUrl;
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -70,21 +73,22 @@ const PublicDocs = () => {
       {/* Background */}
       <div className="fixed inset-0 -z-10">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-primary/10" />
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse" />
       </div>
 
       {/* Header */}
-      <header className="border-b bg-background/80 backdrop-blur-xl sticky top-0 z-50">
+      <header className="border-b border-border/50 bg-background/60 backdrop-blur-xl sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-              {settings.logoUrl ? (
-                <img src={settings.logoUrl} alt="Logo" className="h-10 w-10 rounded-xl object-contain shadow-lg" />
+              {logoUrl ? (
+                <img src={logoUrl} alt="Logo" className="h-10 w-10 rounded-xl object-contain shadow-lg ring-2 ring-primary/20" />
               ) : (
-                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg shadow-primary/25">
+                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg shadow-primary/25 ring-2 ring-primary/20">
                   <Zap className="h-5 w-5 text-primary-foreground" />
                 </div>
               )}
-              <span className="text-xl font-bold">{settings.gatewayName}</span>
+              <span className="text-xl font-bold">{gatewayName}</span>
             </Link>
           </div>
           <div className="flex items-center gap-2">
@@ -106,70 +110,82 @@ const PublicDocs = () => {
 
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-12 text-center">
-        <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-primary/10 mb-4">
-            <BookOpen className="h-10 w-10 text-primary" />
+        <ScrollReveal>
+          <div className="max-w-3xl mx-auto space-y-6">
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 mb-4 shadow-lg">
+              <BookOpen className="h-10 w-10 text-primary" />
+            </div>
+            <h1 className="text-4xl md:text-5xl font-bold">
+              {isEnglish ? `${gatewayName} API Documentation` : `${gatewayName} API 开发文档`}
+            </h1>
+            <p className="text-xl text-muted-foreground">
+              {isEnglish 
+                ? 'Everything you need to integrate our payment gateway into your application.'
+                : '集成我们支付网关所需的所有信息。'}
+            </p>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold">
-            {isEnglish ? 'API Documentation' : 'API 开发文档'}
-          </h1>
-          <p className="text-xl text-muted-foreground">
-            {isEnglish 
-              ? 'Everything you need to integrate our payment gateway into your application.'
-              : '集成我们支付网关所需的所有信息。'}
-          </p>
-        </div>
+        </ScrollReveal>
       </section>
 
       {/* Quick Start */}
       <section className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
-            <CardContent className="p-8">
-              <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
-                <Zap className="h-6 w-6 text-primary" />
-                {isEnglish ? 'Quick Start' : '快速开始'}
-              </h2>
-              <div className="space-y-4">
-                {[
-                  isEnglish ? 'Create a merchant account and get your API credentials' : '创建商户账户并获取API凭证',
-                  isEnglish ? 'Configure your callback URL in the merchant portal' : '在商户后台配置回调URL',
-                  isEnglish ? 'Use the API endpoints to create pay-in and pay-out orders' : '使用API接口创建代收和代付订单',
-                  isEnglish ? 'Handle callbacks to update order status in your system' : '处理回调以更新您系统中的订单状态',
-                ].map((step, index) => (
-                  <div key={index} className="flex items-center gap-4">
-                    <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">
-                      {index + 1}
-                    </div>
-                    <span>{step}</span>
+        <ScrollReveal>
+          <div className="max-w-4xl mx-auto">
+            <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20 shadow-xl">
+              <CardContent className="p-8">
+                <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/25">
+                    <Zap className="h-5 w-5 text-primary-foreground" />
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                  {isEnglish ? 'Quick Start' : '快速开始'}
+                </h2>
+                <div className="space-y-4">
+                  {[
+                    isEnglish ? 'Create a merchant account and get your API credentials' : '创建商户账户并获取API凭证',
+                    isEnglish ? 'Configure your callback URL in the merchant portal' : '在商户后台配置回调URL',
+                    isEnglish ? 'Use the API endpoints to create pay-in and pay-out orders' : '使用API接口创建代收和代付订单',
+                    isEnglish ? 'Handle callbacks to update order status in your system' : '处理回调以更新您系统中的订单状态',
+                  ].map((step, index) => (
+                    <div key={index} className="flex items-center gap-4">
+                      <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm shadow-lg shadow-primary/25">
+                        {index + 1}
+                      </div>
+                      <span>{step}</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </ScrollReveal>
       </section>
 
       {/* API Endpoints */}
       <section className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
-          <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
-            <Code2 className="h-6 w-6 text-primary" />
-            {isEnglish ? 'API Endpoints' : 'API 接口'}
-          </h2>
+          <ScrollReveal>
+            <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shadow-lg">
+                <Code2 className="h-5 w-5 text-primary" />
+              </div>
+              {isEnglish ? 'API Endpoints' : 'API 接口'}
+            </h2>
+          </ScrollReveal>
           <div className="space-y-4">
             {endpoints.map((endpoint, index) => (
-              <Card key={index} className="bg-card/50 border-border/50">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-4">
-                    <span className="px-3 py-1 rounded-md bg-primary/10 text-primary font-mono text-sm font-bold">
-                      {endpoint.method}
-                    </span>
-                    <code className="font-mono text-sm">{endpoint.path}</code>
-                    <span className="text-muted-foreground ml-auto">{endpoint.description}</span>
-                  </div>
-                </CardContent>
-              </Card>
+              <ScrollReveal key={index} delay={index * 100}>
+                <Card className="bg-card/50 border-border/50 backdrop-blur-sm hover:border-primary/30 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-4">
+                      <span className="px-3 py-1 rounded-md bg-primary/10 text-primary font-mono text-sm font-bold">
+                        {endpoint.method}
+                      </span>
+                      <code className="font-mono text-sm">{endpoint.path}</code>
+                      <span className="text-muted-foreground ml-auto">{endpoint.description}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </ScrollReveal>
             ))}
           </div>
         </div>
@@ -178,121 +194,152 @@ const PublicDocs = () => {
       {/* Sample Requests */}
       <section className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto space-y-8">
-          <h2 className="text-2xl font-bold flex items-center gap-3">
-            <FileJson className="h-6 w-6 text-primary" />
-            {isEnglish ? 'Sample Requests' : '请求示例'}
-          </h2>
+          <ScrollReveal>
+            <h2 className="text-2xl font-bold flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shadow-lg">
+                <FileJson className="h-5 w-5 text-primary" />
+              </div>
+              {isEnglish ? 'Sample Requests' : '请求示例'}
+            </h2>
+          </ScrollReveal>
 
           {/* Pay-in Sample */}
-          <Card className="bg-card/50 border-border/50 overflow-hidden">
-            <CardHeader className="bg-muted/50 border-b">
-              <CardTitle className="text-lg flex items-center justify-between">
-                <span>{isEnglish ? 'Pay-in Request' : '代收请求'}</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => copyToClipboard(samplePayinRequest)}
-                  className="gap-2"
-                >
-                  <Copy className="h-4 w-4" />
-                  {isEnglish ? 'Copy' : '复制'}
-                </Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <pre className="p-4 overflow-x-auto text-sm">
-                <code>{samplePayinRequest}</code>
-              </pre>
-            </CardContent>
-          </Card>
+          <ScrollReveal delay={100}>
+            <Card className="bg-card/50 border-border/50 overflow-hidden backdrop-blur-sm hover:border-primary/30 transition-all duration-300">
+              <CardHeader className="bg-muted/50 border-b">
+                <CardTitle className="text-lg flex items-center justify-between">
+                  <span>{isEnglish ? 'Pay-in Request' : '代收请求'}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => copyToClipboard(samplePayinRequest)}
+                    className="gap-2"
+                  >
+                    <Copy className="h-4 w-4" />
+                    {isEnglish ? 'Copy' : '复制'}
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <pre className="p-4 overflow-x-auto text-sm">
+                  <code>{samplePayinRequest}</code>
+                </pre>
+              </CardContent>
+            </Card>
+          </ScrollReveal>
 
           {/* Pay-out Sample */}
-          <Card className="bg-card/50 border-border/50 overflow-hidden">
-            <CardHeader className="bg-muted/50 border-b">
-              <CardTitle className="text-lg flex items-center justify-between">
-                <span>{isEnglish ? 'Pay-out Request' : '代付请求'}</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => copyToClipboard(samplePayoutRequest)}
-                  className="gap-2"
-                >
-                  <Copy className="h-4 w-4" />
-                  {isEnglish ? 'Copy' : '复制'}
-                </Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <pre className="p-4 overflow-x-auto text-sm">
-                <code>{samplePayoutRequest}</code>
-              </pre>
-            </CardContent>
-          </Card>
+          <ScrollReveal delay={200}>
+            <Card className="bg-card/50 border-border/50 overflow-hidden backdrop-blur-sm hover:border-primary/30 transition-all duration-300">
+              <CardHeader className="bg-muted/50 border-b">
+                <CardTitle className="text-lg flex items-center justify-between">
+                  <span>{isEnglish ? 'Pay-out Request' : '代付请求'}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => copyToClipboard(samplePayoutRequest)}
+                    className="gap-2"
+                  >
+                    <Copy className="h-4 w-4" />
+                    {isEnglish ? 'Copy' : '复制'}
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <pre className="p-4 overflow-x-auto text-sm">
+                  <code>{samplePayoutRequest}</code>
+                </pre>
+              </CardContent>
+            </Card>
+          </ScrollReveal>
         </div>
       </section>
 
       {/* Response Codes */}
       <section className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
-          <h2 className="text-2xl font-bold mb-6">
-            {isEnglish ? 'Response Codes' : '响应代码'}
-          </h2>
-          <Card className="bg-card/50 border-border/50">
-            <CardContent className="p-0">
-              <div className="divide-y divide-border">
-                {[
-                  { code: '200', status: 'Success', description: isEnglish ? 'Request processed successfully' : '请求处理成功' },
-                  { code: '400', status: 'Bad Request', description: isEnglish ? 'Invalid request parameters' : '无效的请求参数' },
-                  { code: '401', status: 'Unauthorized', description: isEnglish ? 'Invalid API credentials' : '无效的API凭证' },
-                  { code: '500', status: 'Server Error', description: isEnglish ? 'Internal server error' : '服务器内部错误' },
-                ].map((item, index) => (
-                  <div key={index} className="flex items-center gap-4 p-4">
-                    <span className={`px-3 py-1 rounded-md font-mono text-sm font-bold ${
-                      item.code === '200' ? 'bg-green-500/10 text-green-500' : 
-                      item.code === '400' ? 'bg-yellow-500/10 text-yellow-500' :
-                      item.code === '401' ? 'bg-orange-500/10 text-orange-500' :
-                      'bg-red-500/10 text-red-500'
-                    }`}>
-                      {item.code}
-                    </span>
-                    <span className="font-medium">{item.status}</span>
-                    <span className="text-muted-foreground ml-auto">{item.description}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <ScrollReveal>
+            <h2 className="text-2xl font-bold mb-6">
+              {isEnglish ? 'Response Codes' : '响应代码'}
+            </h2>
+          </ScrollReveal>
+          <ScrollReveal delay={100}>
+            <Card className="bg-card/50 border-border/50 backdrop-blur-sm">
+              <CardContent className="p-0">
+                <div className="divide-y divide-border">
+                  {[
+                    { code: '200', status: 'Success', description: isEnglish ? 'Request processed successfully' : '请求处理成功', color: 'text-green-500 bg-green-500/10' },
+                    { code: '400', status: 'Bad Request', description: isEnglish ? 'Invalid request parameters' : '无效的请求参数', color: 'text-yellow-500 bg-yellow-500/10' },
+                    { code: '401', status: 'Unauthorized', description: isEnglish ? 'Invalid API credentials' : '无效的API凭证', color: 'text-orange-500 bg-orange-500/10' },
+                    { code: '500', status: 'Server Error', description: isEnglish ? 'Internal server error' : '服务器内部错误', color: 'text-red-500 bg-red-500/10' },
+                  ].map((item, index) => (
+                    <div key={index} className="flex items-center gap-4 p-4 hover:bg-muted/30 transition-colors">
+                      <span className={`px-3 py-1 rounded-md font-mono text-sm font-bold ${item.color}`}>
+                        {item.code}
+                      </span>
+                      <span className="font-medium">{item.status}</span>
+                      <span className="text-muted-foreground ml-auto">{item.description}</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </ScrollReveal>
         </div>
       </section>
 
       {/* Full Docs CTA */}
       <section className="container mx-auto px-4 py-12">
-        <Card className="max-w-2xl mx-auto bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
-          <CardContent className="p-8 text-center">
-            <h2 className="text-2xl font-bold mb-4">
-              {isEnglish ? 'Need Full Documentation?' : '需要完整文档？'}
-            </h2>
-            <p className="text-muted-foreground mb-6">
-              {isEnglish 
-                ? 'Login to the merchant portal to access complete API documentation with interactive testing.'
-                : '登录商户后台访问完整的API文档和交互式测试工具。'}
-            </p>
-            <Button asChild size="lg" className="h-12 px-8 gap-2">
-              <Link to="/merchant-login">
-                {isEnglish ? 'Access Merchant Portal' : '进入商户后台'}
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
+        <ScrollReveal>
+          <Card className="max-w-2xl mx-auto bg-gradient-to-br from-primary/15 to-primary/5 border-primary/30 shadow-2xl shadow-primary/10">
+            <CardContent className="p-10 text-center">
+              <h2 className="text-2xl font-bold mb-4">
+                {isEnglish ? 'Need Full Documentation?' : '需要完整文档？'}
+              </h2>
+              <p className="text-muted-foreground mb-8">
+                {isEnglish 
+                  ? `Login to the ${gatewayName} merchant portal to access complete API documentation with interactive testing.`
+                  : `登录${gatewayName}商户后台访问完整的API文档和交互式测试工具。`}
+              </p>
+              <Button asChild size="lg" className="h-14 px-10 text-lg font-semibold shadow-lg shadow-primary/25 hover:shadow-xl hover:-translate-y-1 transition-all gap-2">
+                <Link to="/merchant-login">
+                  {isEnglish ? 'Access Merchant Portal' : '进入商户后台'}
+                  <ArrowRight className="h-5 w-5" />
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </ScrollReveal>
       </section>
 
       {/* Footer */}
-      <footer className="border-t bg-card/50 backdrop-blur-sm py-8 mt-8">
-        <div className="container mx-auto px-4 text-center">
-          <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} {settings.gatewayName}. {isEnglish ? 'All rights reserved.' : '版权所有'}
-          </p>
+      <footer className="border-t border-border/50 bg-card/30 backdrop-blur-xl py-8 mt-8">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              {logoUrl ? (
+                <img src={logoUrl} alt="Logo" className="h-8 w-8 rounded-lg object-contain" />
+              ) : (
+                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
+                  <Zap className="h-4 w-4 text-primary-foreground" />
+                </div>
+              )}
+              <span className="font-semibold">{gatewayName}</span>
+            </div>
+
+            <div className="flex items-center gap-6 text-sm">
+              <Link to="/" className="text-muted-foreground hover:text-primary transition-colors">
+                {isEnglish ? 'Home' : '首页'}
+              </Link>
+              <Link to="/about" className="text-muted-foreground hover:text-primary transition-colors">
+                {isEnglish ? 'About' : '关于我们'}
+              </Link>
+            </div>
+
+            <p className="text-sm text-muted-foreground">
+              © {new Date().getFullYear()} {gatewayName}. {isEnglish ? 'All rights reserved.' : '版权所有'}
+            </p>
+          </div>
         </div>
       </footer>
     </div>
