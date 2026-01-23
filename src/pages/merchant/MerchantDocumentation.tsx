@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Copy, Eye, EyeOff, Check, Terminal, FileCode } from 'lucide-react';
+import { Copy, Eye, EyeOff, Check, Terminal, FileCode, Download, Package } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -69,6 +69,19 @@ const MerchantDocumentation = () => {
     setCopiedField(field);
     toast({ title: t('common.copied') });
     setTimeout(() => setCopiedField(null), 2000);
+  };
+
+  const downloadFile = (filename: string) => {
+    const link = document.createElement('a');
+    link.href = `/sdk/${filename}`;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast({
+      title: language === 'zh' ? '下载开始' : 'Download Started',
+      description: filename
+    });
   };
 
   const maskKey = (key: string) => {
@@ -224,10 +237,14 @@ const MerchantDocumentation = () => {
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="payin">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="payin">{t('docs.payinApi')}</TabsTrigger>
                 <TabsTrigger value="payout">{t('docs.payoutApi')}</TabsTrigger>
                 <TabsTrigger value="callback">{t('docs.callback')}</TabsTrigger>
+                <TabsTrigger value="sdk" className="flex items-center gap-1">
+                  <Package className="h-3 w-3" />
+                  SDK
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="payin" className="space-y-6 mt-6">
@@ -478,6 +495,252 @@ Content-Type: application/json
   "status": "ok",
   "message": "Callback received successfully"
 }`}
+                  </pre>
+                </div>
+              </TabsContent>
+
+              {/* SDK Download Tab */}
+              <TabsContent value="sdk" className="space-y-6 mt-6">
+                {/* SDK Download Cards */}
+                <div>
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <Download className="h-5 w-5" />
+                    {language === 'zh' ? '下载 SDK' : 'Download SDK'}
+                  </h3>
+                  <div className="grid md:grid-cols-4 gap-4">
+                    {/* JavaScript SDK */}
+                    <Card className="bg-card hover:shadow-md transition-shadow border-yellow-500/20">
+                      <CardContent className="pt-6">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="p-2 bg-yellow-500/10 rounded-lg">
+                            <FileCode className="h-6 w-6 text-yellow-500" />
+                          </div>
+                          <div>
+                            <h4 className="font-semibold">JavaScript</h4>
+                            <p className="text-xs text-muted-foreground">Browser / Node.js</p>
+                          </div>
+                        </div>
+                        <Button 
+                          className="w-full" 
+                          size="sm"
+                          onClick={() => downloadFile('paygate-sdk.js')}
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          .js
+                        </Button>
+                      </CardContent>
+                    </Card>
+
+                    {/* TypeScript SDK */}
+                    <Card className="bg-card hover:shadow-md transition-shadow border-blue-500/20">
+                      <CardContent className="pt-6">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="p-2 bg-blue-500/10 rounded-lg">
+                            <FileCode className="h-6 w-6 text-blue-500" />
+                          </div>
+                          <div>
+                            <h4 className="font-semibold">TypeScript</h4>
+                            <p className="text-xs text-muted-foreground">Full Type Support</p>
+                          </div>
+                        </div>
+                        <Button 
+                          className="w-full" 
+                          size="sm"
+                          variant="outline"
+                          onClick={() => downloadFile('paygate-sdk.ts')}
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          .ts
+                        </Button>
+                      </CardContent>
+                    </Card>
+
+                    {/* PHP SDK */}
+                    <Card className="bg-card hover:shadow-md transition-shadow border-purple-500/20">
+                      <CardContent className="pt-6">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="p-2 bg-purple-500/10 rounded-lg">
+                            <FileCode className="h-6 w-6 text-purple-500" />
+                          </div>
+                          <div>
+                            <h4 className="font-semibold">PHP</h4>
+                            <p className="text-xs text-muted-foreground">Laravel / Native</p>
+                          </div>
+                        </div>
+                        <Button 
+                          className="w-full" 
+                          size="sm"
+                          variant="outline"
+                          onClick={() => downloadFile('PayGateSDK.php')}
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          .php
+                        </Button>
+                      </CardContent>
+                    </Card>
+
+                    {/* README */}
+                    <Card className="bg-card hover:shadow-md transition-shadow border-green-500/20">
+                      <CardContent className="pt-6">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="p-2 bg-green-500/10 rounded-lg">
+                            <FileCode className="h-6 w-6 text-green-500" />
+                          </div>
+                          <div>
+                            <h4 className="font-semibold">README</h4>
+                            <p className="text-xs text-muted-foreground">Documentation</p>
+                          </div>
+                        </div>
+                        <Button 
+                          className="w-full" 
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => downloadFile('README.md')}
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          .md
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+
+                {/* Quick Start Examples */}
+                <div>
+                  <h3 className="font-semibold mb-4">{language === 'zh' ? '快速开始' : 'Quick Start'}</h3>
+                  
+                  {/* JavaScript Example */}
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <Badge variant="outline" className="bg-yellow-500/10">JavaScript</Badge>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => copyToClipboard(`const sdk = new PayGateSDK({
+  merchantId: '${credentials?.accountNumber || 'YOUR_MERCHANT_ID'}',
+  apiKey: '${credentials?.apiKey || 'YOUR_API_KEY'}',
+  payoutKey: '${credentials?.payoutKey || 'YOUR_PAYOUT_KEY'}',
+  baseUrl: '${apiBaseUrl}'
+});
+
+// Payin
+const result = await sdk.createPayin({
+  amount: '500.00',
+  orderNo: 'ORDER_' + Date.now(),
+  callbackUrl: 'https://your-site.com/callback'
+});
+window.location.href = result.data.payment_url;`, 'jsExample')}
+                      >
+                        {copiedField === 'jsExample' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                    <pre className="p-4 bg-muted rounded-lg text-sm overflow-x-auto font-mono">
+{`const sdk = new PayGateSDK({
+  merchantId: '${credentials?.accountNumber || 'YOUR_MERCHANT_ID'}',
+  apiKey: '${credentials?.apiKey || 'YOUR_API_KEY'}',
+  payoutKey: '${credentials?.payoutKey || 'YOUR_PAYOUT_KEY'}',
+  baseUrl: '${apiBaseUrl}'
+});
+
+// Payin
+const result = await sdk.createPayin({
+  amount: '500.00',
+  orderNo: 'ORDER_' + Date.now(),
+  callbackUrl: 'https://your-site.com/callback'
+});
+window.location.href = result.data.payment_url;`}
+                    </pre>
+                  </div>
+
+                  {/* PHP Example */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <Badge variant="outline" className="bg-purple-500/10">PHP</Badge>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => copyToClipboard(`<?php
+require_once 'PayGateSDK.php';
+
+$sdk = new PayGateSDK([
+    'merchantId' => '${credentials?.accountNumber || 'YOUR_MERCHANT_ID'}',
+    'apiKey' => '${credentials?.apiKey || 'YOUR_API_KEY'}',
+    'payoutKey' => '${credentials?.payoutKey || 'YOUR_PAYOUT_KEY'}',
+    'baseUrl' => '${apiBaseUrl}'
+]);
+
+// Payin
+$result = $sdk->createPayin([
+    'amount' => '500.00',
+    'orderNo' => 'ORDER_' . time(),
+    'callbackUrl' => 'https://your-site.com/callback'
+]);
+header('Location: ' . $result['data']['payment_url']);`, 'phpExample')}
+                      >
+                        {copiedField === 'phpExample' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                    <pre className="p-4 bg-muted rounded-lg text-sm overflow-x-auto font-mono">
+{`<?php
+require_once 'PayGateSDK.php';
+
+$sdk = new PayGateSDK([
+    'merchantId' => '${credentials?.accountNumber || 'YOUR_MERCHANT_ID'}',
+    'apiKey' => '${credentials?.apiKey || 'YOUR_API_KEY'}',
+    'payoutKey' => '${credentials?.payoutKey || 'YOUR_PAYOUT_KEY'}',
+    'baseUrl' => '${apiBaseUrl}'
+]);
+
+// Payin
+$result = $sdk->createPayin([
+    'amount' => '500.00',
+    'orderNo' => 'ORDER_' . time(),
+    'callbackUrl' => 'https://your-site.com/callback'
+]);
+header('Location: ' . $result['data']['payment_url']);`}
+                    </pre>
+                  </div>
+                </div>
+
+                {/* Payout Example */}
+                <div>
+                  <h3 className="font-semibold mb-4">{language === 'zh' ? '代付示例' : 'Payout Example'}</h3>
+                  <div className="flex items-center justify-between mb-2">
+                    <Badge variant="outline">{language === 'zh' ? '通用' : 'Universal'}</Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyToClipboard(`// JavaScript / PHP
+const payout = await sdk.createPayout({
+  amount: 5000,
+  transactionId: 'WD_' + Date.now(),
+  accountNumber: '1234567890',
+  ifsc: 'HDFC0001234',
+  name: 'Account Holder Name',
+  bankName: 'HDFC Bank',
+  callbackUrl: 'https://your-site.com/payout-callback'
+});
+
+console.log('Order:', payout.data.order_no);
+console.log('Status:', payout.data.status); // 'pending'`, 'payoutExample')}
+                    >
+                      {copiedField === 'payoutExample' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <pre className="p-4 bg-muted rounded-lg text-sm overflow-x-auto font-mono">
+{`// JavaScript / PHP
+const payout = await sdk.createPayout({
+  amount: 5000,
+  transactionId: 'WD_' + Date.now(),
+  accountNumber: '1234567890',
+  ifsc: 'HDFC0001234',
+  name: 'Account Holder Name',
+  bankName: 'HDFC Bank',
+  callbackUrl: 'https://your-site.com/payout-callback'
+});
+
+console.log('Order:', payout.data.order_no);
+console.log('Status:', payout.data.status); // 'pending'`}
                   </pre>
                 </div>
               </TabsContent>

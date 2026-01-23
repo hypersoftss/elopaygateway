@@ -33,7 +33,6 @@ import MerchantPayinOrders from "./pages/merchant/MerchantPayinOrders";
 import MerchantPayoutOrders from "./pages/merchant/MerchantPayoutOrders";
 import MerchantSettlementHistory from "./pages/merchant/MerchantSettlementHistory";
 import MerchantApiTesting from "./pages/merchant/MerchantApiTesting";
-import MerchantSDK from "./pages/merchant/MerchantSDK";
 import PaymentPage from "./pages/PaymentPage";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentFailed from "./pages/PaymentFailed";
@@ -112,7 +111,6 @@ const AppRoutes = () => {
       <Route path="/merchant/payout" element={<ProtectedRoute requiredRole="merchant"><Require2FA><MerchantPayoutOrders /></Require2FA></ProtectedRoute>} />
       <Route path="/merchant/settlement-history" element={<ProtectedRoute requiredRole="merchant"><Require2FA><MerchantSettlementHistory /></Require2FA></ProtectedRoute>} />
       <Route path="/merchant/api-testing" element={<ProtectedRoute requiredRole="merchant"><Require2FA><MerchantApiTesting /></Require2FA></ProtectedRoute>} />
-      <Route path="/merchant/sdk" element={<ProtectedRoute requiredRole="merchant"><Require2FA><MerchantSDK /></Require2FA></ProtectedRoute>} />
       
       {/* Catch-all */}
       <Route path="*" element={<NotFound />} />
