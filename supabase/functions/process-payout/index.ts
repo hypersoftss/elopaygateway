@@ -66,10 +66,10 @@ Deno.serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
-    // Get the transaction with gateway info
+    // Get the transaction with gateway info and merchant's trade_type
     const { data: transaction, error: txError } = await supabaseAdmin
       .from('transactions')
-      .select('*, merchants(id, balance, frozen_balance, merchant_name, gateway_id)')
+      .select('*, merchants(id, balance, frozen_balance, merchant_name, gateway_id, trade_type)')
       .eq('id', transaction_id)
       .single()
 
@@ -157,11 +157,22 @@ Deno.serve(async (req) => {
       let gatewayResponse = null
 
       if (gateway.gateway_type === 'lgpay') {
-        // LG Pay payout
+        // LG Pay payout - use merchant's trade_type or gateway default
+        // Parse extra field to get trade_type if stored there
+        let tradeType = merchant.trade_type || gateway.trade_type || 'TEST'
+        try {
+          const extraData = transaction.extra ? JSON.parse(transaction.extra) : null
+          if (extraData?.trade_type) {
+            tradeType = extraData.trade_type
+          }
+        } catch (e) {
+          console.log('Could not parse extra field:', e)
+        }
+        
         const lgParams: Record<string, any> = {
           app_id: gateway.app_id,
           order_sn: transaction.order_no,
-          currency: gateway.currency || 'TEST',
+          currency: tradeType.toUpperCase(), // Use trade_type as currency for payout
           money: Math.round(transaction.amount * 100), // LG Pay uses cents
           notify_url: internalCallbackUrl,
           name: transaction.account_holder_name || '',

@@ -114,10 +114,10 @@ Deno.serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
-    // Get merchant with gateway info
+    // Get merchant with gateway info and trade_type
     const { data: merchants, error: merchantError } = await supabaseAdmin
       .from('merchants')
-      .select('id, api_key, payin_fee, is_active, callback_url, merchant_name, gateway_id')
+      .select('id, api_key, payin_fee, is_active, callback_url, merchant_name, gateway_id, trade_type')
       .eq('account_number', merchant_id)
       .limit(1)
 
@@ -209,10 +209,12 @@ Deno.serve(async (req) => {
 
     // Route to appropriate gateway
     if (gateway.gateway_type === 'lgpay') {
-      // LG Pay integration
+      // LG Pay integration - use merchant's trade_type or gateway default
+      const tradeType = merchant.trade_type || gateway.trade_type || 'test'
+      
       const lgParams: Record<string, any> = {
         app_id: gateway.app_id,
-        trade_type: gateway.trade_type || 'test',
+        trade_type: tradeType,
         order_sn: orderNo,
         money: Math.round(amountNum * 100), // LG Pay uses cents
         notify_url: internalCallbackUrl,

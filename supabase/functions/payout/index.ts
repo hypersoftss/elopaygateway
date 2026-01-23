@@ -97,10 +97,10 @@ Deno.serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
-    // Get merchant with gateway info
+    // Get merchant with gateway info and trade_type
     const { data: merchants, error: merchantError } = await supabaseAdmin
       .from('merchants')
-      .select('id, payout_key, payout_fee, is_active, balance, frozen_balance, merchant_name, gateway_id')
+      .select('id, payout_key, payout_fee, is_active, balance, frozen_balance, merchant_name, gateway_id, trade_type')
       .eq('account_number', merchant_id)
       .limit(1)
 
@@ -167,6 +167,7 @@ Deno.serve(async (req) => {
     const orderNo = generateOrderNo()
 
     // Create transaction in PENDING state - admin must approve before gateway call
+    // Store trade_type in extra field for process-payout to use
     const { data: txData, error: txError } = await supabaseAdmin
       .from('transactions')
       .insert({
@@ -183,7 +184,8 @@ Deno.serve(async (req) => {
         account_number,
         account_holder_name: name,
         ifsc_code: ifsc || null,
-        callback_data: { merchant_callback: callback_url }
+        callback_data: { merchant_callback: callback_url },
+        extra: JSON.stringify({ trade_type: merchant.trade_type })
       })
       .select('id')
       .single()

@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
       )
     }
 
-    const { merchantName, email, password, payinFee, payoutFee, callbackUrl, gatewayId } = await req.json()
+    const { merchantName, email, password, payinFee, payoutFee, callbackUrl, gatewayId, tradeType } = await req.json()
 
     // Validate required fields
     if (!merchantName || !email || !password) {
@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
       gatewayInfo = gateway
     }
 
-    // Create merchant record with gateway
+    // Create merchant record with gateway and trade_type
     const { data: merchantData, error: merchantError } = await supabaseAdmin
       .from('merchants')
       .insert({
@@ -121,6 +121,7 @@ Deno.serve(async (req) => {
         payout_fee: parseFloat(payoutFee) || defaultPayoutFee,
         callback_url: callbackUrl || null,
         gateway_id: gatewayId || null,
+        trade_type: tradeType || null,
         is_active: true,
         balance: 0,
         frozen_balance: 0,
