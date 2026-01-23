@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Loader2, CreditCard, AlertCircle, Shield, Globe, Sun, Moon, Lock, ExternalLink } from 'lucide-react';
+import { Loader2, CreditCard, AlertCircle, Shield, Globe, Sun, Moon, Lock, ExternalLink, Sparkles } from 'lucide-react';
 
 type Language = 'zh' | 'en';
 
@@ -37,11 +37,12 @@ const translations = {
     payTo: '收款方',
     payNow: '立即支付',
     processing: '正在跳转支付...',
-    secured: '安全支付',
+    secured: '安全支付 · 256位加密',
     goHome: '返回首页',
-    redirecting: '正在跳转到支付页面...',
     paymentFailed: '支付创建失败',
     tryAgain: '请重试',
+    orderNo: '订单号',
+    amount: '支付金额',
   },
   en: {
     loading: 'Loading...',
@@ -52,18 +53,18 @@ const translations = {
     loadFailed: 'Load failed',
     payTo: 'Pay to',
     payNow: 'Pay Now',
-    processing: 'Redirecting to payment...',
-    secured: 'Secure Payment',
+    processing: 'Redirecting...',
+    secured: 'Secure Payment · 256-bit SSL',
     goHome: 'Go Home',
-    redirecting: 'Redirecting to payment page...',
-    paymentFailed: 'Payment creation failed',
-    tryAgain: 'Please try again',
+    paymentFailed: 'Payment failed',
+    tryAgain: 'Try again',
+    orderNo: 'Order',
+    amount: 'Amount',
   },
 };
 
 const PaymentPage = () => {
   const { linkCode } = useParams<{ linkCode: string }>();
-  const navigate = useNavigate();
   const [paymentLink, setPaymentLink] = useState<PaymentLinkData | null>(null);
   const [merchant, setMerchant] = useState<MerchantData | null>(null);
   const [gateway, setGateway] = useState<GatewaySettings | null>(null);
@@ -157,9 +158,14 @@ const PaymentPage = () => {
     setIsProcessing(true);
     
     try {
-      // Call edge function to create real BondPay payment
+      const baseUrl = window.location.origin;
+      
       const { data, error } = await supabase.functions.invoke('payment-link-pay', {
-        body: { link_code: linkCode }
+        body: { 
+          link_code: linkCode,
+          success_url: `${baseUrl}/payment-success`,
+          failure_url: `${baseUrl}/payment-failed`
+        }
       });
 
       if (error) {
@@ -172,10 +178,8 @@ const PaymentPage = () => {
       console.log('Payment response:', data);
 
       if (data?.payment_url) {
-        // Redirect to BondPay payment page
         window.location.href = data.payment_url;
       } else {
-        // If no payment URL, show error
         console.error('No payment URL returned');
         setError(t.paymentFailed);
         setIsProcessing(false);
@@ -208,7 +212,6 @@ const PaymentPage = () => {
             <AlertCircle className="h-8 w-8 text-destructive" />
           </div>
           <p className="text-foreground font-medium">{error}</p>
-          <p className="text-muted-foreground text-sm">{t.tryAgain}</p>
           <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
             {t.tryAgain}
           </Button>
@@ -218,79 +221,106 @@ const PaymentPage = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background via-background to-muted">
-      {/* Controls */}
-      <div className="fixed top-3 right-3 flex gap-1.5 z-50">
-        <Button variant="ghost" size="sm" onClick={toggleLanguage} className="h-8 px-2 text-muted-foreground hover:text-foreground">
-          <Globe className="h-4 w-4 mr-1" />
-          {language === 'zh' ? 'EN' : '中'}
-        </Button>
-        <Button variant="ghost" size="icon" onClick={toggleTheme} className="h-8 w-8 text-muted-foreground hover:text-foreground">
-          {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-        </Button>
-      </div>
-
-      {/* Compact Payment Card */}
-      <div className="w-full max-w-sm">
-        {/* Header with Branding */}
-        <div className="flex items-center justify-center gap-2 mb-6">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-muted">
+      {/* Header with Branding */}
+      <header className="flex items-center justify-between p-4 border-b border-border/50">
+        <div className="flex items-center gap-3">
           {gateway?.logo_url ? (
-            <img src={gateway.logo_url} alt="" className="h-8 w-8 object-contain rounded-lg" />
+            <img 
+              src={gateway.logo_url} 
+              alt={gateway.gateway_name || 'Gateway'} 
+              className="h-10 w-10 object-contain rounded-xl"
+            />
           ) : (
-            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-              <CreditCard className="h-4 w-4 text-primary-foreground" />
+            <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
+              <CreditCard className="h-5 w-5 text-primary-foreground" />
             </div>
           )}
-          <span className="font-semibold text-foreground">{gateway?.gateway_name || 'PayGate'}</span>
-        </div>
-
-        {/* Main Card */}
-        <div className="bg-card/80 backdrop-blur-xl rounded-2xl border border-border overflow-hidden shadow-xl">
-          {/* Amount Section */}
-          <div className="p-6 text-center border-b border-border">
-            <p className="text-muted-foreground text-xs mb-2">{t.payTo} {merchant?.merchant_name}</p>
-            <p className="text-4xl font-bold text-foreground">
-              ₹{paymentLink?.amount.toLocaleString()}
-            </p>
-            {paymentLink?.description && (
-              <p className="text-muted-foreground text-sm mt-2 truncate">{paymentLink.description}</p>
-            )}
+          <div>
+            <h1 className="font-bold text-lg text-foreground">{gateway?.gateway_name || 'PayGate'}</h1>
+            <p className="text-xs text-muted-foreground">{language === 'zh' ? '安全支付' : 'Secure Payment'}</p>
           </div>
+        </div>
+        
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" onClick={toggleLanguage} className="h-8 px-2 text-muted-foreground hover:text-foreground">
+            <Globe className="h-4 w-4 mr-1" />
+            {language === 'zh' ? 'EN' : '中'}
+          </Button>
+          <Button variant="ghost" size="icon" onClick={toggleTheme} className="h-8 w-8 text-muted-foreground hover:text-foreground">
+            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </Button>
+        </div>
+      </header>
 
-          {/* Pay Button */}
-          <div className="p-4">
-            <Button 
-              className="w-full h-12 font-semibold rounded-xl transition-all gap-2" 
-              onClick={handlePay}
-              disabled={isProcessing}
-            >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  {t.processing}
-                </>
-              ) : (
-                <>
-                  <Lock className="h-4 w-4" />
-                  {t.payNow}
-                  <ExternalLink className="h-4 w-4" />
-                </>
-              )}
-            </Button>
+      {/* Main Content */}
+      <main className="flex-1 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          {/* Payment Card */}
+          <div className="bg-card rounded-3xl border border-border shadow-2xl overflow-hidden">
+            {/* Top Accent */}
+            <div className="h-1.5 bg-gradient-to-r from-primary via-primary/80 to-primary" />
             
-            {/* Security Badge */}
-            <div className="flex items-center justify-center gap-1.5 mt-3 text-muted-foreground text-xs">
-              <Shield className="h-3 w-3" />
-              <span>{t.secured}</span>
+            {/* Amount Display */}
+            <div className="p-8 text-center bg-gradient-to-b from-muted/50 to-transparent">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium mb-4">
+                <Sparkles className="h-3 w-3" />
+                {t.payTo} {merchant?.merchant_name}
+              </div>
+              
+              <p className="text-sm text-muted-foreground mb-2">{t.amount}</p>
+              <p className="text-5xl font-bold text-foreground">
+                ₹{paymentLink?.amount.toLocaleString()}
+              </p>
+              
+              {paymentLink?.description && (
+                <p className="text-muted-foreground text-sm mt-4 px-4">{paymentLink.description}</p>
+              )}
+            </div>
+
+            {/* Order Details */}
+            <div className="px-6 pb-4">
+              <div className="flex items-center justify-between py-3 border-t border-border/50">
+                <span className="text-sm text-muted-foreground">{t.orderNo}</span>
+                <code className="text-sm font-mono bg-muted px-2 py-1 rounded">{paymentLink?.link_code}</code>
+              </div>
+            </div>
+
+            {/* Pay Button */}
+            <div className="p-6 pt-2">
+              <Button 
+                className="w-full h-14 text-lg font-semibold rounded-2xl transition-all gap-2 shadow-lg" 
+                onClick={handlePay}
+                disabled={isProcessing}
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    {t.processing}
+                  </>
+                ) : (
+                  <>
+                    <Lock className="h-5 w-5" />
+                    {t.payNow} ₹{paymentLink?.amount.toLocaleString()}
+                    <ExternalLink className="h-4 w-4 ml-1" />
+                  </>
+                )}
+              </Button>
             </div>
           </div>
-        </div>
 
-        {/* Order ID */}
-        <p className="text-center text-muted-foreground text-xs mt-4">
-          #{paymentLink?.link_code}
-        </p>
-      </div>
+          {/* Security Footer */}
+          <div className="mt-6 text-center">
+            <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+              <Shield className="h-4 w-4 text-primary" />
+              <span>{t.secured}</span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              {language === 'zh' ? '由' : 'Powered by'} {gateway?.gateway_name || 'PayGate'}
+            </p>
+          </div>
+        </div>
+      </main>
     </div>
   );
 };
