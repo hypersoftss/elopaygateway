@@ -21,6 +21,7 @@ import {
   ClipboardList,
   History,
   UserCog,
+  Package,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -110,6 +111,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     },
     { label: t('sidebar.paymentLinks'), icon: <LinkIcon className="h-5 w-5" />, href: '/merchant/payment-links' },
     { label: t('sidebar.documentation'), icon: <FileText className="h-5 w-5" />, href: '/merchant/documentation' },
+    { label: language === 'zh' ? 'SDK 开发包' : 'SDK Kit', icon: <Package className="h-5 w-5" />, href: '/merchant/sdk' },
   ];
 
   const navItems = isAdmin ? adminNavItems : merchantNavItems;
