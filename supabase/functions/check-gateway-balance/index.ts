@@ -17,6 +17,12 @@ interface GatewayBalance {
   last_checked: string
 }
 
+interface BalanceThresholds {
+  inr: number
+  pkr: number
+  bdt: number
+}
+
 // LG Pay signature generation (ASCII sorted MD5)
 function generateLGPaySign(params: Record<string, string>, apiKey: string): string {
   const sortedKeys = Object.keys(params).sort()
@@ -150,28 +156,21 @@ async function checkBondPayBalance(gateway: any): Promise<GatewayBalance> {
   }
 }
 
+function getThresholdForCurrency(currency: string, thresholds: BalanceThresholds): number {
+  switch (currency.toUpperCase()) {
+    case 'INR': return thresholds.inr
+    case 'PKR': return thresholds.pkr
+    case 'BDT': return thresholds.bdt
+    default: return thresholds.inr // Default to INR threshold
+  }
+}
+
 async function sendLowBalanceAlert(
-  supabase: any, 
   gateway: GatewayBalance, 
-  threshold: number
+  threshold: number,
+  adminChatId: string,
+  botToken: string
 ) {
-  const { data: adminSettings } = await supabase
-    .from('admin_settings')
-    .select('admin_telegram_chat_id, gateway_name')
-    .limit(1)
-    .maybeSingle()
-
-  if (!adminSettings?.admin_telegram_chat_id) {
-    console.log('No admin Telegram chat ID configured for low balance alert')
-    return
-  }
-
-  const botToken = Deno.env.get('TG_BOT_TOKEN')
-  if (!botToken) {
-    console.error('TG_BOT_TOKEN not configured')
-    return
-  }
-
   const currencySymbol = gateway.currency === 'INR' ? '₹' : 
                          gateway.currency === 'PKR' ? 'Rs.' : 
                          gateway.currency === 'BDT' ? '৳' : '$'
@@ -189,7 +188,7 @@ async function sendLowBalanceAlert(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        chat_id: adminSettings.admin_telegram_chat_id,
+        chat_id: adminChatId,
         text: message,
         parse_mode: 'HTML',
       }),
@@ -197,6 +196,23 @@ async function sendLowBalanceAlert(
     console.log('Low balance alert sent for gateway:', gateway.gateway_name)
   } catch (error) {
     console.error('Failed to send low balance alert:', error)
+  }
+}
+
+async function saveBalanceHistory(supabase: any, balance: GatewayBalance) {
+  try {
+    await supabase
+      .from('gateway_balance_history')
+      .insert({
+        gateway_id: balance.gateway_id,
+        balance: balance.balance,
+        status: balance.status,
+        message: balance.message,
+        checked_at: balance.last_checked,
+      })
+    console.log(`Balance history saved for ${balance.gateway_name}`)
+  } catch (error) {
+    console.error(`Failed to save balance history for ${balance.gateway_name}:`, error)
   }
 }
 
@@ -229,15 +245,21 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Get low balance threshold from admin settings
+    // Get admin settings for thresholds and Telegram config
     const { data: adminSettings } = await supabaseAdmin
       .from('admin_settings')
-      .select('large_payout_threshold')
+      .select('admin_telegram_chat_id, balance_threshold_inr, balance_threshold_pkr, balance_threshold_bdt')
       .limit(1)
       .maybeSingle()
     
-    // Use payout threshold as low balance threshold (default 5000)
-    const lowBalanceThreshold = adminSettings?.large_payout_threshold || 5000
+    const thresholds: BalanceThresholds = {
+      inr: adminSettings?.balance_threshold_inr || 10000,
+      pkr: adminSettings?.balance_threshold_pkr || 50000,
+      bdt: adminSettings?.balance_threshold_bdt || 50000,
+    }
+
+    const botToken = Deno.env.get('TG_BOT_TOKEN')
+    const adminChatId = adminSettings?.admin_telegram_chat_id
 
     const balances: GatewayBalance[] = []
 
@@ -264,9 +286,15 @@ Deno.serve(async (req) => {
 
       balances.push(balance)
 
-      // Send alert if balance is below threshold
-      if (balance.balance !== null && balance.balance < lowBalanceThreshold) {
-        await sendLowBalanceAlert(supabaseAdmin, balance, lowBalanceThreshold)
+      // Save balance history
+      await saveBalanceHistory(supabaseAdmin, balance)
+
+      // Send alert if balance is below currency-specific threshold
+      if (balance.balance !== null && botToken && adminChatId) {
+        const threshold = getThresholdForCurrency(balance.currency, thresholds)
+        if (balance.balance < threshold) {
+          await sendLowBalanceAlert(balance, threshold, adminChatId, botToken)
+        }
       }
     }
 
@@ -276,7 +304,7 @@ Deno.serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         balances,
-        threshold: lowBalanceThreshold,
+        thresholds,
         checked_at: new Date().toISOString()
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
