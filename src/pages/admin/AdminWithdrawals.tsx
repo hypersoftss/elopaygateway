@@ -11,8 +11,9 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
-import { Search, Download, RefreshCw, Wallet, Filter, Calendar, CheckCircle, XCircle, Plus, Building, CreditCard } from 'lucide-react';
+import { Search, Download, RefreshCw, Wallet, Filter, Calendar, CheckCircle, XCircle, Plus, Building, CreditCard, Send, ArrowUpFromLine } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -45,6 +46,7 @@ interface WithdrawalTransaction {
   ifsc_code: string | null;
   usdt_address: string | null;
   created_at: string;
+  extra: string | null;
   merchants: { id: string; merchant_name: string; account_number: string; balance: number; frozen_balance: number } | null;
 }
 
@@ -58,7 +60,9 @@ interface MerchantOption {
 const AdminWithdrawals = () => {
   const { t, language } = useTranslation();
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<'merchant' | 'bondpay'>('merchant');
   const [withdrawals, setWithdrawals] = useState<WithdrawalTransaction[]>([]);
+  const [bondpayPayouts, setBondpayPayouts] = useState<WithdrawalTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -86,8 +90,8 @@ const AdminWithdrawals = () => {
   const fetchWithdrawals = async () => {
     setIsLoading(true);
     try {
-      // Withdrawal transactions are payouts with extra = 'withdrawal'
-      let query = supabase
+      // Merchant Withdrawals (extra = 'withdrawal')
+      let withdrawalQuery = supabase
         .from('transactions')
         .select('*, merchants(id, merchant_name, account_number, balance, frozen_balance)')
         .eq('transaction_type', 'payout')
@@ -95,23 +99,45 @@ const AdminWithdrawals = () => {
         .order('created_at', { ascending: false });
 
       if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter as 'pending' | 'success' | 'failed');
+        withdrawalQuery = withdrawalQuery.eq('status', statusFilter as 'pending' | 'success' | 'failed');
       }
-
       if (dateFrom) {
-        query = query.gte('created_at', dateFrom);
+        withdrawalQuery = withdrawalQuery.gte('created_at', dateFrom);
       }
-
       if (dateTo) {
-        query = query.lte('created_at', dateTo + 'T23:59:59');
+        withdrawalQuery = withdrawalQuery.lte('created_at', dateTo + 'T23:59:59');
       }
 
-      const { data, error } = await query;
+      // BondPay Payouts (extra is null - API initiated)
+      let bondpayQuery = supabase
+        .from('transactions')
+        .select('*, merchants(id, merchant_name, account_number, balance, frozen_balance)')
+        .eq('transaction_type', 'payout')
+        .is('extra', null)
+        .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setWithdrawals(data || []);
+      if (statusFilter !== 'all') {
+        bondpayQuery = bondpayQuery.eq('status', statusFilter as 'pending' | 'success' | 'failed');
+      }
+      if (dateFrom) {
+        bondpayQuery = bondpayQuery.gte('created_at', dateFrom);
+      }
+      if (dateTo) {
+        bondpayQuery = bondpayQuery.lte('created_at', dateTo + 'T23:59:59');
+      }
+
+      const [withdrawalResult, bondpayResult] = await Promise.all([
+        withdrawalQuery,
+        bondpayQuery
+      ]);
+
+      if (withdrawalResult.error) throw withdrawalResult.error;
+      if (bondpayResult.error) throw bondpayResult.error;
+
+      setWithdrawals(withdrawalResult.data || []);
+      setBondpayPayouts(bondpayResult.data || []);
     } catch (error) {
-      console.error('Error fetching withdrawals:', error);
+      console.error('Error fetching data:', error);
       toast({
         title: t('common.error'),
         description: t('errors.fetchFailed'),
@@ -174,10 +200,9 @@ const AdminWithdrawals = () => {
     setIsCreatingManual(true);
     try {
       const orderNo = generateOrderNo();
-      const fee = 0; // Admin manual withdrawal - no fee
+      const fee = 0;
       const netAmount = amount;
 
-      // Create withdrawal transaction
       const { error: txError } = await supabase
         .from('transactions')
         .insert({
@@ -198,20 +223,27 @@ const AdminWithdrawals = () => {
 
       if (txError) throw txError;
 
-      // Freeze amount from merchant balance
-      const { error: merchantError } = await supabase
+      const { data: currentMerchant } = await supabase
         .from('merchants')
-        .update({
-          balance: merchant.balance - amount,
-          frozen_balance: (merchant as any).frozen_balance + amount,
-        })
-        .eq('id', merchant.id);
+        .select('balance, frozen_balance')
+        .eq('id', merchant.id)
+        .single();
 
-      if (merchantError) throw merchantError;
+      if (currentMerchant) {
+        const { error: merchantError } = await supabase
+          .from('merchants')
+          .update({
+            balance: currentMerchant.balance - amount,
+            frozen_balance: (currentMerchant.frozen_balance || 0) + amount,
+          })
+          .eq('id', merchant.id);
+
+        if (merchantError) throw merchantError;
+      }
 
       toast({
         title: t('common.success'),
-        description: language === 'zh' ? '手动提现已创建' : 'Manual withdrawal created successfully',
+        description: language === 'zh' ? '手动提现已创建' : 'Manual withdrawal created',
       });
 
       setIsManualOpen(false);
@@ -246,7 +278,6 @@ const AdminWithdrawals = () => {
     try {
       const newStatus = actionType === 'approve' ? 'success' : 'failed';
       
-      // Update transaction status
       const { error: txError } = await supabase
         .from('transactions')
         .update({ status: newStatus })
@@ -254,43 +285,46 @@ const AdminWithdrawals = () => {
 
       if (txError) throw txError;
 
-      // If rejected, unfreeze the amount back to balance
-      if (actionType === 'reject' && selectedWithdrawal.merchants) {
-        const merchant = selectedWithdrawal.merchants;
-        const { error: merchantError } = await supabase
+      // Only handle balance for merchant withdrawals
+      if (selectedWithdrawal.extra === 'withdrawal' && selectedWithdrawal.merchants) {
+        const { data: currentMerchant } = await supabase
           .from('merchants')
-          .update({
-            balance: merchant.balance + selectedWithdrawal.amount,
-            frozen_balance: merchant.frozen_balance - selectedWithdrawal.amount,
-          })
-          .eq('id', merchant.id);
+          .select('balance, frozen_balance')
+          .eq('id', selectedWithdrawal.merchants.id)
+          .single();
 
-        if (merchantError) throw merchantError;
-      }
-
-      // If approved, just remove from frozen (already deducted from balance)
-      if (actionType === 'approve' && selectedWithdrawal.merchants) {
-        const merchant = selectedWithdrawal.merchants;
-        const { error: merchantError } = await supabase
-          .from('merchants')
-          .update({
-            frozen_balance: merchant.frozen_balance - selectedWithdrawal.amount,
-          })
-          .eq('id', merchant.id);
-
-        if (merchantError) throw merchantError;
+        if (currentMerchant) {
+          if (actionType === 'reject') {
+            // Unfreeze and restore balance
+            await supabase
+              .from('merchants')
+              .update({
+                balance: currentMerchant.balance + selectedWithdrawal.amount,
+                frozen_balance: (currentMerchant.frozen_balance || 0) - selectedWithdrawal.amount,
+              })
+              .eq('id', selectedWithdrawal.merchants.id);
+          } else {
+            // Just remove from frozen
+            await supabase
+              .from('merchants')
+              .update({
+                frozen_balance: (currentMerchant.frozen_balance || 0) - selectedWithdrawal.amount,
+              })
+              .eq('id', selectedWithdrawal.merchants.id);
+          }
+        }
       }
 
       toast({
         title: t('common.success'),
         description: actionType === 'approve' 
-          ? t('admin.withdrawalApproved') 
-          : t('admin.withdrawalRejected'),
+          ? (language === 'zh' ? '已批准' : 'Approved')
+          : (language === 'zh' ? '已拒绝' : 'Rejected'),
       });
 
       fetchWithdrawals();
     } catch (error) {
-      console.error('Error processing withdrawal:', error);
+      console.error('Error processing:', error);
       toast({
         title: t('common.error'),
         description: t('errors.updateFailed'),
@@ -303,21 +337,22 @@ const AdminWithdrawals = () => {
     }
   };
 
-  const filteredWithdrawals = withdrawals.filter(w => 
+  const currentData = activeTab === 'merchant' ? withdrawals : bondpayPayouts;
+  const filteredData = currentData.filter(w => 
     w.order_no.toLowerCase().includes(searchTerm.toLowerCase()) ||
     w.merchants?.merchant_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     w.account_holder_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const exportToCSV = () => {
-    const headers = ['Order No', 'Merchant', 'Amount', 'Fee', 'Net Amount', 'Bank/USDT', 'Account', 'Status', 'Created At'];
-    const csvData = filteredWithdrawals.map(w => [
+    const headers = ['Order No', 'Merchant', 'Amount', 'Fee', 'Net Amount', 'Type', 'Account', 'Status', 'Created At'];
+    const csvData = filteredData.map(w => [
       w.order_no,
       w.merchants?.merchant_name || '',
       w.amount.toString(),
       w.fee.toString(),
       w.net_amount.toString(),
-      w.usdt_address ? 'USDT' : w.bank_name || '',
+      w.usdt_address ? 'USDT' : w.bank_name || 'Bank',
       w.usdt_address || w.account_number || '',
       w.status,
       format(new Date(w.created_at), 'yyyy-MM-dd HH:mm:ss')
@@ -328,7 +363,7 @@ const AdminWithdrawals = () => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `withdrawals-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.download = `${activeTab}-${format(new Date(), 'yyyy-MM-dd')}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
     
@@ -338,259 +373,304 @@ const AdminWithdrawals = () => {
     });
   };
 
-  const pendingAmount = filteredWithdrawals
-    .filter(w => w.status === 'pending')
-    .reduce((sum, w) => sum + w.amount, 0);
+  const merchantPendingCount = withdrawals.filter(w => w.status === 'pending').length;
+  const merchantPendingAmount = withdrawals.filter(w => w.status === 'pending').reduce((sum, w) => sum + w.amount, 0);
+  const bondpayPendingCount = bondpayPayouts.filter(w => w.status === 'pending').length;
+  const bondpayPendingAmount = bondpayPayouts.filter(w => w.status === 'pending').reduce((sum, w) => sum + w.amount, 0);
+
+  const renderTable = () => (
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-muted/50">
+            <TableHead className="whitespace-nowrap">{t('transactions.orderNo')}</TableHead>
+            <TableHead className="whitespace-nowrap">{t('common.merchant')}</TableHead>
+            <TableHead className="text-right whitespace-nowrap">{t('transactions.amount')}</TableHead>
+            <TableHead className="whitespace-nowrap">{t('common.type')}</TableHead>
+            <TableHead className="whitespace-nowrap hidden md:table-cell">{t('transactions.destination')}</TableHead>
+            <TableHead className="whitespace-nowrap">{t('common.status')}</TableHead>
+            <TableHead className="whitespace-nowrap hidden sm:table-cell">{t('common.createdAt')}</TableHead>
+            <TableHead className="text-center whitespace-nowrap">{t('common.actions')}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {isLoading ? (
+            Array.from({ length: 5 }).map((_, i) => (
+              <TableRow key={i}>
+                {Array.from({ length: 8 }).map((_, j) => (
+                  <TableCell key={j}>
+                    <Skeleton className="h-4 w-full" />
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))
+          ) : filteredData.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                {t('common.noData')}
+              </TableCell>
+            </TableRow>
+          ) : (
+            filteredData.map((w) => (
+              <TableRow key={w.id} className="hover:bg-muted/50 transition-colors">
+                <TableCell className="font-mono text-xs md:text-sm">
+                  <span className="truncate block max-w-[100px] md:max-w-none">{w.order_no}</span>
+                </TableCell>
+                <TableCell>
+                  <div>
+                    <p className="font-medium text-sm truncate max-w-[100px] md:max-w-none">{w.merchants?.merchant_name}</p>
+                    <p className="text-xs text-muted-foreground hidden md:block">{w.merchants?.account_number}</p>
+                  </div>
+                </TableCell>
+                <TableCell className="text-right font-semibold text-sm">₹{w.amount.toLocaleString()}</TableCell>
+                <TableCell>
+                  <Badge variant={w.usdt_address ? 'secondary' : 'outline'} className="text-xs">
+                    {w.usdt_address ? 'USDT' : 'Bank'}
+                  </Badge>
+                </TableCell>
+                <TableCell className="hidden md:table-cell">
+                  {w.usdt_address ? (
+                    <span className="font-mono text-xs">{w.usdt_address.slice(0, 10)}...</span>
+                  ) : (
+                    <div>
+                      <p className="text-xs">{w.bank_name}</p>
+                      <p className="text-xs text-muted-foreground">{w.account_number}</p>
+                    </div>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <StatusBadge status={w.status} />
+                </TableCell>
+                <TableCell className="text-muted-foreground text-xs hidden sm:table-cell">
+                  {format(new Date(w.created_at), 'MMM dd, HH:mm')}
+                </TableCell>
+                <TableCell>
+                  {w.status === 'pending' && (
+                    <div className="flex justify-center gap-1 md:gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-green-500 border-green-500 hover:bg-green-500/10 h-7 w-7 md:h-8 md:w-8 p-0"
+                        onClick={() => {
+                          setSelectedWithdrawal(w);
+                          setActionType('approve');
+                        }}
+                      >
+                        <CheckCircle className="h-3 w-3 md:h-4 md:w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-destructive border-destructive hover:bg-destructive/10 h-7 w-7 md:h-8 md:w-8 p-0"
+                        onClick={() => {
+                          setSelectedWithdrawal(w);
+                          setActionType('reject');
+                        }}
+                      >
+                        <XCircle className="h-3 w-3 md:h-4 md:w-4" />
+                      </Button>
+                    </div>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  );
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-4 md:space-y-6 animate-fade-in">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex flex-col gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500/20 to-purple-500/5">
-              <Wallet className="h-6 w-6 text-purple-500" />
+            <div className="p-2 md:p-3 rounded-xl bg-gradient-to-br from-purple-500/20 to-purple-500/5">
+              <Wallet className="h-5 w-5 md:h-6 md:w-6 text-purple-500" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">{t('admin.withdrawals')}</h1>
-              <p className="text-sm text-muted-foreground">{t('admin.withdrawalsDesc')}</p>
+              <h1 className="text-xl md:text-2xl font-bold">{t('admin.withdrawals')}</h1>
+              <p className="text-xs md:text-sm text-muted-foreground">
+                {language === 'zh' ? '管理商户提现和BondPay代付' : 'Manage merchant withdrawals & BondPay payouts'}
+              </p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setIsManualOpen(true)}>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={() => setIsManualOpen(true)} className="flex-1 sm:flex-none">
               <Plus className="h-4 w-4 mr-2" />
-              {language === 'zh' ? '手动提现' : 'Manual Withdrawal'}
+              {language === 'zh' ? '手动提现' : 'Manual'}
             </Button>
-            <Button variant="outline" onClick={fetchWithdrawals}>
+            <Button variant="outline" size="sm" onClick={fetchWithdrawals} className="flex-1 sm:flex-none">
               <RefreshCw className="h-4 w-4 mr-2" />
               {t('common.refresh')}
             </Button>
-            <Button onClick={exportToCSV} className="btn-gradient-primary">
+            <Button size="sm" onClick={exportToCSV} className="flex-1 sm:flex-none">
               <Download className="h-4 w-4 mr-2" />
               {t('common.export')}
             </Button>
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="stat-card border-l-4 border-l-purple-500">
-            <CardContent className="pt-6">
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-sm text-muted-foreground">{t('admin.totalWithdrawals')}</p>
-                  <p className="text-2xl font-bold">{filteredWithdrawals.length}</p>
-                </div>
-                <div className="p-3 rounded-full bg-purple-500/10">
-                  <Wallet className="h-5 w-5 text-purple-500" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="stat-card border-l-4 border-l-[hsl(var(--warning))]">
-            <CardContent className="pt-6">
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-sm text-muted-foreground">{t('admin.pendingAmount')}</p>
-                  <p className="text-2xl font-bold text-[hsl(var(--warning))]">₹{pendingAmount.toLocaleString()}</p>
-                </div>
-                <div className="p-3 rounded-full bg-[hsl(var(--warning))]/10">
-                  <Wallet className="h-5 w-5 text-[hsl(var(--warning))]" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="stat-card border-l-4 border-l-[hsl(var(--success))]">
-            <CardContent className="pt-6">
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-sm text-muted-foreground">{t('admin.approvedCount')}</p>
-                  <p className="text-2xl font-bold text-[hsl(var(--success))]">
-                    {filteredWithdrawals.filter(w => w.status === 'success').length}
-                  </p>
-                </div>
-                <div className="p-3 rounded-full bg-[hsl(var(--success))]/10">
-                  <CheckCircle className="h-5 w-5 text-[hsl(var(--success))]" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'merchant' | 'bondpay')}>
+          <TabsList className="grid w-full grid-cols-2 h-auto">
+            <TabsTrigger value="merchant" className="flex items-center gap-2 py-3">
+              <Wallet className="h-4 w-4" />
+              <span className="hidden sm:inline">{language === 'zh' ? '商户提现' : 'Merchant'}</span>
+              <Badge variant="secondary" className="ml-1">
+                {merchantPendingCount}
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger value="bondpay" className="flex items-center gap-2 py-3">
+              <Send className="h-4 w-4" />
+              <span className="hidden sm:inline">{language === 'zh' ? 'BondPay代付' : 'BondPay'}</span>
+              <Badge variant="secondary" className="ml-1">
+                {bondpayPendingCount}
+              </Badge>
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Filters */}
-        <Card>
-          <CardHeader className="pb-4">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Filter className="h-5 w-5" />
-              {t('common.filters')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder={t('common.search')}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t('common.status')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t('common.all')}</SelectItem>
-                  <SelectItem value="pending">{t('status.pending')}</SelectItem>
-                  <SelectItem value="success">{t('status.success')}</SelectItem>
-                  <SelectItem value="failed">{t('status.failed')}</SelectItem>
-                </SelectContent>
-              </Select>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          {/* Stats Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+            <Card className="border-l-4 border-l-purple-500">
+              <CardContent className="p-3 md:p-4">
+                <p className="text-xs text-muted-foreground">{language === 'zh' ? '总计' : 'Total'}</p>
+                <p className="text-lg md:text-xl font-bold">{filteredData.length}</p>
+              </CardContent>
+            </Card>
+            <Card className="border-l-4 border-l-yellow-500">
+              <CardContent className="p-3 md:p-4">
+                <p className="text-xs text-muted-foreground">{language === 'zh' ? '待处理' : 'Pending'}</p>
+                <p className="text-lg md:text-xl font-bold text-yellow-500">
+                  {activeTab === 'merchant' ? merchantPendingCount : bondpayPendingCount}
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="border-l-4 border-l-orange-500">
+              <CardContent className="p-3 md:p-4">
+                <p className="text-xs text-muted-foreground">{language === 'zh' ? '待处理金额' : 'Pending Amt'}</p>
+                <p className="text-lg md:text-xl font-bold text-orange-500">
+                  ₹{(activeTab === 'merchant' ? merchantPendingAmount : bondpayPendingAmount).toLocaleString()}
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="border-l-4 border-l-green-500">
+              <CardContent className="p-3 md:p-4">
+                <p className="text-xs text-muted-foreground">{language === 'zh' ? '已批准' : 'Approved'}</p>
+                <p className="text-lg md:text-xl font-bold text-green-500">
+                  {filteredData.filter(w => w.status === 'success').length}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
 
-        {/* Withdrawals Table */}
-        <Card>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead>{t('transactions.orderNo')}</TableHead>
-                    <TableHead>{t('common.merchant')}</TableHead>
-                    <TableHead className="text-right">{t('transactions.amount')}</TableHead>
-                    <TableHead>{t('common.type')}</TableHead>
-                    <TableHead>{t('transactions.destination')}</TableHead>
-                    <TableHead>{t('common.status')}</TableHead>
-                    <TableHead>{t('common.createdAt')}</TableHead>
-                    <TableHead className="text-center">{t('common.actions')}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoading ? (
-                    Array.from({ length: 5 }).map((_, i) => (
-                      <TableRow key={i}>
-                        {Array.from({ length: 8 }).map((_, j) => (
-                          <TableCell key={j}>
-                            <Skeleton className="h-4 w-full" />
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))
-                  ) : filteredWithdrawals.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                        {t('common.noData')}
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredWithdrawals.map((w) => (
-                      <TableRow key={w.id} className="hover:bg-muted/50 transition-colors">
-                        <TableCell className="font-mono text-sm">{w.order_no}</TableCell>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{w.merchants?.merchant_name}</p>
-                            <p className="text-xs text-muted-foreground">{w.merchants?.account_number}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right font-semibold">₹{w.amount.toLocaleString()}</TableCell>
-                        <TableCell>
-                          <Badge variant={w.usdt_address ? 'secondary' : 'outline'}>
-                            {w.usdt_address ? 'USDT' : 'Bank'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {w.usdt_address ? (
-                            <span className="font-mono text-xs">{w.usdt_address.slice(0, 10)}...</span>
-                          ) : (
-                            <div>
-                              <p className="text-sm">{w.bank_name}</p>
-                              <p className="text-xs text-muted-foreground">{w.account_number}</p>
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <StatusBadge status={w.status} />
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {format(new Date(w.created_at), 'MMM dd, HH:mm')}
-                        </TableCell>
-                        <TableCell>
-                          {w.status === 'pending' && (
-                            <div className="flex justify-center gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="text-[hsl(var(--success))] border-[hsl(var(--success))] hover:bg-[hsl(var(--success))]/10"
-                                onClick={() => {
-                                  setSelectedWithdrawal(w);
-                                  setActionType('approve');
-                                }}
-                              >
-                                <CheckCircle className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="text-destructive border-destructive hover:bg-destructive/10"
-                                onClick={() => {
-                                  setSelectedWithdrawal(w);
-                                  setActionType('reject');
-                                }}
-                              >
-                                <XCircle className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+          {/* Filters */}
+          <Card className="mt-4">
+            <CardHeader className="pb-3 px-4">
+              <CardTitle className="flex items-center gap-2 text-sm md:text-base">
+                <Filter className="h-4 w-4" />
+                {t('common.filters')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder={t('common.search')}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9 h-9"
+                  />
+                </div>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder={t('common.status')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t('common.all')}</SelectItem>
+                    <SelectItem value="pending">{t('status.pending')}</SelectItem>
+                    <SelectItem value="success">{t('status.success')}</SelectItem>
+                    <SelectItem value="failed">{t('status.failed')}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="pl-9 h-9"
+                  />
+                </div>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="pl-9 h-9"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <TabsContent value="merchant" className="mt-4">
+            <Card>
+              <CardContent className="p-0">
+                {renderTable()}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="bondpay" className="mt-4">
+            <Card>
+              <CardContent className="p-0">
+                {renderTable()}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
 
         {/* Confirmation Dialog */}
         <AlertDialog open={!!selectedWithdrawal && !!actionType} onOpenChange={() => { setSelectedWithdrawal(null); setActionType(null); }}>
-          <AlertDialogContent>
+          <AlertDialogContent className="max-w-md">
             <AlertDialogHeader>
               <AlertDialogTitle>
-                {actionType === 'approve' ? t('admin.approveWithdrawal') : t('admin.rejectWithdrawal')}
-              </AlertDialogTitle>
-            <AlertDialogDescription>
                 {actionType === 'approve' 
-                  ? t('admin.approveWithdrawalDesc')
-                  : t('admin.rejectWithdrawalDesc')}
-            </AlertDialogDescription>
+                  ? (language === 'zh' ? '批准此请求？' : 'Approve this request?')
+                  : (language === 'zh' ? '拒绝此请求？' : 'Reject this request?')}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                <div className="space-y-2 mt-2">
+                  <div className="flex justify-between">
+                    <span>{language === 'zh' ? '订单号' : 'Order'}</span>
+                    <span className="font-mono text-sm">{selectedWithdrawal?.order_no}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>{language === 'zh' ? '金额' : 'Amount'}</span>
+                    <span className="font-bold">₹{selectedWithdrawal?.amount.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>{language === 'zh' ? '商户' : 'Merchant'}</span>
+                    <span>{selectedWithdrawal?.merchants?.merchant_name}</span>
+                  </div>
+                </div>
+                {actionType === 'reject' && selectedWithdrawal?.extra === 'withdrawal' && (
+                  <p className="text-yellow-600 mt-3 text-sm">
+                    {language === 'zh' ? '拒绝后金额将返还商户余额' : 'Amount will be refunded to merchant balance'}
+                  </p>
+                )}
+              </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel disabled={isProcessing}>{t('common.cancel')}</AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleAction}
                 disabled={isProcessing}
-                className={actionType === 'approve' ? 'btn-gradient-success' : 'bg-destructive hover:bg-destructive/90'}
+                className={actionType === 'approve' ? 'bg-green-600 hover:bg-green-700' : 'bg-destructive hover:bg-destructive/90'}
               >
                 {isProcessing ? t('common.processing') : actionType === 'approve' ? t('common.approve') : t('common.reject')}
               </AlertDialogAction>
@@ -600,18 +680,17 @@ const AdminWithdrawals = () => {
 
         {/* Manual Withdrawal Dialog */}
         <Dialog open={isManualOpen} onOpenChange={setIsManualOpen}>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Wallet className="h-5 w-5" />
-                {language === 'zh' ? '手动创建提现' : 'Create Manual Withdrawal'}
+                {language === 'zh' ? '手动创建提现' : 'Manual Withdrawal'}
               </DialogTitle>
               <DialogDescription>
-                {language === 'zh' ? '为商户创建手动提现请求' : 'Create a manual withdrawal request for a merchant'}
+                {language === 'zh' ? '为商户创建手动提现请求' : 'Create a manual withdrawal for a merchant'}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
-              {/* Merchant Select */}
               <div className="space-y-2">
                 <Label>{language === 'zh' ? '选择商户' : 'Select Merchant'}</Label>
                 <Select 
@@ -631,9 +710,8 @@ const AdminWithdrawals = () => {
                 </Select>
               </div>
 
-              {/* Amount */}
               <div className="space-y-2">
-                <Label>{language === 'zh' ? '提现金额' : 'Withdrawal Amount'}</Label>
+                <Label>{language === 'zh' ? '提现金额' : 'Amount'}</Label>
                 <Input
                   type="number"
                   placeholder="0.00"
@@ -642,15 +720,14 @@ const AdminWithdrawals = () => {
                 />
                 {manualWithdrawal.merchantId && (
                   <p className="text-xs text-muted-foreground">
-                    {language === 'zh' ? '可用余额: ' : 'Available: '}
+                    {language === 'zh' ? '可用: ' : 'Available: '}
                     ₹{merchants.find(m => m.id === manualWithdrawal.merchantId)?.balance.toLocaleString() || 0}
                   </p>
                 )}
               </div>
 
-              {/* Type */}
               <div className="space-y-2">
-                <Label>{language === 'zh' ? '提现方式' : 'Withdrawal Type'}</Label>
+                <Label>{language === 'zh' ? '提现方式' : 'Type'}</Label>
                 <Select 
                   value={manualWithdrawal.type} 
                   onValueChange={(v: 'bank' | 'usdt') => setManualWithdrawal({ ...manualWithdrawal, type: v })}
@@ -675,7 +752,6 @@ const AdminWithdrawals = () => {
                 </Select>
               </div>
 
-              {/* Bank Details */}
               {manualWithdrawal.type === 'bank' && (
                 <div className="space-y-3 p-3 rounded-lg bg-muted/50 border">
                   <div className="space-y-2">
@@ -695,7 +771,7 @@ const AdminWithdrawals = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>{language === 'zh' ? '账户持有人姓名' : 'Account Holder Name'}</Label>
+                    <Label>{language === 'zh' ? '持有人姓名' : 'Account Holder'}</Label>
                     <Input
                       value={manualWithdrawal.accountHolderName}
                       onChange={(e) => setManualWithdrawal({ ...manualWithdrawal, accountHolderName: e.target.value })}
@@ -713,7 +789,6 @@ const AdminWithdrawals = () => {
                 </div>
               )}
 
-              {/* USDT Details */}
               {manualWithdrawal.type === 'usdt' && (
                 <div className="space-y-2 p-3 rounded-lg bg-muted/50 border">
                   <Label>{language === 'zh' ? 'USDT地址 (TRC20)' : 'USDT Address (TRC20)'}</Label>
@@ -725,13 +800,12 @@ const AdminWithdrawals = () => {
                 </div>
               )}
 
-              {/* Submit */}
               <Button 
                 className="w-full" 
                 onClick={handleManualWithdrawal}
                 disabled={isCreatingManual || !manualWithdrawal.merchantId || !manualWithdrawal.amount}
               >
-                {isCreatingManual ? t('common.loading') : (language === 'zh' ? '创建提现请求' : 'Create Withdrawal')}
+                {isCreatingManual ? t('common.loading') : (language === 'zh' ? '创建提现' : 'Create Withdrawal')}
               </Button>
             </div>
           </DialogContent>
