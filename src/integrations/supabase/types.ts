@@ -343,6 +343,7 @@ export type Database = {
           is_active: boolean | null
           link_code: string
           merchant_id: string
+          trade_type: string | null
         }
         Insert: {
           amount: number
@@ -353,6 +354,7 @@ export type Database = {
           is_active?: boolean | null
           link_code: string
           merchant_id: string
+          trade_type?: string | null
         }
         Update: {
           amount?: number
@@ -363,6 +365,7 @@ export type Database = {
           is_active?: boolean | null
           link_code?: string
           merchant_id?: string
+          trade_type?: string | null
         }
         Relationships: [
           {
