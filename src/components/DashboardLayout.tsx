@@ -21,6 +21,7 @@ import {
   ClipboardList,
   History,
   UserCog,
+  BookOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -67,6 +68,9 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const [settlementOpen, setSettlementOpen] = useState(
     location.pathname.includes('/withdrawal')
   );
+  const [sdkDocsOpen, setSdkDocsOpen] = useState(
+    location.pathname.includes('/admin/sdk')
+  );
 
   const isAdmin = user?.role === 'admin';
 
@@ -77,6 +81,16 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { label: t('sidebar.payoutOrders'), icon: <ArrowUpFromLine className="h-5 w-5" />, href: '/admin/payout' },
     { label: t('sidebar.withdrawals'), icon: <Wallet className="h-5 w-5" />, href: '/admin/withdrawals' },
     { label: t('sidebar.apiTesting'), icon: <TestTube className="h-5 w-5" />, href: '/admin/api-testing' },
+    { 
+      label: language === 'zh' ? 'SDK文档' : 'SDK Documentation',
+      icon: <BookOpen className="h-5 w-5" />,
+      children: [
+        { label: 'BondPay INR', icon: <FileText className="h-4 w-4" />, href: '/admin/sdk/bondpay-inr' },
+        { label: 'LG Pay INR', icon: <FileText className="h-4 w-4" />, href: '/admin/sdk/lgpay-inr' },
+        { label: 'LG Pay PKR', icon: <FileText className="h-4 w-4" />, href: '/admin/sdk/lgpay-pkr' },
+        { label: 'LG Pay BDT', icon: <FileText className="h-4 w-4" />, href: '/admin/sdk/lgpay-bdt' },
+      ]
+    },
     { label: t('sidebar.settings'), icon: <Settings className="h-5 w-5" />, href: '/admin/settings' },
   ];
 
@@ -131,8 +145,9 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       const isMerchants = item.label.includes('商户') || item.label.includes('Merchants');
       const isOrders = item.label.includes('订单') || item.label.includes('Orders');
       const isSettlement = item.label.includes('结算') || item.label.includes('Settlement');
-      const isOpen = isMerchants ? merchantsOpen : isOrders ? ordersOpen : settlementOpen;
-      const setOpen = isMerchants ? setMerchantsOpen : isOrders ? setOrdersOpen : setSettlementOpen;
+      const isSDK = item.label.includes('SDK');
+      const isOpen = isMerchants ? merchantsOpen : isOrders ? ordersOpen : isSettlement ? settlementOpen : sdkDocsOpen;
+      const setOpen = isMerchants ? setMerchantsOpen : isOrders ? setOrdersOpen : isSettlement ? setSettlementOpen : setSdkDocsOpen;
       const hasActiveChild = isChildActive(item);
 
       return (

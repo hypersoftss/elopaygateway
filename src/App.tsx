@@ -40,6 +40,12 @@ import NotFound from "./pages/NotFound";
 import About from "./pages/About";
 import PublicDocs from "./pages/PublicDocs";
 
+// SDK Documentation Pages
+import BondPayINRDocs from "./pages/admin/sdk/BondPayINRDocs";
+import LGPayINRDocs from "./pages/admin/sdk/LGPayINRDocs";
+import LGPayPKRDocs from "./pages/admin/sdk/LGPayPKRDocs";
+import LGPayBDTDocs from "./pages/admin/sdk/LGPayBDTDocs";
+
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children, requiredRole }: { children: React.ReactNode; requiredRole?: 'admin' | 'merchant' }) => {
@@ -96,6 +102,12 @@ const AppRoutes = () => {
       <Route path="/admin/withdrawals" element={<ProtectedRoute requiredRole="admin"><AdminWithdrawals /></ProtectedRoute>} />
       <Route path="/admin/api-testing" element={<ProtectedRoute requiredRole="admin"><AdminApiTesting /></ProtectedRoute>} />
       <Route path="/admin/settings" element={<ProtectedRoute requiredRole="admin"><AdminSettings /></ProtectedRoute>} />
+      
+      {/* SDK Documentation Routes */}
+      <Route path="/admin/sdk/bondpay-inr" element={<ProtectedRoute requiredRole="admin"><BondPayINRDocs /></ProtectedRoute>} />
+      <Route path="/admin/sdk/lgpay-inr" element={<ProtectedRoute requiredRole="admin"><LGPayINRDocs /></ProtectedRoute>} />
+      <Route path="/admin/sdk/lgpay-pkr" element={<ProtectedRoute requiredRole="admin"><LGPayPKRDocs /></ProtectedRoute>} />
+      <Route path="/admin/sdk/lgpay-bdt" element={<ProtectedRoute requiredRole="admin"><LGPayBDTDocs /></ProtectedRoute>} />
       
       {/* Merchant Routes - Protected with 2FA requirement */}
       <Route path="/merchant" element={<ProtectedRoute requiredRole="merchant"><Require2FA><MerchantDashboard /></Require2FA></ProtectedRoute>} />
