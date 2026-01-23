@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, MoreHorizontal, RefreshCw, Power, Eye, EyeOff, Copy, Download, Users, TrendingUp, Wallet, Shield, ShieldOff } from 'lucide-react';
+import { Plus, Search, MoreHorizontal, RefreshCw, Power, Eye, EyeOff, Copy, Download, Users, TrendingUp, Wallet, Shield, ShieldOff, KeyRound, Lock, RotateCcw, Edit } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,6 +39,7 @@ import { format } from 'date-fns';
 
 interface Merchant {
   id: string;
+  user_id: string;
   account_number: string;
   merchant_name: string;
   api_key: string;
@@ -64,6 +65,13 @@ const AdminMerchants = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [visibleApiKeys, setVisibleApiKeys] = useState<Set<string>>(new Set());
+
+  // Edit Merchant State
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingMerchant, setEditingMerchant] = useState<Merchant | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [newWithdrawalPassword, setNewWithdrawalPassword] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const [newMerchant, setNewMerchant] = useState({
     merchantName: '',
@@ -174,6 +182,131 @@ const AdminMerchants = () => {
         description: err.message,
         variant: 'destructive',
       });
+    }
+  };
+
+  // Edit Merchant Functions
+  const openEditDialog = (merchant: Merchant) => {
+    setEditingMerchant(merchant);
+    setNewPassword('');
+    setNewWithdrawalPassword('');
+    setIsEditOpen(true);
+  };
+
+  const handleResetPassword = async () => {
+    if (!editingMerchant || !newPassword || newPassword.length < 6) {
+      toast({
+        title: t('common.error'),
+        description: language === 'zh' ? '密码至少6位' : 'Password must be at least 6 characters',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-update-merchant`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.session?.access_token}`,
+          },
+          body: JSON.stringify({
+            merchantId: editingMerchant.id,
+            userId: editingMerchant.user_id,
+            action: 'reset_password',
+            newPassword,
+          }),
+        }
+      );
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+
+      toast({
+        title: t('common.success'),
+        description: language === 'zh' ? '密码已重置' : 'Password reset successfully',
+      });
+      setNewPassword('');
+    } catch (err: any) {
+      toast({
+        title: t('common.error'),
+        description: err.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleResetWithdrawalPassword = async () => {
+    if (!editingMerchant || !newWithdrawalPassword || newWithdrawalPassword.length < 6) {
+      toast({
+        title: t('common.error'),
+        description: language === 'zh' ? '提现密码至少6位' : 'Withdrawal password must be at least 6 characters',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      const { error } = await supabase
+        .from('merchants')
+        .update({ withdrawal_password: newWithdrawalPassword })
+        .eq('id', editingMerchant.id);
+
+      if (error) throw error;
+
+      toast({
+        title: t('common.success'),
+        description: language === 'zh' ? '提现密码已重置' : 'Withdrawal password reset successfully',
+      });
+      setNewWithdrawalPassword('');
+      fetchMerchants();
+    } catch (err: any) {
+      toast({
+        title: t('common.error'),
+        description: err.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleReset2FA = async () => {
+    if (!editingMerchant) return;
+
+    setIsUpdating(true);
+    try {
+      const { error } = await supabase
+        .from('merchants')
+        .update({ 
+          is_2fa_enabled: false, 
+          google_2fa_secret: null 
+        })
+        .eq('id', editingMerchant.id);
+
+      if (error) throw error;
+
+      toast({
+        title: t('common.success'),
+        description: language === 'zh' ? '2FA已重置，商户需重新设置' : '2FA reset, merchant needs to set up again',
+      });
+      setEditingMerchant({ ...editingMerchant, is_2fa_enabled: false });
+      fetchMerchants();
+    } catch (err: any) {
+      toast({
+        title: t('common.error'),
+        description: err.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -526,6 +659,10 @@ const AdminMerchants = () => {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openEditDialog(merchant)}>
+                              <Edit className="h-4 w-4 mr-2" />
+                              {language === 'zh' ? '编辑商户' : 'Edit Merchant'}
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => toggleMerchantStatus(merchant)}>
                               <Power className="h-4 w-4 mr-2" />
                               {merchant.is_active ? (language === 'zh' ? '禁用' : 'Disable') : (language === 'zh' ? '启用' : 'Enable')}
@@ -549,6 +686,87 @@ const AdminMerchants = () => {
             </Table>
           </CardContent>
         </Card>
+
+        {/* Edit Merchant Dialog */}
+        <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Edit className="h-5 w-5" />
+                {language === 'zh' ? '编辑商户' : 'Edit Merchant'}
+              </DialogTitle>
+              <DialogDescription>
+                {editingMerchant?.merchant_name} ({editingMerchant?.account_number})
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-6">
+              {/* Reset Login Password */}
+              <div className="space-y-3 p-4 rounded-lg bg-muted/50 border">
+                <div className="flex items-center gap-2">
+                  <KeyRound className="h-4 w-4 text-primary" />
+                  <Label className="font-medium">{language === 'zh' ? '重置登录密码' : 'Reset Login Password'}</Label>
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    type="password"
+                    placeholder={language === 'zh' ? '输入新密码 (至少6位)' : 'Enter new password (min 6 chars)'}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                  />
+                  <Button onClick={handleResetPassword} disabled={isUpdating || !newPassword}>
+                    {language === 'zh' ? '重置' : 'Reset'}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Reset Withdrawal Password */}
+              <div className="space-y-3 p-4 rounded-lg bg-muted/50 border">
+                <div className="flex items-center gap-2">
+                  <Lock className="h-4 w-4 text-orange-500" />
+                  <Label className="font-medium">{language === 'zh' ? '重置提现密码' : 'Reset Withdrawal Password'}</Label>
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    type="password"
+                    placeholder={language === 'zh' ? '输入新提现密码 (至少6位)' : 'Enter new withdrawal password (min 6 chars)'}
+                    value={newWithdrawalPassword}
+                    onChange={(e) => setNewWithdrawalPassword(e.target.value)}
+                  />
+                  <Button onClick={handleResetWithdrawalPassword} disabled={isUpdating || !newWithdrawalPassword}>
+                    {language === 'zh' ? '重置' : 'Reset'}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Reset 2FA */}
+              <div className="space-y-3 p-4 rounded-lg bg-muted/50 border">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <RotateCcw className="h-4 w-4 text-destructive" />
+                    <Label className="font-medium">{language === 'zh' ? '重置双重认证 (2FA)' : 'Reset Two-Factor Auth (2FA)'}</Label>
+                  </div>
+                  <Badge variant={editingMerchant?.is_2fa_enabled ? 'default' : 'secondary'}>
+                    {editingMerchant?.is_2fa_enabled ? '2FA ON' : '2FA OFF'}
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {language === 'zh' 
+                    ? '重置后商户需要重新设置2FA' 
+                    : 'After reset, merchant will need to set up 2FA again'}
+                </p>
+                <Button 
+                  variant="destructive" 
+                  onClick={handleReset2FA} 
+                  disabled={isUpdating || !editingMerchant?.is_2fa_enabled}
+                  className="w-full"
+                >
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  {language === 'zh' ? '重置2FA' : 'Reset 2FA'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

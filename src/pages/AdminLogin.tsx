@@ -345,21 +345,8 @@ const AdminLogin = () => {
               </Button>
             </form>
 
-            {/* Divider */}
-            <div className="mt-6 pt-6 border-t border-border">
-              <p className="text-sm text-muted-foreground text-center mb-3">
-                {language === 'zh' ? '不是管理员？' : 'Not an admin?'}
-              </p>
-              <Button asChild variant="outline" className="w-full h-10">
-                <Link to="/merchant-login">
-                  <Users className="h-4 w-4 mr-2" />
-                  {language === 'zh' ? '商户登录' : 'Merchant Login'}
-                </Link>
-              </Button>
-            </div>
-
             {/* Security Badge */}
-            <div className="mt-5 flex justify-center">
+            <div className="mt-6 flex justify-center">
               <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/50 text-xs text-muted-foreground">
                 <Shield className="h-3 w-3 text-primary" />
                 <span>{language === 'zh' ? 'AES-256 加密' : 'AES-256 Encrypted'}</span>

@@ -17,3 +17,9 @@ verify_jwt = false
 
 [functions.callback-handler]
 verify_jwt = false
+
+[functions.admin-update-merchant]
+verify_jwt = false
+
+[functions.payment-link-pay]
+verify_jwt = false
