@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, Home, Receipt, Copy, Check, Globe, Sun, Moon, CreditCard, Clock, ArrowRight } from 'lucide-react';
+import { CheckCircle2, Home, Receipt, Copy, Check, Globe, Sun, Moon, CreditCard, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 
 type Language = 'zh' | 'en';
 
 interface GatewaySettings {
-  gateway_name: string | null;
+  gateway_name: string;
   logo_url: string | null;
 }
 
@@ -30,8 +30,6 @@ const translations = {
     downloadReceipt: '下载收据',
     backHome: '返回首页',
     recentPayments: '最近支付记录',
-    noRecent: '暂无记录',
-    viewAll: '查看全部',
   },
   en: {
     success: 'Payment Successful',
@@ -43,15 +41,13 @@ const translations = {
     downloadReceipt: 'Download Receipt',
     backHome: 'Back to Home',
     recentPayments: 'Recent Payments',
-    noRecent: 'No records',
-    viewAll: 'View All',
   },
 };
 
 const PaymentSuccess = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [gateway, setGateway] = useState<GatewaySettings | null>(null);
+  const [gateway, setGateway] = useState<GatewaySettings>({ gateway_name: '', logo_url: null });
   const [recentTxns, setRecentTxns] = useState<RecentTransaction[]>([]);
   const [copied, setCopied] = useState(false);
   const [language, setLanguage] = useState<Language>('zh');
@@ -78,15 +74,19 @@ const PaymentSuccess = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      // Fetch gateway settings
-      const { data: gatewayData } = await supabase
-        .from('admin_settings')
-        .select('gateway_name, logo_url')
-        .limit(1)
-        .maybeSingle();
-      if (gatewayData) setGateway(gatewayData);
+      // Fetch gateway settings via edge function (bypasses RLS)
+      const { data: gatewayResponse } = await supabase.functions.invoke('get-payment-link-merchant', {
+        body: { get_gateway_settings: true }
+      });
+      
+      if (gatewayResponse?.gateway_settings) {
+        setGateway({
+          gateway_name: gatewayResponse.gateway_settings.gateway_name || 'Payment Gateway',
+          logo_url: gatewayResponse.gateway_settings.logo_url
+        });
+      }
 
-      // Fetch recent successful transactions (public view - limited data)
+      // Fetch recent transactions
       const { data: txnData } = await supabase
         .from('transactions')
         .select('order_no, amount, status, created_at')
@@ -118,7 +118,7 @@ ${merchant ? `${t.merchant}: ${merchant}` : ''}
 ${t.time}: ${format(new Date(), 'yyyy-MM-dd HH:mm:ss')}
 
 ----------------------------------------
-${gateway?.gateway_name || 'Payment Gateway'}
+${gateway.gateway_name}
 ========================================
     `;
     
@@ -136,10 +136,10 @@ ${gateway?.gateway_name || 'Payment Gateway'}
       {/* Header with Branding */}
       <header className="flex items-center justify-between p-4 border-b border-border/50">
         <div className="flex items-center gap-3">
-          {gateway?.logo_url ? (
+          {gateway.logo_url ? (
             <img 
               src={gateway.logo_url} 
-              alt={gateway.gateway_name || 'Gateway'} 
+              alt={gateway.gateway_name} 
               className="h-10 w-10 object-contain rounded-xl"
             />
           ) : (
@@ -148,7 +148,7 @@ ${gateway?.gateway_name || 'Payment Gateway'}
             </div>
           )}
           <div>
-            <h1 className="font-bold text-lg text-foreground">{gateway?.gateway_name || 'PayGate'}</h1>
+            <h1 className="font-bold text-lg text-foreground">{gateway.gateway_name}</h1>
             <p className="text-xs text-muted-foreground">{language === 'zh' ? '支付网关' : 'Payment Gateway'}</p>
           </div>
         </div>
@@ -232,11 +232,9 @@ ${gateway?.gateway_name || 'Payment Gateway'}
           {/* Recent Transactions */}
           {recentTxns.length > 0 && (
             <div className="bg-card rounded-2xl border border-border p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-sm flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  {t.recentPayments}
-                </h3>
+              <div className="flex items-center gap-2 mb-4">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <h3 className="font-semibold text-sm">{t.recentPayments}</h3>
               </div>
               <div className="space-y-2">
                 {recentTxns.slice(0, 3).map((txn, index) => (
@@ -264,7 +262,7 @@ ${gateway?.gateway_name || 'Payment Gateway'}
 
           {/* Footer */}
           <p className="text-center text-xs text-muted-foreground">
-            {language === 'zh' ? '由' : 'Powered by'} {gateway?.gateway_name || 'PayGate'}
+            {language === 'zh' ? '由' : 'Powered by'} {gateway.gateway_name}
           </p>
         </div>
       </main>

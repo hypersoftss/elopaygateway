@@ -22,7 +22,7 @@ interface MerchantData {
 }
 
 interface GatewaySettings {
-  gateway_name: string | null;
+  gateway_name: string;
   logo_url: string | null;
 }
 
@@ -67,7 +67,7 @@ const PaymentPage = () => {
   const { linkCode } = useParams<{ linkCode: string }>();
   const [paymentLink, setPaymentLink] = useState<PaymentLinkData | null>(null);
   const [merchant, setMerchant] = useState<MerchantData | null>(null);
-  const [gateway, setGateway] = useState<GatewaySettings | null>(null);
+  const [gateway, setGateway] = useState<GatewaySettings>({ gateway_name: '', logo_url: null });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -98,6 +98,19 @@ const PaymentPage = () => {
       }
 
       try {
+        // Fetch gateway settings via edge function (bypasses RLS)
+        const { data: gatewayResponse } = await supabase.functions.invoke('get-payment-link-merchant', {
+          body: { get_gateway_settings: true }
+        });
+        
+        if (gatewayResponse?.gateway_settings) {
+          setGateway({
+            gateway_name: gatewayResponse.gateway_settings.gateway_name || 'Payment Gateway',
+            logo_url: gatewayResponse.gateway_settings.logo_url
+          });
+        }
+
+        // Fetch payment link
         const { data: linkData, error: linkError } = await supabase
           .from('payment_links')
           .select('*')
@@ -126,6 +139,7 @@ const PaymentPage = () => {
           return;
         }
 
+        // Fetch merchant info
         const { data: merchantData } = await supabase
           .from('merchants')
           .select('merchant_name')
@@ -134,13 +148,6 @@ const PaymentPage = () => {
 
         if (merchantData) setMerchant(merchantData);
 
-        const { data: gatewayData } = await supabase
-          .from('admin_settings')
-          .select('gateway_name, logo_url')
-          .limit(1)
-          .maybeSingle();
-
-        if (gatewayData) setGateway(gatewayData);
       } catch (err) {
         console.error('Error:', err);
         setError(t.loadFailed);
@@ -206,15 +213,31 @@ const PaymentPage = () => {
   // Error State
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted p-4">
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 mx-auto rounded-full bg-destructive/10 flex items-center justify-center">
-            <AlertCircle className="h-8 w-8 text-destructive" />
+      <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-muted">
+        {/* Header */}
+        <header className="flex items-center justify-between p-4 border-b border-border/50">
+          <div className="flex items-center gap-3">
+            {gateway.logo_url ? (
+              <img src={gateway.logo_url} alt={gateway.gateway_name} className="h-10 w-10 object-contain rounded-xl" />
+            ) : (
+              <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
+                <CreditCard className="h-5 w-5 text-primary-foreground" />
+              </div>
+            )}
+            <span className="font-bold text-lg text-foreground">{gateway.gateway_name}</span>
           </div>
-          <p className="text-foreground font-medium">{error}</p>
-          <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
-            {t.tryAgain}
-          </Button>
+        </header>
+        
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="text-center space-y-4">
+            <div className="w-16 h-16 mx-auto rounded-full bg-destructive/10 flex items-center justify-center">
+              <AlertCircle className="h-8 w-8 text-destructive" />
+            </div>
+            <p className="text-foreground font-medium">{error}</p>
+            <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+              {t.tryAgain}
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -225,10 +248,10 @@ const PaymentPage = () => {
       {/* Header with Branding */}
       <header className="flex items-center justify-between p-4 border-b border-border/50">
         <div className="flex items-center gap-3">
-          {gateway?.logo_url ? (
+          {gateway.logo_url ? (
             <img 
               src={gateway.logo_url} 
-              alt={gateway.gateway_name || 'Gateway'} 
+              alt={gateway.gateway_name} 
               className="h-10 w-10 object-contain rounded-xl"
             />
           ) : (
@@ -237,7 +260,7 @@ const PaymentPage = () => {
             </div>
           )}
           <div>
-            <h1 className="font-bold text-lg text-foreground">{gateway?.gateway_name || 'PayGate'}</h1>
+            <h1 className="font-bold text-lg text-foreground">{gateway.gateway_name}</h1>
             <p className="text-xs text-muted-foreground">{language === 'zh' ? '安全支付' : 'Secure Payment'}</p>
           </div>
         </div>
@@ -316,7 +339,7 @@ const PaymentPage = () => {
               <span>{t.secured}</span>
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              {language === 'zh' ? '由' : 'Powered by'} {gateway?.gateway_name || 'PayGate'}
+              {language === 'zh' ? '由' : 'Powered by'} {gateway.gateway_name}
             </p>
           </div>
         </div>
