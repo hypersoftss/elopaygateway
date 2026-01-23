@@ -2,7 +2,6 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { 
-  ShieldCheck, 
   Store, 
   ArrowRight, 
   Zap, 
@@ -12,16 +11,39 @@ import {
   TrendingUp,
   Clock,
   CheckCircle2,
-  Sparkles
+  Sparkles,
+  Wallet,
+  BadgeCheck,
+  CircleDollarSign,
+  Shield,
+  Banknote
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { LanguageSwitch } from '@/components/LanguageSwitch';
 import { useTranslation } from '@/lib/i18n';
 import { useGatewaySettings } from '@/hooks/useGatewaySettings';
 
+// Floating icon component
+const FloatingIcon = ({ 
+  icon: Icon, 
+  className, 
+  delay = 0 
+}: { 
+  icon: React.ElementType; 
+  className: string; 
+  delay?: number;
+}) => (
+  <div 
+    className={`absolute text-primary/20 animate-float ${className}`}
+    style={{ animationDelay: `${delay}s` }}
+  >
+    <Icon className="h-8 w-8" />
+  </div>
+);
+
 const Index = () => {
   const { language } = useTranslation();
-  const { settings, isLoading } = useGatewaySettings();
+  const { settings } = useGatewaySettings();
   const isEnglish = language === 'en';
 
   const features = [
@@ -66,12 +88,22 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background overflow-hidden">
-      {/* Animated Background */}
-      <div className="fixed inset-0 -z-10">
+      {/* Animated Background with Floating Icons */}
+      <div className="fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-primary/10" />
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl animate-pulse delay-1000" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-radial from-primary/5 to-transparent rounded-full" />
+        
+        {/* Floating Icons */}
+        <FloatingIcon icon={CreditCard} className="top-[10%] left-[10%]" delay={0} />
+        <FloatingIcon icon={Wallet} className="top-[20%] right-[15%]" delay={1.5} />
+        <FloatingIcon icon={CircleDollarSign} className="top-[60%] left-[8%]" delay={0.5} />
+        <FloatingIcon icon={Shield} className="top-[40%] right-[10%]" delay={2} />
+        <FloatingIcon icon={Banknote} className="bottom-[20%] left-[20%]" delay={1} />
+        <FloatingIcon icon={BadgeCheck} className="bottom-[30%] right-[20%]" delay={2.5} />
+        <FloatingIcon icon={Globe} className="top-[30%] left-[25%]" delay={3} />
+        <FloatingIcon icon={Zap} className="bottom-[15%] right-[30%]" delay={0.8} />
       </div>
 
       {/* Header */}
@@ -104,13 +136,13 @@ const Index = () => {
       <section className="relative container mx-auto px-4 py-20 md:py-32">
         <div className="max-w-4xl mx-auto text-center space-y-8">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium text-primary">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium text-primary animate-fade-in">
             <Sparkles className="h-4 w-4" />
             {isEnglish ? 'Professional Payment Gateway' : '专业支付网关'}
           </div>
 
           {/* Main Heading */}
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-tight">
+          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-tight animate-fade-in">
             {isEnglish ? (
               <>
                 Power Your Business with
@@ -130,25 +162,18 @@ const Index = () => {
             )}
           </h1>
 
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed animate-fade-in">
             {isEnglish 
               ? 'Secure, fast, and reliable payment processing solution with instant settlement, multi-channel support, and enterprise-grade security.'
               : '安全、快速、可靠的支付处理解决方案，提供即时结算、多渠道支持和企业级安全保障。'}
           </p>
 
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-            <Button asChild size="lg" className="h-14 px-8 text-lg font-semibold shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all">
-              <Link to="/admin-login">
-                <ShieldCheck className="h-5 w-5 mr-2" />
-                {isEnglish ? 'Admin Portal' : '管理员入口'}
-                <ArrowRight className="h-5 w-5 ml-2" />
-              </Link>
-            </Button>
-            <Button asChild size="lg" variant="outline" className="h-14 px-8 text-lg font-semibold border-2 hover:bg-primary/5 transition-all">
+          {/* CTA Button - Only Merchant Login */}
+          <div className="flex items-center justify-center pt-4 animate-fade-in">
+            <Button asChild size="lg" className="h-14 px-10 text-lg font-semibold shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all hover-scale">
               <Link to="/merchant-login">
                 <Store className="h-5 w-5 mr-2" />
-                {isEnglish ? 'Merchant Portal' : '商户入口'}
+                {isEnglish ? 'Merchant Login' : '商户登录'}
                 <ArrowRight className="h-5 w-5 ml-2" />
               </Link>
             </Button>
@@ -157,7 +182,11 @@ const Index = () => {
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-12 max-w-3xl mx-auto">
             {stats.map((stat, index) => (
-              <div key={index} className="text-center p-4 rounded-xl bg-card/50 backdrop-blur-sm border border-border/50">
+              <div 
+                key={index} 
+                className="text-center p-4 rounded-xl bg-card/50 backdrop-blur-sm border border-border/50 animate-fade-in"
+                style={{ animationDelay: `${index * 0.1}s` }}
+              >
                 <div className="text-2xl md:text-3xl font-bold text-primary">{stat.value}</div>
                 <div className="text-sm text-muted-foreground">{stat.label}</div>
               </div>
@@ -183,7 +212,8 @@ const Index = () => {
           {features.map((feature, index) => (
             <Card 
               key={index} 
-              className="group relative overflow-hidden border-border/50 bg-card/50 backdrop-blur-sm hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300"
+              className="group relative overflow-hidden border-border/50 bg-card/50 backdrop-blur-sm hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 animate-fade-in"
+              style={{ animationDelay: `${index * 0.1}s` }}
             >
               <CardContent className="p-6">
                 <div className="mb-4 inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors duration-300">
@@ -199,52 +229,31 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Portal Cards Section */}
+      {/* Merchant Portal Highlight */}
       <section className="relative container mx-auto px-4 py-20">
-        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-          {/* Admin Portal Card */}
-          <Link to="/admin-login" className="group block">
-            <Card className="h-full relative overflow-hidden border-2 border-border/50 bg-gradient-to-br from-blue-500/5 to-blue-500/10 hover:border-blue-500/50 hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-500">
-              <CardContent className="p-8 text-center relative z-10">
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-500/25 group-hover:scale-110 transition-transform duration-300">
-                  <ShieldCheck className="w-10 h-10 text-white" />
-                </div>
-                <h3 className="text-2xl font-bold mb-3">
-                  {isEnglish ? 'Admin Portal' : '管理员入口'}
-                </h3>
-                <p className="text-muted-foreground mb-6">
-                  {isEnglish ? 'Manage merchants, view transactions, and configure system settings' : '管理商户、查看交易、配置系统设置'}
-                </p>
-                <div className="flex items-center justify-center gap-2 text-blue-500 font-medium group-hover:gap-3 transition-all">
-                  {isEnglish ? 'Access Admin Panel' : '进入管理后台'}
-                  <ArrowRight className="h-5 w-5" />
-                </div>
-              </CardContent>
-              {/* Background glow */}
-              <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-500/20 rounded-full blur-3xl group-hover:bg-blue-500/30 transition-colors duration-500" />
-            </Card>
-          </Link>
-
-          {/* Merchant Portal Card */}
+        <div className="max-w-2xl mx-auto">
           <Link to="/merchant-login" className="group block">
-            <Card className="h-full relative overflow-hidden border-2 border-border/50 bg-gradient-to-br from-emerald-500/5 to-emerald-500/10 hover:border-emerald-500/50 hover:shadow-2xl hover:shadow-emerald-500/10 transition-all duration-500">
-              <CardContent className="p-8 text-center relative z-10">
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-500/25 group-hover:scale-110 transition-transform duration-300">
-                  <Store className="w-10 h-10 text-white" />
+            <Card className="relative overflow-hidden border-2 border-border/50 bg-gradient-to-br from-primary/5 to-primary/10 hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500">
+              <CardContent className="p-10 text-center relative z-10">
+                <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-primary/25 group-hover:scale-110 transition-transform duration-300">
+                  <Store className="w-12 h-12 text-primary-foreground" />
                 </div>
-                <h3 className="text-2xl font-bold mb-3">
+                <h3 className="text-3xl font-bold mb-4">
                   {isEnglish ? 'Merchant Portal' : '商户入口'}
                 </h3>
-                <p className="text-muted-foreground mb-6">
-                  {isEnglish ? 'View transactions, manage withdrawals, and access API documentation' : '查看交易、管理提现、访问API文档'}
+                <p className="text-muted-foreground mb-6 text-lg">
+                  {isEnglish 
+                    ? 'Access your dashboard, view transactions, manage withdrawals, and integrate our API'
+                    : '访问您的仪表板、查看交易、管理提现并集成我们的API'}
                 </p>
-                <div className="flex items-center justify-center gap-2 text-emerald-500 font-medium group-hover:gap-3 transition-all">
-                  {isEnglish ? 'Access Merchant Panel' : '进入商户后台'}
+                <div className="inline-flex items-center gap-2 text-primary font-semibold text-lg group-hover:gap-3 transition-all">
+                  {isEnglish ? 'Login Now' : '立即登录'}
                   <ArrowRight className="h-5 w-5" />
                 </div>
               </CardContent>
               {/* Background glow */}
-              <div className="absolute -top-24 -right-24 w-48 h-48 bg-emerald-500/20 rounded-full blur-3xl group-hover:bg-emerald-500/30 transition-colors duration-500" />
+              <div className="absolute -top-32 -right-32 w-64 h-64 bg-primary/20 rounded-full blur-3xl group-hover:bg-primary/30 transition-colors duration-500" />
+              <div className="absolute -bottom-32 -left-32 w-64 h-64 bg-primary/10 rounded-full blur-3xl group-hover:bg-primary/20 transition-colors duration-500" />
             </Card>
           </Link>
         </div>
@@ -286,14 +295,24 @@ const Index = () => {
               )}
               <span className="font-semibold">{settings.gatewayName}</span>
             </div>
+            
+            <div className="flex items-center gap-6 text-sm">
+              <Link to="/about" className="text-muted-foreground hover:text-primary transition-colors">
+                {isEnglish ? 'About Us' : '关于我们'}
+              </Link>
+              <Link to="/docs" className="text-muted-foreground hover:text-primary transition-colors">
+                {isEnglish ? 'Documentation' : '开发文档'}
+              </Link>
+              {settings.supportEmail && (
+                <a href={`mailto:${settings.supportEmail}`} className="text-muted-foreground hover:text-primary transition-colors">
+                  {isEnglish ? 'Contact' : '联系我们'}
+                </a>
+              )}
+            </div>
+
             <p className="text-sm text-muted-foreground">
               © {new Date().getFullYear()} {settings.gatewayName}. {isEnglish ? 'All rights reserved.' : '版权所有'}
             </p>
-            {settings.supportEmail && (
-              <a href={`mailto:${settings.supportEmail}`} className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                {settings.supportEmail}
-              </a>
-            )}
           </div>
         </div>
       </footer>
