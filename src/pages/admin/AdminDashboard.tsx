@@ -423,14 +423,23 @@ const AdminDashboard = () => {
                           : <ArrowUpFromLine className="h-3 w-3 md:h-4 md:w-4" />
                         }
                       </div>
-                      <div className="min-w-0">
-                        <p className="font-mono text-xs md:text-sm font-medium truncate">{tx.order_no}</p>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-mono text-xs md:text-sm font-medium truncate">{tx.order_no}</p>
+                          <span className={`text-xs px-1.5 py-0.5 rounded ${
+                            tx.transaction_type === 'payin' 
+                              ? 'bg-green-500/10 text-green-600' 
+                              : 'bg-orange-500/10 text-orange-600'
+                          }`}>
+                            {tx.transaction_type === 'payin' ? 'IN' : 'OUT'}
+                          </span>
+                        </div>
                         <p className="text-xs text-muted-foreground truncate">
-                          {tx.extra || tx.merchants?.merchant_name}
+                          {tx.merchants?.merchant_name} • {format(new Date(tx.created_at), 'HH:mm')}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 md:gap-4 shrink-0">
+                    <div className="flex items-center gap-2 md:gap-3 shrink-0">
                       <span className={`text-xs md:text-sm font-semibold ${
                         tx.transaction_type === 'payin' ? 'text-green-500' : 'text-orange-500'
                       }`}>

@@ -1,5 +1,8 @@
 project_id = "ttywuskboaranphxxgtr"
 
+[functions.process-payout]
+verify_jwt = false
+
 [functions.setup-admin]
 verify_jwt = false
 
