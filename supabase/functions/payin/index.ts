@@ -219,11 +219,14 @@ Deno.serve(async (req) => {
       // LG Pay integration - trade_type logic varies by currency:
       // - PKR: Use gateway's trade_type (PKRPH) for all merchants
       // - BDT: Use merchant's trade_type directly (Nagad, bKash)
-      // - INR: Use gateway's trade_type (inr)
-      let tradeType = gateway.trade_type || 'test'
+      // - INR: Use gateway's trade_type (INRUPI) or merchant's trade_type (usdt)
+      let tradeType = gateway.trade_type || 'INRUPI'
       
       if (gateway.currency === 'BDT' && merchant.trade_type) {
         // For BDT, deposit codes ARE the merchant's trade_type (Nagad/bKash)
+        tradeType = merchant.trade_type
+      } else if (gateway.currency === 'INR' && merchant.trade_type) {
+        // For INR, use merchant's trade_type if set (usdt/INRUPI)
         tradeType = merchant.trade_type
       }
       
