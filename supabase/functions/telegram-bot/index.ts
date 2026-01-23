@@ -72,12 +72,14 @@ function generateWithdrawalPassword(): string {
 
 // Find merchant by telegram chat ID with gateway info
 async function findMerchantByChatId(supabaseAdmin: any, chatId: string) {
-  const { data: merchant } = await supabaseAdmin
+  const { data: merchants } = await supabaseAdmin
     .from('merchants')
     .select('*, payment_gateways(gateway_code, gateway_name, currency)')
     .eq('telegram_chat_id', chatId)
-    .maybeSingle()
-  return merchant
+    .order('created_at', { ascending: false })
+    .limit(1)
+  
+  return merchants && merchants.length > 0 ? merchants[0] : null
 }
 
 Deno.serve(async (req) => {
