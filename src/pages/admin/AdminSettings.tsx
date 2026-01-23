@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Save, Settings, CreditCard, Percent, Eye, EyeOff, Upload, AlertTriangle, Globe, Mail, Image, Bell, Shield, Server, Zap } from 'lucide-react';
+import { Save, Settings, CreditCard, Percent, Eye, EyeOff, Upload, AlertTriangle, Globe, Mail, Image, Bell } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTranslation } from '@/lib/i18n';
@@ -140,7 +139,7 @@ const AdminSettingsPage = () => {
     return (
       <DashboardLayout>
         <div className="space-y-6">
-          <Skeleton className="h-32 w-full rounded-2xl" />
+          <Skeleton className="h-8 w-48" />
           <Skeleton className="h-12 w-full" />
           <Skeleton className="h-80 w-full" />
         </div>
@@ -151,55 +150,52 @@ const AdminSettingsPage = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
-        {/* Premium Header */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-700 via-slate-600 to-slate-800 p-6 text-white">
-          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzRjMC0yIDItNCAyLTRzLTItMi00LTJsLTIgMnYtNGgtNHY0bC0yLTJjLTIgMC00IDItNCAyczIgMiAyIDR2Mmg0di00bDIgMmMyIDAgNC0yIDQtMnYtMnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-30" />
-          <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
-                <Settings className="h-8 w-8" />
-              </div>
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold">{t('settings.title')}</h1>
-                <p className="text-white/80 text-sm mt-1">
-                  {language === 'zh' ? '配置网关品牌、API凭证和默认费率' : 'Configure your gateway branding, API credentials, and default fees'}
-                </p>
-              </div>
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5">
+              <Settings className="h-6 w-6 text-primary" />
             </div>
-            <Button onClick={handleSave} disabled={isSaving} size="lg" className="bg-white text-slate-800 hover:bg-white/90">
-              <Save className="h-4 w-4 mr-2" />
-              {isSaving ? t('common.loading') : (language === 'zh' ? '保存所有更改' : 'Save All Changes')}
-            </Button>
+            <div>
+              <h1 className="text-2xl font-bold">{t('settings.title')}</h1>
+              <p className="text-sm text-muted-foreground">
+                {language === 'zh' ? '配置网关品牌、API凭证和默认费率' : 'Configure your gateway branding, API credentials, and default fees'}
+              </p>
+            </div>
           </div>
+          <Button onClick={handleSave} disabled={isSaving} className="btn-gradient-primary">
+            <Save className="h-4 w-4 mr-2" />
+            {isSaving ? t('common.loading') : (language === 'zh' ? '保存所有更改' : 'Save All Changes')}
+          </Button>
         </div>
 
         {/* Tabs */}
         <Tabs defaultValue="branding" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto p-1 gap-1">
-            <TabsTrigger value="branding" className="flex items-center gap-2 py-2.5">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="branding" className="flex items-center gap-2">
               <Globe className="h-4 w-4" />
-              <span className="hidden sm:inline">{language === 'zh' ? '网关品牌' : 'Branding'}</span>
+              {language === 'zh' ? '网关品牌' : 'Branding'}
             </TabsTrigger>
-            <TabsTrigger value="api" className="flex items-center gap-2 py-2.5">
-              <Server className="h-4 w-4" />
-              <span className="hidden sm:inline">API</span>
+            <TabsTrigger value="api" className="flex items-center gap-2">
+              <CreditCard className="h-4 w-4" />
+              {language === 'zh' ? 'API' : 'API'}
             </TabsTrigger>
-            <TabsTrigger value="fees" className="flex items-center gap-2 py-2.5">
+            <TabsTrigger value="fees" className="flex items-center gap-2">
               <Percent className="h-4 w-4" />
-              <span className="hidden sm:inline">{language === 'zh' ? '费率' : 'Fees'}</span>
+              {language === 'zh' ? '费率' : 'Fees'}
             </TabsTrigger>
-            <TabsTrigger value="alerts" className="flex items-center gap-2 py-2.5">
+            <TabsTrigger value="alerts" className="flex items-center gap-2">
               <Bell className="h-4 w-4" />
-              <span className="hidden sm:inline">{language === 'zh' ? '通知' : 'Alerts'}</span>
+              {language === 'zh' ? '通知' : 'Alerts'}
             </TabsTrigger>
           </TabsList>
 
           {/* Gateway Branding Tab */}
-          <TabsContent value="branding" className="mt-6">
-            <Card className="premium-card">
-              <CardHeader className="border-b bg-muted/30">
+          <TabsContent value="branding">
+            <Card>
+              <CardHeader className="bg-primary/5 border-b">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-primary/10 rounded-lg">
+                  <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
                     <Globe className="h-5 w-5 text-primary" />
                   </div>
                   <div>
@@ -213,18 +209,16 @@ const AdminSettingsPage = () => {
               <CardContent className="pt-6 space-y-6">
                 {/* Logo Upload */}
                 <div className="space-y-3">
-                  <Label className="flex items-center gap-2 text-base">
+                  <Label className="flex items-center gap-2">
                     <Image className="h-4 w-4" />
                     {language === 'zh' ? '网关Logo' : 'Gateway Logo'}
                   </Label>
                   <div className="flex items-center gap-4">
-                    <div className="w-20 h-20 rounded-xl border-2 border-dashed flex items-center justify-center bg-muted/50 overflow-hidden">
-                      {logoPreview ? (
+                    {logoPreview && (
+                      <div className="w-16 h-16 rounded-lg border flex items-center justify-center bg-muted overflow-hidden">
                         <img src={logoPreview} alt="Logo" className="w-full h-full object-contain" />
-                      ) : (
-                        <Image className="h-8 w-8 text-muted-foreground" />
-                      )}
-                    </div>
+                      </div>
+                    )}
                     <div>
                       <Input
                         id="logo"
@@ -239,7 +233,7 @@ const AdminSettingsPage = () => {
                           {language === 'zh' ? '上传Logo' : 'Upload Logo'}
                         </label>
                       </Button>
-                      <p className="text-xs text-muted-foreground mt-2">
+                      <p className="text-xs text-muted-foreground mt-1">
                         {language === 'zh' ? '推荐: 200x200px PNG或SVG, 最大2MB' : 'Recommended: 200x200px PNG or SVG. Max 2MB.'}
                       </p>
                     </div>
@@ -249,14 +243,13 @@ const AdminSettingsPage = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2">
-                      <Zap className="h-4 w-4" />
+                      <Globe className="h-4 w-4" />
                       {language === 'zh' ? '网关名称' : 'Gateway Name'}
                     </Label>
                     <Input
                       value={settings?.gateway_name || ''}
                       onChange={(e) => setSettings(s => s ? { ...s, gateway_name: e.target.value } : null)}
                       placeholder="PayGate"
-                      className="h-11"
                     />
                     <p className="text-xs text-muted-foreground">
                       {language === 'zh' ? '此名称将显示在文档和商户仪表板中' : 'This name will appear in docs and merchant dashboard'}
@@ -271,8 +264,10 @@ const AdminSettingsPage = () => {
                       value={settings?.gateway_domain || ''}
                       onChange={(e) => setSettings(s => s ? { ...s, gateway_domain: e.target.value } : null)}
                       placeholder="https://your-gateway.com"
-                      className="h-11"
                     />
+                    <p className="text-xs text-muted-foreground">
+                      {language === 'zh' ? '您网关的公共URL，用于API文档' : "Your gateway's public URL for API documentation"}
+                    </p>
                   </div>
                 </div>
 
@@ -286,24 +281,22 @@ const AdminSettingsPage = () => {
                     value={settings?.support_email || ''}
                     onChange={(e) => setSettings(s => s ? { ...s, support_email: e.target.value } : null)}
                     placeholder="support@your-gateway.com"
-                    className="h-11"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    {language === 'zh' ? '向商户显示的客服联系邮箱' : 'Contact email shown to merchants for support'}
+                  </p>
                 </div>
 
                 {/* Preview */}
                 <div className="border-t pt-6">
                   <Label className="text-sm text-muted-foreground mb-3 block">{language === 'zh' ? '预览' : 'Preview'}</Label>
-                  <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-xl border">
-                    {logoPreview ? (
-                      <img src={logoPreview} alt="Logo" className="w-12 h-12 object-contain rounded-lg" />
-                    ) : (
-                      <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <span className="text-primary font-bold text-xl">{settings?.gateway_name?.charAt(0) || 'P'}</span>
-                      </div>
+                  <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
+                    {logoPreview && (
+                      <img src={logoPreview} alt="Logo" className="w-10 h-10 object-contain" />
                     )}
                     <div>
-                      <p className="font-bold text-lg">{settings?.gateway_name || 'PayGate'}</p>
-                      <p className="text-sm text-muted-foreground">{settings?.gateway_domain || 'https://your-gateway.com'}</p>
+                      <p className="font-semibold">{settings?.gateway_name || 'PayGate'}</p>
+                      <p className="text-xs text-muted-foreground">{settings?.gateway_domain || 'https://your-gateway.com'}</p>
                     </div>
                   </div>
                 </div>
@@ -312,12 +305,12 @@ const AdminSettingsPage = () => {
           </TabsContent>
 
           {/* BondPay API Tab */}
-          <TabsContent value="api" className="mt-6">
-            <Card className="premium-card">
-              <CardHeader className="border-b bg-orange-500/5">
+          <TabsContent value="api">
+            <Card>
+              <CardHeader className="bg-orange-500/5 border-b">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-orange-500/10 rounded-lg">
-                    <Server className="h-5 w-5 text-orange-500" />
+                  <div className="w-10 h-10 bg-orange-500/10 rounded-lg flex items-center justify-center">
+                    <CreditCard className="h-5 w-5 text-orange-500" />
                   </div>
                   <div>
                     <CardTitle>{language === 'zh' ? 'BondPay API配置' : 'BondPay API Configuration'}</CardTitle>
@@ -343,7 +336,6 @@ const AdminSettingsPage = () => {
                     value={settings?.bondpay_base_url || ''}
                     onChange={(e) => setSettings(s => s ? { ...s, bondpay_base_url: e.target.value } : null)}
                     placeholder="https://api.bond-pays.com"
-                    className="h-11 font-mono"
                   />
                 </div>
 
@@ -353,7 +345,6 @@ const AdminSettingsPage = () => {
                     value={settings?.master_merchant_id || ''}
                     onChange={(e) => setSettings(s => s ? { ...s, master_merchant_id: e.target.value } : null)}
                     placeholder="100888140"
-                    className="h-11 font-mono"
                   />
                 </div>
 
@@ -364,7 +355,6 @@ const AdminSettingsPage = () => {
                       type={showApiKey ? 'text' : 'password'}
                       value={settings?.master_api_key || ''}
                       onChange={(e) => setSettings(s => s ? { ...s, master_api_key: e.target.value } : null)}
-                      className="h-11 font-mono pr-10"
                     />
                     <Button
                       type="button"
@@ -385,7 +375,6 @@ const AdminSettingsPage = () => {
                       type={showPayoutKey ? 'text' : 'password'}
                       value={settings?.master_payout_key || ''}
                       onChange={(e) => setSettings(s => s ? { ...s, master_payout_key: e.target.value } : null)}
-                      className="h-11 font-mono pr-10"
                     />
                     <Button
                       type="button"
@@ -403,11 +392,11 @@ const AdminSettingsPage = () => {
           </TabsContent>
 
           {/* Default Fees Tab */}
-          <TabsContent value="fees" className="mt-6">
-            <Card className="premium-card">
-              <CardHeader className="border-b bg-green-500/5">
+          <TabsContent value="fees">
+            <Card>
+              <CardHeader className="bg-green-500/5 border-b">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-green-500/10 rounded-lg">
+                  <div className="w-10 h-10 bg-green-500/10 rounded-lg flex items-center justify-center">
                     <Percent className="h-5 w-5 text-green-500" />
                   </div>
                   <div>
@@ -418,117 +407,166 @@ const AdminSettingsPage = () => {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="pt-6 space-y-6">
+              <CardContent className="pt-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                      {language === 'zh' ? '默认代收费率 (%)' : 'Default Payin Fee (%)'}
-                    </Label>
-                    <Input
-                      type="number"
-                      step="0.1"
-                      value={settings?.default_payin_fee ?? ''}
-                      onChange={(e) => setSettings(s => s ? { ...s, default_payin_fee: parseFloat(e.target.value) || 0 } : null)}
-                      className="h-11"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      {language === 'zh' ? '创建新商户时的默认代收费率' : 'Default pay-in fee when creating new merchants'}
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                      {language === 'zh' ? '默认代付费率 (%)' : 'Default Payout Fee (%)'}
-                    </Label>
-                    <Input
-                      type="number"
-                      step="0.1"
-                      value={settings?.default_payout_fee ?? ''}
-                      onChange={(e) => setSettings(s => s ? { ...s, default_payout_fee: parseFloat(e.target.value) || 0 } : null)}
-                      className="h-11"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      {language === 'zh' ? '创建新商户时的默认代付费率' : 'Default payout fee when creating new merchants'}
-                    </p>
-                  </div>
+                  <Card className="border-2 border-green-500/20">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center text-white text-xs font-bold">IN</div>
+                        <div>
+                          <CardTitle className="text-base">{language === 'zh' ? 'Pay-In费率' : 'Pay-In Fee'}</CardTitle>
+                          <CardDescription className="text-xs">
+                            {language === 'zh' ? '收款时收取' : 'Charged on incoming payments'}
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <Label>{language === 'zh' ? '默认Payin费率 (%)' : 'Default Payin Fee (%)'}</Label>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        value={settings?.default_payin_fee || 0}
+                        onChange={(e) => setSettings(s => s ? { ...s, default_payin_fee: parseFloat(e.target.value) } : null)}
+                        className="mt-2"
+                      />
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-2 border-orange-500/20">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center text-white text-xs font-bold">OUT</div>
+                        <div>
+                          <CardTitle className="text-base">{language === 'zh' ? 'Pay-Out费率' : 'Pay-Out Fee'}</CardTitle>
+                          <CardDescription className="text-xs">
+                            {language === 'zh' ? '提现时收取' : 'Charged on withdrawals'}
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <Label>{language === 'zh' ? '默认Payout费率 (%)' : 'Default Payout Fee (%)'}</Label>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        value={settings?.default_payout_fee || 0}
+                        onChange={(e) => setSettings(s => s ? { ...s, default_payout_fee: parseFloat(e.target.value) } : null)}
+                        className="mt-2"
+                      />
+                    </CardContent>
+                  </Card>
                 </div>
 
-                {/* Current Defaults Preview */}
-                <div className="p-4 rounded-xl bg-muted/50 border">
-                  <p className="text-sm font-medium mb-3">{language === 'zh' ? '当前默认值' : 'Current Defaults'}</p>
-                  <div className="flex flex-wrap gap-3">
-                    <Badge variant="outline" className="text-base py-1.5 px-3">
-                      <span className="text-primary font-bold">{settings?.default_payin_fee || 0}%</span>
-                      <span className="text-muted-foreground ml-1">{language === 'zh' ? '代收' : 'Pay-in'}</span>
-                    </Badge>
-                    <Badge variant="outline" className="text-base py-1.5 px-3">
-                      <span className="text-orange-500 font-bold">{settings?.default_payout_fee || 0}%</span>
-                      <span className="text-muted-foreground ml-1">{language === 'zh' ? '代付' : 'Payout'}</span>
-                    </Badge>
-                  </div>
-                </div>
+                <Alert className="mt-6">
+                  <AlertDescription className="text-muted-foreground">
+                    💡 {language === 'zh' 
+                      ? '这些费率将应用于新商户。您可以在商户编辑页面为各个商户自定义费率。'
+                      : "These fees will be applied to new merchants. You can customize fees for individual merchants in their edit page."}
+                  </AlertDescription>
+                </Alert>
               </CardContent>
             </Card>
           </TabsContent>
 
-          {/* Alert Thresholds Tab */}
-          <TabsContent value="alerts" className="mt-6">
-            <Card className="premium-card">
-              <CardHeader className="border-b bg-purple-500/5">
+          {/* Notification Thresholds Tab */}
+          <TabsContent value="alerts">
+            <Card>
+              <CardHeader className="bg-amber-500/5 border-b">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-purple-500/10 rounded-lg">
-                    <Bell className="h-5 w-5 text-purple-500" />
+                  <div className="w-10 h-10 bg-amber-500/10 rounded-lg flex items-center justify-center">
+                    <Bell className="h-5 w-5 text-amber-500" />
                   </div>
                   <div>
-                    <CardTitle>{language === 'zh' ? '大额交易通知' : 'Large Transaction Alerts'}</CardTitle>
+                    <CardTitle>{language === 'zh' ? '通知阈值配置' : 'Notification Threshold Configuration'}</CardTitle>
                     <CardDescription>
-                      {language === 'zh' ? '超过阈值的交易将触发管理员通知' : 'Transactions exceeding thresholds will trigger admin notifications'}
+                      {language === 'zh' ? '设置大额交易通知的触发阈值' : 'Set thresholds for large transaction alerts'}
                     </CardDescription>
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="pt-6 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="space-y-2">
-                    <Label>{language === 'zh' ? '大额代收阈值 (₹)' : 'Large Payin Threshold (₹)'}</Label>
-                    <Input
-                      type="number"
-                      value={settings?.large_payin_threshold ?? ''}
-                      onChange={(e) => setSettings(s => s ? { ...s, large_payin_threshold: parseInt(e.target.value) || 0 } : null)}
-                      className="h-11"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>{language === 'zh' ? '大额代付阈值 (₹)' : 'Large Payout Threshold (₹)'}</Label>
-                    <Input
-                      type="number"
-                      value={settings?.large_payout_threshold ?? ''}
-                      onChange={(e) => setSettings(s => s ? { ...s, large_payout_threshold: parseInt(e.target.value) || 0 } : null)}
-                      className="h-11"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>{language === 'zh' ? '大额提现阈值 (₹)' : 'Large Withdrawal Threshold (₹)'}</Label>
-                    <Input
-                      type="number"
-                      value={settings?.large_withdrawal_threshold ?? ''}
-                      onChange={(e) => setSettings(s => s ? { ...s, large_withdrawal_threshold: parseInt(e.target.value) || 0 } : null)}
-                      className="h-11"
-                    />
-                  </div>
-                </div>
+                <Alert>
+                  <Bell className="h-4 w-4" />
+                  <AlertDescription>
+                    {language === 'zh' 
+                      ? '当交易金额超过设定阈值时，系统将自动发送通知提醒。'
+                      : 'When transaction amounts exceed these thresholds, you will receive automatic notifications.'}
+                  </AlertDescription>
+                </Alert>
 
-                <div className="p-4 rounded-xl bg-purple-500/5 border border-purple-500/20">
-                  <div className="flex items-start gap-3">
-                    <Shield className="h-5 w-5 text-purple-500 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium">{language === 'zh' ? '安全提示' : 'Security Note'}</p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {language === 'zh' 
-                          ? '当任何交易金额超过设定阈值时，系统将自动创建通知提醒管理员审核。' 
-                          : 'When any transaction exceeds the threshold, the system will automatically create a notification for admin review.'}
-                      </p>
-                    </div>
-                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <Card className="border-2 border-[hsl(var(--success))]/20">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-[hsl(var(--success))] rounded-lg flex items-center justify-center text-white text-xs font-bold">IN</div>
+                        <div>
+                          <CardTitle className="text-base">{language === 'zh' ? '大额Pay-In' : 'Large Pay-In'}</CardTitle>
+                          <CardDescription className="text-xs">
+                            {language === 'zh' ? '收款超过此金额通知' : 'Notify when pay-in exceeds this amount'}
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <Label>{language === 'zh' ? '阈值 (₹)' : 'Threshold (₹)'}</Label>
+                      <Input
+                        type="number"
+                        value={settings?.large_payin_threshold || 10000}
+                        onChange={(e) => setSettings(s => s ? { ...s, large_payin_threshold: parseFloat(e.target.value) } : null)}
+                        className="mt-2"
+                        placeholder="10000"
+                      />
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-2 border-[hsl(var(--warning))]/20">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-[hsl(var(--warning))] rounded-lg flex items-center justify-center text-white text-xs font-bold">OUT</div>
+                        <div>
+                          <CardTitle className="text-base">{language === 'zh' ? '大额Pay-Out' : 'Large Pay-Out'}</CardTitle>
+                          <CardDescription className="text-xs">
+                            {language === 'zh' ? '付款超过此金额通知' : 'Notify when payout exceeds this amount'}
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <Label>{language === 'zh' ? '阈值 (₹)' : 'Threshold (₹)'}</Label>
+                      <Input
+                        type="number"
+                        value={settings?.large_payout_threshold || 5000}
+                        onChange={(e) => setSettings(s => s ? { ...s, large_payout_threshold: parseFloat(e.target.value) } : null)}
+                        className="mt-2"
+                        placeholder="5000"
+                      />
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-2 border-destructive/20">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-destructive rounded-lg flex items-center justify-center text-white text-xs font-bold">WD</div>
+                        <div>
+                          <CardTitle className="text-base">{language === 'zh' ? '大额提现' : 'Large Withdrawal'}</CardTitle>
+                          <CardDescription className="text-xs">
+                            {language === 'zh' ? '提现超过此金额通知' : 'Notify when withdrawal exceeds this amount'}
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <Label>{language === 'zh' ? '阈值 (₹)' : 'Threshold (₹)'}</Label>
+                      <Input
+                        type="number"
+                        value={settings?.large_withdrawal_threshold || 10000}
+                        onChange={(e) => setSettings(s => s ? { ...s, large_withdrawal_threshold: parseFloat(e.target.value) } : null)}
+                        className="mt-2"
+                        placeholder="10000"
+                      />
+                    </CardContent>
+                  </Card>
                 </div>
               </CardContent>
             </Card>

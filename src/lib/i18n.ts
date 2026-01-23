@@ -11,18 +11,10 @@ interface I18nState {
 export const useI18nStore = create<I18nState>()(
   persist(
     (set) => ({
-      language: 'zh', // Default to Chinese
+      language: 'zh',
       setLanguage: (language) => set({ language }),
     }),
-    { 
-      name: 'paygate-language',
-      // Initialize with Chinese as default if no stored value
-      onRehydrateStorage: () => (state) => {
-        if (!state?.language) {
-          state?.setLanguage('zh');
-        }
-      }
-    }
+    { name: 'paygate-language' }
   )
 );
 
