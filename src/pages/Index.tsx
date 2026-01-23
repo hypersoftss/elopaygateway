@@ -16,30 +16,89 @@ import {
   BadgeCheck,
   CircleDollarSign,
   Shield,
-  Banknote
+  Banknote,
+  Coins,
+  PiggyBank,
+  Receipt,
+  Landmark,
+  DollarSign,
+  Bitcoin
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { LanguageSwitch } from '@/components/LanguageSwitch';
 import { useTranslation } from '@/lib/i18n';
 import { useGatewaySettings } from '@/hooks/useGatewaySettings';
 
-// Floating icon component
-const FloatingIcon = ({ 
+// Enhanced floating particle component with 3D effects
+const FloatingParticle = ({ 
   icon: Icon, 
   className, 
-  delay = 0 
+  delay = 0,
+  size = 'md',
+  opacity = 'medium'
 }: { 
   icon: React.ElementType; 
   className: string; 
   delay?: number;
-}) => (
-  <div 
-    className={`absolute text-primary/20 animate-float ${className}`}
-    style={{ animationDelay: `${delay}s` }}
-  >
-    <Icon className="h-8 w-8" />
-  </div>
-);
+  size?: 'sm' | 'md' | 'lg' | 'xl';
+  opacity?: 'low' | 'medium' | 'high';
+}) => {
+  const sizeClasses = {
+    sm: 'h-4 w-4',
+    md: 'h-6 w-6',
+    lg: 'h-8 w-8',
+    xl: 'h-12 w-12',
+  };
+  
+  const opacityClasses = {
+    low: 'text-primary/10',
+    medium: 'text-primary/20',
+    high: 'text-primary/30',
+  };
+
+  return (
+    <div 
+      className={`absolute animate-float ${opacityClasses[opacity]} ${className}`}
+      style={{ 
+        animationDelay: `${delay}s`,
+        animationDuration: `${6 + delay}s`,
+      }}
+    >
+      <Icon className={sizeClasses[size]} />
+    </div>
+  );
+};
+
+// 3D Floating orb component
+const FloatingOrb = ({ 
+  className, 
+  size = 200,
+  color = 'primary',
+  delay = 0 
+}: { 
+  className: string; 
+  size?: number;
+  color?: 'primary' | 'secondary' | 'accent';
+  delay?: number;
+}) => {
+  const colorClasses = {
+    primary: 'from-primary/30 via-primary/10 to-transparent',
+    secondary: 'from-blue-500/20 via-blue-500/5 to-transparent',
+    accent: 'from-emerald-500/20 via-emerald-500/5 to-transparent',
+  };
+
+  return (
+    <div 
+      className={`absolute rounded-full bg-gradient-radial ${colorClasses[color]} blur-3xl animate-pulse ${className}`}
+      style={{ 
+        width: size, 
+        height: size,
+        animationDelay: `${delay}s`,
+        animationDuration: `${4 + delay}s`,
+      }}
+    />
+  );
+};
 
 const Index = () => {
   const { language } = useTranslation();
@@ -88,40 +147,79 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background overflow-hidden">
-      {/* Animated Background with Floating Icons */}
-      <div className="fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-primary/10" />
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-radial from-primary/5 to-transparent rounded-full" />
+      {/* Enhanced 3D Animated Background */}
+      <div className="fixed inset-0 -z-10 overflow-hidden" style={{ perspective: '1000px' }}>
+        {/* Base gradient */}
+        <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-primary/5" />
         
-        {/* Floating Icons */}
-        <FloatingIcon icon={CreditCard} className="top-[10%] left-[10%]" delay={0} />
-        <FloatingIcon icon={Wallet} className="top-[20%] right-[15%]" delay={1.5} />
-        <FloatingIcon icon={CircleDollarSign} className="top-[60%] left-[8%]" delay={0.5} />
-        <FloatingIcon icon={Shield} className="top-[40%] right-[10%]" delay={2} />
-        <FloatingIcon icon={Banknote} className="bottom-[20%] left-[20%]" delay={1} />
-        <FloatingIcon icon={BadgeCheck} className="bottom-[30%] right-[20%]" delay={2.5} />
-        <FloatingIcon icon={Globe} className="top-[30%] left-[25%]" delay={3} />
-        <FloatingIcon icon={Zap} className="bottom-[15%] right-[30%]" delay={0.8} />
+        {/* 3D Grid Effect */}
+        <div 
+          className="absolute inset-0 opacity-[0.02]"
+          style={{
+            backgroundImage: `
+              linear-gradient(hsl(var(--primary)) 1px, transparent 1px),
+              linear-gradient(90deg, hsl(var(--primary)) 1px, transparent 1px)
+            `,
+            backgroundSize: '50px 50px',
+            transform: 'perspective(500px) rotateX(60deg)',
+            transformOrigin: 'center top',
+          }}
+        />
+        
+        {/* Floating Orbs - 3D depth effect */}
+        <FloatingOrb className="top-[-10%] left-[-5%]" size={400} color="primary" delay={0} />
+        <FloatingOrb className="top-[20%] right-[-10%]" size={350} color="secondary" delay={1.5} />
+        <FloatingOrb className="bottom-[-10%] left-[20%]" size={450} color="accent" delay={0.5} />
+        <FloatingOrb className="top-[50%] left-[50%] -translate-x-1/2 -translate-y-1/2" size={600} color="primary" delay={2} />
+        <FloatingOrb className="bottom-[10%] right-[10%]" size={250} color="secondary" delay={1} />
+        
+        {/* Floating Particles - Multiple sizes and opacities */}
+        {/* Large particles */}
+        <FloatingParticle icon={CreditCard} className="top-[8%] left-[8%]" delay={0} size="xl" opacity="high" />
+        <FloatingParticle icon={Wallet} className="top-[15%] right-[12%]" delay={1.5} size="lg" opacity="medium" />
+        <FloatingParticle icon={CircleDollarSign} className="top-[55%] left-[5%]" delay={0.5} size="xl" opacity="medium" />
+        <FloatingParticle icon={Shield} className="top-[35%] right-[8%]" delay={2} size="lg" opacity="high" />
+        
+        {/* Medium particles */}
+        <FloatingParticle icon={Banknote} className="bottom-[25%] left-[15%]" delay={1} size="md" opacity="medium" />
+        <FloatingParticle icon={BadgeCheck} className="bottom-[35%] right-[18%]" delay={2.5} size="md" opacity="high" />
+        <FloatingParticle icon={Globe} className="top-[25%] left-[22%]" delay={3} size="md" opacity="low" />
+        <FloatingParticle icon={Zap} className="bottom-[20%] right-[25%]" delay={0.8} size="lg" opacity="medium" />
+        <FloatingParticle icon={Coins} className="top-[45%] left-[12%]" delay={1.2} size="md" opacity="medium" />
+        <FloatingParticle icon={PiggyBank} className="top-[70%] right-[10%]" delay={2.2} size="lg" opacity="low" />
+        
+        {/* Small particles - scattered */}
+        <FloatingParticle icon={DollarSign} className="top-[12%] left-[35%]" delay={0.3} size="sm" opacity="low" />
+        <FloatingParticle icon={Receipt} className="top-[30%] right-[30%]" delay={1.8} size="sm" opacity="low" />
+        <FloatingParticle icon={Landmark} className="bottom-[40%] left-[30%]" delay={2.8} size="sm" opacity="medium" />
+        <FloatingParticle icon={Bitcoin} className="top-[60%] right-[35%]" delay={0.6} size="sm" opacity="low" />
+        <FloatingParticle icon={Lock} className="bottom-[15%] left-[40%]" delay={3.2} size="sm" opacity="low" />
+        <FloatingParticle icon={TrendingUp} className="top-[75%] left-[25%]" delay={1.4} size="sm" opacity="medium" />
+        <FloatingParticle icon={Clock} className="top-[20%] left-[60%]" delay={2.1} size="sm" opacity="low" />
+        <FloatingParticle icon={CreditCard} className="bottom-[60%] right-[40%]" delay={0.9} size="sm" opacity="low" />
+        
+        {/* Extra tiny sparkles */}
+        <FloatingParticle icon={Sparkles} className="top-[5%] right-[45%]" delay={1.6} size="sm" opacity="low" />
+        <FloatingParticle icon={Sparkles} className="bottom-[10%] left-[55%]" delay={2.4} size="sm" opacity="low" />
+        <FloatingParticle icon={Sparkles} className="top-[40%] left-[45%]" delay={0.4} size="sm" opacity="low" />
       </div>
 
-      {/* Header */}
-      <header className="border-b bg-background/80 backdrop-blur-xl sticky top-0 z-50">
+      {/* Header with glass effect */}
+      <header className="border-b border-border/50 bg-background/60 backdrop-blur-xl sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {settings.logoUrl ? (
               <img 
                 src={settings.logoUrl} 
                 alt="Logo" 
-                className="h-10 w-10 rounded-xl object-contain shadow-lg"
+                className="h-10 w-10 rounded-xl object-contain shadow-lg ring-2 ring-primary/20"
               />
             ) : (
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg shadow-primary/25">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg shadow-primary/25 ring-2 ring-primary/20">
                 <Zap className="h-5 w-5 text-primary-foreground" />
               </div>
             )}
-            <span className="text-xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+            <span className="text-xl font-bold bg-gradient-to-r from-foreground via-foreground to-foreground/70 bg-clip-text">
               {settings.gatewayName}
             </span>
           </div>
@@ -132,28 +230,38 @@ const Index = () => {
         </div>
       </header>
 
-      {/* Hero Section */}
+      {/* Hero Section with 3D card effect */}
       <section className="relative container mx-auto px-4 py-20 md:py-32">
         <div className="max-w-4xl mx-auto text-center space-y-8">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium text-primary animate-fade-in">
+          {/* Badge with glow */}
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium text-primary animate-fade-in shadow-lg shadow-primary/10">
             <Sparkles className="h-4 w-4" />
             {isEnglish ? 'Professional Payment Gateway' : '专业支付网关'}
           </div>
 
-          {/* Main Heading */}
+          {/* Main Heading with 3D text effect */}
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-tight animate-fade-in">
             {isEnglish ? (
               <>
                 Power Your Business with
                 <br />
-                <span className="bg-gradient-to-r from-primary via-primary/80 to-primary bg-clip-text text-transparent">
+                <span 
+                  className="bg-gradient-to-r from-primary via-primary/90 to-primary/70 bg-clip-text text-transparent drop-shadow-sm"
+                  style={{ 
+                    textShadow: '0 4px 12px hsl(var(--primary) / 0.3)',
+                  }}
+                >
                   {settings.gatewayName}
                 </span>
               </>
             ) : (
               <>
-                <span className="bg-gradient-to-r from-primary via-primary/80 to-primary bg-clip-text text-transparent">
+                <span 
+                  className="bg-gradient-to-r from-primary via-primary/90 to-primary/70 bg-clip-text text-transparent"
+                  style={{ 
+                    textShadow: '0 4px 12px hsl(var(--primary) / 0.3)',
+                  }}
+                >
                   {settings.gatewayName}
                 </span>
                 <br />
@@ -168,34 +276,43 @@ const Index = () => {
               : '安全、快速、可靠的支付处理解决方案，提供即时结算、多渠道支持和企业级安全保障。'}
           </p>
 
-          {/* CTA Button - Only Merchant Login */}
+          {/* CTA Button with 3D hover effect */}
           <div className="flex items-center justify-center pt-4 animate-fade-in">
-            <Button asChild size="lg" className="h-14 px-10 text-lg font-semibold shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all hover-scale">
+            <Button 
+              asChild 
+              size="lg" 
+              className="h-16 px-12 text-lg font-semibold shadow-2xl shadow-primary/30 hover:shadow-primary/40 transition-all duration-300 hover:-translate-y-1 bg-gradient-to-r from-primary to-primary/90 border-t border-primary-foreground/20"
+            >
               <Link to="/merchant-login">
-                <Store className="h-5 w-5 mr-2" />
+                <Store className="h-6 w-6 mr-3" />
                 {isEnglish ? 'Merchant Login' : '商户登录'}
-                <ArrowRight className="h-5 w-5 ml-2" />
+                <ArrowRight className="h-6 w-6 ml-3" />
               </Link>
             </Button>
           </div>
 
-          {/* Stats */}
+          {/* Stats with 3D cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-12 max-w-3xl mx-auto">
             {stats.map((stat, index) => (
               <div 
                 key={index} 
-                className="text-center p-4 rounded-xl bg-card/50 backdrop-blur-sm border border-border/50 animate-fade-in"
-                style={{ animationDelay: `${index * 0.1}s` }}
+                className="group text-center p-5 rounded-2xl bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-md border border-border/50 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 animate-fade-in"
+                style={{ 
+                  animationDelay: `${index * 0.1}s`,
+                  transform: 'perspective(1000px)',
+                }}
               >
-                <div className="text-2xl md:text-3xl font-bold text-primary">{stat.value}</div>
-                <div className="text-sm text-muted-foreground">{stat.label}</div>
+                <div className="text-2xl md:text-3xl font-bold bg-gradient-to-br from-primary to-primary/70 bg-clip-text text-transparent">
+                  {stat.value}
+                </div>
+                <div className="text-sm text-muted-foreground mt-1">{stat.label}</div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
+      {/* Features Section with 3D grid */}
       <section className="relative container mx-auto px-4 py-20">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
@@ -212,77 +329,93 @@ const Index = () => {
           {features.map((feature, index) => (
             <Card 
               key={index} 
-              className="group relative overflow-hidden border-border/50 bg-card/50 backdrop-blur-sm hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 animate-fade-in"
-              style={{ animationDelay: `${index * 0.1}s` }}
+              className="group relative overflow-hidden border-border/50 bg-gradient-to-br from-card/90 to-card/50 backdrop-blur-md hover:border-primary/50 transition-all duration-500 animate-fade-in hover:-translate-y-2 hover:shadow-2xl hover:shadow-primary/10"
+              style={{ 
+                animationDelay: `${index * 0.1}s`,
+                transform: 'perspective(1000px)',
+              }}
             >
-              <CardContent className="p-6">
-                <div className="mb-4 inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors duration-300">
+              <CardContent className="p-6 relative z-10">
+                <div className="mb-4 inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 text-primary group-hover:from-primary group-hover:to-primary/80 group-hover:text-primary-foreground transition-all duration-500 shadow-lg group-hover:shadow-primary/25 group-hover:scale-110">
                   {feature.icon}
                 </div>
                 <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
               </CardContent>
-              {/* Hover glow effect */}
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              {/* 3D shine effect on hover */}
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="absolute -inset-px bg-gradient-to-br from-primary/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-lg" />
             </Card>
           ))}
         </div>
       </section>
 
-      {/* Merchant Portal Highlight */}
+      {/* Merchant Portal Highlight with 3D effect */}
       <section className="relative container mx-auto px-4 py-20">
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-2xl mx-auto" style={{ perspective: '1000px' }}>
           <Link to="/merchant-login" className="group block">
-            <Card className="relative overflow-hidden border-2 border-border/50 bg-gradient-to-br from-primary/5 to-primary/10 hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500">
+            <Card 
+              className="relative overflow-hidden border-2 border-primary/20 bg-gradient-to-br from-card via-card/80 to-primary/5 hover:border-primary/50 transition-all duration-700 hover:shadow-[0_25px_60px_-15px_hsl(var(--primary)/0.4)]"
+              style={{
+                transform: 'rotateX(2deg)',
+                transformStyle: 'preserve-3d',
+              }}
+            >
               <CardContent className="p-10 text-center relative z-10">
-                <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-primary/25 group-hover:scale-110 transition-transform duration-300">
-                  <Store className="w-12 h-12 text-primary-foreground" />
+                <div 
+                  className="w-28 h-28 rounded-3xl bg-gradient-to-br from-primary via-primary/90 to-primary/70 flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-primary/40 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500"
+                  style={{ transform: 'translateZ(20px)' }}
+                >
+                  <Store className="w-14 h-14 text-primary-foreground" />
                 </div>
-                <h3 className="text-3xl font-bold mb-4">
+                <h3 
+                  className="text-3xl font-bold mb-4"
+                  style={{ transform: 'translateZ(10px)' }}
+                >
                   {isEnglish ? 'Merchant Portal' : '商户入口'}
                 </h3>
-                <p className="text-muted-foreground mb-6 text-lg">
+                <p className="text-muted-foreground mb-8 text-lg leading-relaxed">
                   {isEnglish 
                     ? 'Access your dashboard, view transactions, manage withdrawals, and integrate our API'
                     : '访问您的仪表板、查看交易、管理提现并集成我们的API'}
                 </p>
-                <div className="inline-flex items-center gap-2 text-primary font-semibold text-lg group-hover:gap-3 transition-all">
+                <div className="inline-flex items-center gap-3 text-primary font-semibold text-xl bg-primary/10 px-6 py-3 rounded-full group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
                   {isEnglish ? 'Login Now' : '立即登录'}
-                  <ArrowRight className="h-5 w-5" />
+                  <ArrowRight className="h-6 w-6 group-hover:translate-x-1 transition-transform" />
                 </div>
               </CardContent>
-              {/* Background glow */}
-              <div className="absolute -top-32 -right-32 w-64 h-64 bg-primary/20 rounded-full blur-3xl group-hover:bg-primary/30 transition-colors duration-500" />
-              <div className="absolute -bottom-32 -left-32 w-64 h-64 bg-primary/10 rounded-full blur-3xl group-hover:bg-primary/20 transition-colors duration-500" />
+              
+              {/* 3D glow effects */}
+              <div className="absolute -top-32 -right-32 w-80 h-80 bg-primary/20 rounded-full blur-3xl group-hover:bg-primary/30 transition-colors duration-700" />
+              <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-primary/10 rounded-full blur-3xl group-hover:bg-primary/20 transition-colors duration-700" />
+              <div className="absolute inset-0 bg-gradient-to-t from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             </Card>
           </Link>
         </div>
       </section>
 
-      {/* Trust Indicators */}
+      {/* Trust Indicators with 3D badges */}
       <section className="container mx-auto px-4 py-16">
-        <div className="flex flex-wrap items-center justify-center gap-8 text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-primary" />
-            <span>{isEnglish ? 'SSL Encrypted' : 'SSL加密'}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-primary" />
-            <span>{isEnglish ? 'PCI Compliant' : 'PCI合规'}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-primary" />
-            <span>{isEnglish ? '2FA Security' : '双重认证'}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-primary" />
-            <span>{isEnglish ? 'Real-time Monitoring' : '实时监控'}</span>
-          </div>
+        <div className="flex flex-wrap items-center justify-center gap-6 text-muted-foreground">
+          {[
+            { icon: CheckCircle2, text: isEnglish ? 'SSL Encrypted' : 'SSL加密' },
+            { icon: CheckCircle2, text: isEnglish ? 'PCI Compliant' : 'PCI合规' },
+            { icon: CheckCircle2, text: isEnglish ? '2FA Security' : '双重认证' },
+            { icon: CheckCircle2, text: isEnglish ? 'Real-time Monitoring' : '实时监控' },
+          ].map((item, index) => (
+            <div 
+              key={index}
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-card/50 border border-border/50 backdrop-blur-sm hover:border-primary/30 hover:bg-primary/5 transition-all duration-300"
+            >
+              <item.icon className="h-5 w-5 text-primary" />
+              <span>{item.text}</span>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t bg-card/50 backdrop-blur-sm py-8 mt-8">
+      {/* Footer with glass effect */}
+      <footer className="border-t border-border/50 bg-card/30 backdrop-blur-xl py-8 mt-8">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
