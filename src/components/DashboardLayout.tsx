@@ -22,6 +22,7 @@ import {
   History,
   UserCog,
   BookOpen,
+  Layers,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -80,6 +81,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { label: t('sidebar.payinOrders'), icon: <ArrowDownToLine className="h-5 w-5" />, href: '/admin/payin' },
     { label: t('sidebar.payoutOrders'), icon: <ArrowUpFromLine className="h-5 w-5" />, href: '/admin/payout' },
     { label: t('sidebar.withdrawals'), icon: <Wallet className="h-5 w-5" />, href: '/admin/withdrawals' },
+    { label: language === 'zh' ? '网关管理' : 'Gateways', icon: <Layers className="h-5 w-5" />, href: '/admin/gateways' },
     { label: t('sidebar.apiTesting'), icon: <TestTube className="h-5 w-5" />, href: '/admin/api-testing' },
     { 
       label: language === 'zh' ? 'SDK文档' : 'SDK Documentation',

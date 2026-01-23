@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Save, Settings, Percent, Eye, EyeOff, Upload, AlertTriangle, Globe, Mail, Image, Bell, Shield, Smartphone, Check, X, QrCode, Send, Layers, Plus, Trash2, Edit } from 'lucide-react';
+import { Save, Settings, Percent, Eye, EyeOff, Upload, AlertTriangle, Globe, Mail, Image, Bell, Shield, Smartphone, Check, X, QrCode, Send } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Switch } from '@/components/ui/switch';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -16,14 +15,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuthStore } from '@/lib/auth';
 import { QRCodeSVG } from 'qrcode.react';
 import * as OTPAuth from 'otpauth';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
@@ -50,20 +41,6 @@ interface AdminSettings {
   telegram_webhook_url: string | null;
 }
 
-interface PaymentGateway {
-  id: string;
-  gateway_code: string;
-  gateway_name: string;
-  gateway_type: string;
-  base_url: string;
-  app_id: string;
-  api_key: string;
-  payout_key: string | null;
-  currency: string;
-  trade_type: string | null;
-  is_active: boolean;
-  created_at: string;
-}
 
 const AdminSettingsPage = () => {
   const { t, language } = useTranslation();
@@ -89,23 +66,6 @@ const AdminSettingsPage = () => {
   const [isSettingWebhook, setIsSettingWebhook] = useState(false);
   const [showBotToken, setShowBotToken] = useState(false);
 
-  // Gateway Management State
-  const [gateways, setGateways] = useState<PaymentGateway[]>([]);
-  const [isLoadingGateways, setIsLoadingGateways] = useState(false);
-  const [showGatewayDialog, setShowGatewayDialog] = useState(false);
-  const [editingGateway, setEditingGateway] = useState<PaymentGateway | null>(null);
-  const [showGatewayApiKey, setShowGatewayApiKey] = useState<Set<string>>(new Set());
-  const [newGateway, setNewGateway] = useState({
-    gateway_code: '',
-    gateway_name: '',
-    gateway_type: 'lgpay',
-    base_url: 'https://www.lg-pay.com',
-    app_id: '',
-    api_key: '',
-    payout_key: '',
-    currency: 'INR',
-    trade_type: '',
-  });
 
   const fetchSettings = async () => {
     setIsLoading(true);
@@ -150,159 +110,9 @@ const AdminSettingsPage = () => {
     }
   };
 
-  const fetchGateways = async () => {
-    setIsLoadingGateways(true);
-    try {
-      const { data } = await supabase
-        .from('payment_gateways')
-        .select('*')
-        .order('created_at', { ascending: false });
-      setGateways(data || []);
-    } catch (error) {
-      console.error('Error fetching gateways:', error);
-    } finally {
-      setIsLoadingGateways(false);
-    }
-  };
-
-  const handleSaveGateway = async () => {
-    try {
-      if (editingGateway) {
-        const { error } = await supabase
-          .from('payment_gateways')
-          .update({
-            gateway_code: newGateway.gateway_code,
-            gateway_name: newGateway.gateway_name,
-            gateway_type: newGateway.gateway_type,
-            base_url: newGateway.base_url,
-            app_id: newGateway.app_id,
-            api_key: newGateway.api_key,
-            payout_key: newGateway.payout_key || null,
-            currency: newGateway.currency,
-            trade_type: newGateway.trade_type || null,
-          })
-          .eq('id', editingGateway.id);
-        if (error) throw error;
-        toast({
-          title: t('common.success'),
-          description: language === 'zh' ? '网关已更新' : 'Gateway updated successfully',
-        });
-      } else {
-        const { error } = await supabase
-          .from('payment_gateways')
-          .insert({
-            gateway_code: newGateway.gateway_code,
-            gateway_name: newGateway.gateway_name,
-            gateway_type: newGateway.gateway_type,
-            base_url: newGateway.base_url,
-            app_id: newGateway.app_id,
-            api_key: newGateway.api_key,
-            payout_key: newGateway.payout_key || null,
-            currency: newGateway.currency,
-            trade_type: newGateway.trade_type || null,
-          });
-        if (error) throw error;
-        toast({
-          title: t('common.success'),
-          description: language === 'zh' ? '网关已创建' : 'Gateway created successfully',
-        });
-      }
-      setShowGatewayDialog(false);
-      setEditingGateway(null);
-      setNewGateway({
-        gateway_code: '',
-        gateway_name: '',
-        gateway_type: 'lgpay',
-        base_url: 'https://www.lg-pay.com',
-        app_id: '',
-        api_key: '',
-        payout_key: '',
-        currency: 'INR',
-        trade_type: '',
-      });
-      fetchGateways();
-    } catch (error: any) {
-      toast({
-        title: t('common.error'),
-        description: error.message,
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleToggleGatewayStatus = async (gateway: PaymentGateway) => {
-    try {
-      const { error } = await supabase
-        .from('payment_gateways')
-        .update({ is_active: !gateway.is_active })
-        .eq('id', gateway.id);
-      if (error) throw error;
-      toast({
-        title: t('common.success'),
-        description: gateway.is_active 
-          ? (language === 'zh' ? '网关已禁用' : 'Gateway disabled')
-          : (language === 'zh' ? '网关已启用' : 'Gateway enabled'),
-      });
-      fetchGateways();
-    } catch (error: any) {
-      toast({
-        title: t('common.error'),
-        description: error.message,
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleDeleteGateway = async (gateway: PaymentGateway) => {
-    if (!confirm(language === 'zh' ? '确定删除此网关吗?' : 'Are you sure you want to delete this gateway?')) {
-      return;
-    }
-    try {
-      const { error } = await supabase
-        .from('payment_gateways')
-        .delete()
-        .eq('id', gateway.id);
-      if (error) throw error;
-      toast({
-        title: t('common.success'),
-        description: language === 'zh' ? '网关已删除' : 'Gateway deleted successfully',
-      });
-      fetchGateways();
-    } catch (error: any) {
-      toast({
-        title: t('common.error'),
-        description: error.message,
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const openEditGateway = (gateway: PaymentGateway) => {
-    setEditingGateway(gateway);
-    setNewGateway({
-      gateway_code: gateway.gateway_code,
-      gateway_name: gateway.gateway_name,
-      gateway_type: gateway.gateway_type,
-      base_url: gateway.base_url,
-      app_id: gateway.app_id,
-      api_key: gateway.api_key,
-      payout_key: gateway.payout_key || '',
-      currency: gateway.currency,
-      trade_type: gateway.trade_type || '',
-    });
-    setShowGatewayDialog(true);
-  };
-
-  const toggleGatewayApiKeyVisibility = (id: string) => {
-    const newSet = new Set(showGatewayApiKey);
-    if (newSet.has(id)) newSet.delete(id);
-    else newSet.add(id);
-    setShowGatewayApiKey(newSet);
-  };
 
   useEffect(() => {
     fetchSettings();
-    fetchGateways();
   }, [user?.id]);
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -542,14 +352,10 @@ const AdminSettingsPage = () => {
 
         {/* Tabs */}
         <Tabs defaultValue="branding" className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="branding" className="flex items-center gap-2">
               <Globe className="h-4 w-4" />
               <span className="hidden sm:inline">{language === 'zh' ? '品牌' : 'Brand'}</span>
-            </TabsTrigger>
-            <TabsTrigger value="gateways" className="flex items-center gap-2">
-              <Layers className="h-4 w-4" />
-              <span className="hidden sm:inline">{language === 'zh' ? '网关' : 'Gateways'}</span>
             </TabsTrigger>
             <TabsTrigger value="fees" className="flex items-center gap-2">
               <Percent className="h-4 w-4" />
@@ -716,119 +522,6 @@ const AdminSettingsPage = () => {
             </Card>
           </TabsContent>
 
-          {/* Gateway Management Tab */}
-          <TabsContent value="gateways">
-            <Card>
-              <CardHeader className="bg-purple-500/5 border-b">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-purple-500/10 rounded-lg flex items-center justify-center">
-                      <Layers className="h-5 w-5 text-purple-500" />
-                    </div>
-                    <div>
-                      <CardTitle>{language === 'zh' ? '支付网关管理' : 'Payment Gateway Management'}</CardTitle>
-                      <CardDescription>
-                        {language === 'zh' ? '管理所有支付网关配置和凭证' : 'Manage all payment gateway configurations and credentials'}
-                      </CardDescription>
-                    </div>
-                  </div>
-                  <Button onClick={() => { setEditingGateway(null); setNewGateway({ gateway_code: '', gateway_name: '', gateway_type: 'lgpay', base_url: 'https://www.lg-pay.com', app_id: '', api_key: '', payout_key: '', currency: 'INR', trade_type: '' }); setShowGatewayDialog(true); }} className="btn-gradient-primary">
-                    <Plus className="h-4 w-4 mr-2" />
-                    {language === 'zh' ? '添加网关' : 'Add Gateway'}
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                {isLoadingGateways ? (
-                  <div className="p-6 space-y-4">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                      <Skeleton key={i} className="h-20 w-full" />
-                    ))}
-                  </div>
-                ) : gateways.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    {language === 'zh' ? '暂无网关配置' : 'No gateways configured'}
-                  </div>
-                ) : (
-                  <div className="divide-y">
-                    {gateways.map((gw) => (
-                      <div key={gw.id} className="p-4 hover:bg-muted/30 transition-colors">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4">
-                            {/* Toggle Switch */}
-                            <Switch
-                              checked={gw.is_active}
-                              onCheckedChange={() => handleToggleGatewayStatus(gw)}
-                              className="data-[state=checked]:bg-green-500"
-                            />
-                            
-                            {/* Gateway Info */}
-                            <div className="flex items-center gap-3">
-                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white text-xs font-bold ${
-                                gw.gateway_type === 'bondpay' ? 'bg-orange-500' : 'bg-purple-500'
-                              }`}>
-                                {gw.currency}
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <p className="font-medium">{gw.gateway_name}</p>
-                                  <Badge variant="outline" className={gw.gateway_type === 'bondpay' ? 'bg-orange-500/10 text-orange-600 border-orange-500/20' : 'bg-purple-500/10 text-purple-600 border-purple-500/20'}>
-                                    {gw.gateway_type.toUpperCase()}
-                                  </Badge>
-                                  {gw.trade_type && (
-                                    <Badge variant="secondary" className="text-xs">
-                                      {gw.trade_type}
-                                    </Badge>
-                                  )}
-                                </div>
-                                <p className="text-xs text-muted-foreground font-mono">{gw.gateway_code}</p>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Credentials & Actions */}
-                          <div className="flex items-center gap-4">
-                            <div className="text-right hidden md:block">
-                              <p className="text-xs text-muted-foreground">App ID</p>
-                              <p className="font-mono text-sm">{gw.app_id}</p>
-                            </div>
-                            <div className="text-right hidden lg:block">
-                              <p className="text-xs text-muted-foreground">API Key</p>
-                              <div className="flex items-center gap-1">
-                                <span className="font-mono text-sm">
-                                  {showGatewayApiKey.has(gw.id) ? gw.api_key.slice(0, 12) + '...' : '••••••••'}
-                                </span>
-                                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => toggleGatewayApiKeyVisibility(gw.id)}>
-                                  {showGatewayApiKey.has(gw.id) ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                                </Button>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditGateway(gw)}>
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteGateway(gw)}>
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Alert className="mt-4">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                {language === 'zh' 
-                  ? 'BondPay 仅支持 INR (印度)。LG Pay 支持 INR, PKR (巴基斯坦), BDT (孟加拉)。' 
-                  : 'BondPay supports INR (India) only. LG Pay supports INR, PKR (Pakistan), BDT (Bangladesh).'}
-              </AlertDescription>
-            </Alert>
-          </TabsContent>
 
 
           {/* Default Fees Tab */}
@@ -1370,135 +1063,6 @@ const AdminSettingsPage = () => {
               className="btn-gradient-primary"
             >
               {isVerifying ? (language === 'zh' ? '验证中...' : 'Verifying...') : (language === 'zh' ? '验证并启用' : 'Verify & Enable')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Gateway Add/Edit Dialog */}
-      <Dialog open={showGatewayDialog} onOpenChange={setShowGatewayDialog}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Layers className="h-5 w-5" />
-              {editingGateway 
-                ? (language === 'zh' ? '编辑网关' : 'Edit Gateway')
-                : (language === 'zh' ? '添加网关' : 'Add Gateway')}
-            </DialogTitle>
-            <DialogDescription>
-              {language === 'zh' 
-                ? '配置支付网关凭证和设置' 
-                : 'Configure payment gateway credentials and settings'}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>{language === 'zh' ? '网关代码' : 'Gateway Code'}</Label>
-                <Input
-                  value={newGateway.gateway_code}
-                  onChange={(e) => setNewGateway(g => ({ ...g, gateway_code: e.target.value }))}
-                  placeholder="lgpay_inr"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>{language === 'zh' ? '网关名称' : 'Gateway Name'}</Label>
-                <Input
-                  value={newGateway.gateway_name}
-                  onChange={(e) => setNewGateway(g => ({ ...g, gateway_name: e.target.value }))}
-                  placeholder="LG Pay INR"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>{language === 'zh' ? '网关类型' : 'Gateway Type'}</Label>
-                <select
-                  className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
-                  value={newGateway.gateway_type}
-                  onChange={(e) => setNewGateway(g => ({ ...g, gateway_type: e.target.value }))}
-                >
-                  <option value="lgpay">LG Pay</option>
-                  <option value="bondpay">BondPay</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label>{language === 'zh' ? '货币' : 'Currency'}</Label>
-                <select
-                  className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
-                  value={newGateway.currency}
-                  onChange={(e) => setNewGateway(g => ({ ...g, currency: e.target.value }))}
-                >
-                  <option value="INR">INR (India)</option>
-                  <option value="PKR">PKR (Pakistan)</option>
-                  <option value="BDT">BDT (Bangladesh)</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>{language === 'zh' ? '基础URL' : 'Base URL'}</Label>
-              <Input
-                value={newGateway.base_url}
-                onChange={(e) => setNewGateway(g => ({ ...g, base_url: e.target.value }))}
-                placeholder="https://www.lg-pay.com"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>App ID</Label>
-                <Input
-                  value={newGateway.app_id}
-                  onChange={(e) => setNewGateway(g => ({ ...g, app_id: e.target.value }))}
-                  placeholder="PKR3202"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Trade Type</Label>
-                <Input
-                  value={newGateway.trade_type}
-                  onChange={(e) => setNewGateway(g => ({ ...g, trade_type: e.target.value }))}
-                  placeholder="test"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>API Key (Payin)</Label>
-              <Input
-                type="password"
-                value={newGateway.api_key}
-                onChange={(e) => setNewGateway(g => ({ ...g, api_key: e.target.value }))}
-                placeholder="Enter API Key"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Payout Key ({language === 'zh' ? '可选' : 'Optional'})</Label>
-              <Input
-                type="password"
-                value={newGateway.payout_key}
-                onChange={(e) => setNewGateway(g => ({ ...g, payout_key: e.target.value }))}
-                placeholder="Enter Payout Key"
-              />
-            </div>
-          </div>
-
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setShowGatewayDialog(false)}>
-              {language === 'zh' ? '取消' : 'Cancel'}
-            </Button>
-            <Button 
-              onClick={handleSaveGateway} 
-              disabled={!newGateway.gateway_code || !newGateway.gateway_name || !newGateway.app_id || !newGateway.api_key}
-              className="btn-gradient-primary"
-            >
-              {editingGateway 
-                ? (language === 'zh' ? '更新网关' : 'Update Gateway')
-                : (language === 'zh' ? '创建网关' : 'Create Gateway')}
             </Button>
           </DialogFooter>
         </DialogContent>
