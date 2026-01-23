@@ -10,8 +10,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { StatusBadge } from '@/components/StatusBadge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
-import { Search, Download, RefreshCw, Wallet, Filter, Calendar, CheckCircle, XCircle } from 'lucide-react';
+import { Search, Download, RefreshCw, Wallet, Filter, Calendar, CheckCircle, XCircle, Plus, Building, CreditCard } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -23,6 +24,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface WithdrawalTransaction {
   id: string;
@@ -40,8 +48,15 @@ interface WithdrawalTransaction {
   merchants: { id: string; merchant_name: string; account_number: string; balance: number; frozen_balance: number } | null;
 }
 
+interface MerchantOption {
+  id: string;
+  merchant_name: string;
+  account_number: string;
+  balance: number;
+}
+
 const AdminWithdrawals = () => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const { toast } = useToast();
   const [withdrawals, setWithdrawals] = useState<WithdrawalTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -52,6 +67,21 @@ const AdminWithdrawals = () => {
   const [selectedWithdrawal, setSelectedWithdrawal] = useState<WithdrawalTransaction | null>(null);
   const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Manual Withdrawal State
+  const [isManualOpen, setIsManualOpen] = useState(false);
+  const [merchants, setMerchants] = useState<MerchantOption[]>([]);
+  const [manualWithdrawal, setManualWithdrawal] = useState({
+    merchantId: '',
+    amount: '',
+    type: 'bank' as 'bank' | 'usdt',
+    bankName: '',
+    accountNumber: '',
+    accountHolderName: '',
+    ifscCode: '',
+    usdtAddress: '',
+  });
+  const [isCreatingManual, setIsCreatingManual] = useState(false);
 
   const fetchWithdrawals = async () => {
     setIsLoading(true);
@@ -94,7 +124,120 @@ const AdminWithdrawals = () => {
 
   useEffect(() => {
     fetchWithdrawals();
+    fetchMerchants();
   }, [statusFilter, dateFrom, dateTo]);
+
+  const fetchMerchants = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('merchants')
+        .select('id, merchant_name, account_number, balance')
+        .eq('is_active', true)
+        .order('merchant_name');
+
+      if (error) throw error;
+      setMerchants(data || []);
+    } catch (error) {
+      console.error('Error fetching merchants:', error);
+    }
+  };
+
+  const generateOrderNo = () => {
+    const timestamp = Date.now().toString();
+    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    return `WD${timestamp}${random}`;
+  };
+
+  const handleManualWithdrawal = async () => {
+    const merchant = merchants.find(m => m.id === manualWithdrawal.merchantId);
+    if (!merchant) return;
+
+    const amount = parseFloat(manualWithdrawal.amount);
+    if (isNaN(amount) || amount <= 0) {
+      toast({
+        title: t('common.error'),
+        description: language === 'zh' ? '请输入有效金额' : 'Please enter a valid amount',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (amount > merchant.balance) {
+      toast({
+        title: t('common.error'),
+        description: language === 'zh' ? '余额不足' : 'Insufficient balance',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsCreatingManual(true);
+    try {
+      const orderNo = generateOrderNo();
+      const fee = 0; // Admin manual withdrawal - no fee
+      const netAmount = amount;
+
+      // Create withdrawal transaction
+      const { error: txError } = await supabase
+        .from('transactions')
+        .insert({
+          order_no: orderNo,
+          merchant_id: manualWithdrawal.merchantId,
+          amount,
+          fee,
+          net_amount: netAmount,
+          transaction_type: 'payout',
+          status: 'pending',
+          extra: 'withdrawal',
+          bank_name: manualWithdrawal.type === 'bank' ? manualWithdrawal.bankName : null,
+          account_number: manualWithdrawal.type === 'bank' ? manualWithdrawal.accountNumber : null,
+          account_holder_name: manualWithdrawal.type === 'bank' ? manualWithdrawal.accountHolderName : null,
+          ifsc_code: manualWithdrawal.type === 'bank' ? manualWithdrawal.ifscCode : null,
+          usdt_address: manualWithdrawal.type === 'usdt' ? manualWithdrawal.usdtAddress : null,
+        });
+
+      if (txError) throw txError;
+
+      // Freeze amount from merchant balance
+      const { error: merchantError } = await supabase
+        .from('merchants')
+        .update({
+          balance: merchant.balance - amount,
+          frozen_balance: (merchant as any).frozen_balance + amount,
+        })
+        .eq('id', merchant.id);
+
+      if (merchantError) throw merchantError;
+
+      toast({
+        title: t('common.success'),
+        description: language === 'zh' ? '手动提现已创建' : 'Manual withdrawal created successfully',
+      });
+
+      setIsManualOpen(false);
+      setManualWithdrawal({
+        merchantId: '',
+        amount: '',
+        type: 'bank',
+        bankName: '',
+        accountNumber: '',
+        accountHolderName: '',
+        ifscCode: '',
+        usdtAddress: '',
+      });
+      fetchWithdrawals();
+      fetchMerchants();
+    } catch (error) {
+      console.error('Error creating manual withdrawal:', error);
+      toast({
+        title: t('common.error'),
+        description: language === 'zh' ? '创建失败' : 'Failed to create withdrawal',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsCreatingManual(false);
+    }
+  };
 
   const handleAction = async () => {
     if (!selectedWithdrawal || !actionType) return;
@@ -214,6 +357,10 @@ const AdminWithdrawals = () => {
             </div>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setIsManualOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              {language === 'zh' ? '手动提现' : 'Manual Withdrawal'}
+            </Button>
             <Button variant="outline" onClick={fetchWithdrawals}>
               <RefreshCw className="h-4 w-4 mr-2" />
               {t('common.refresh')}
@@ -450,6 +597,145 @@ const AdminWithdrawals = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Manual Withdrawal Dialog */}
+        <Dialog open={isManualOpen} onOpenChange={setIsManualOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Wallet className="h-5 w-5" />
+                {language === 'zh' ? '手动创建提现' : 'Create Manual Withdrawal'}
+              </DialogTitle>
+              <DialogDescription>
+                {language === 'zh' ? '为商户创建手动提现请求' : 'Create a manual withdrawal request for a merchant'}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              {/* Merchant Select */}
+              <div className="space-y-2">
+                <Label>{language === 'zh' ? '选择商户' : 'Select Merchant'}</Label>
+                <Select 
+                  value={manualWithdrawal.merchantId} 
+                  onValueChange={(v) => setManualWithdrawal({ ...manualWithdrawal, merchantId: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={language === 'zh' ? '选择商户' : 'Select merchant'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {merchants.map(m => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.merchant_name} - ₹{m.balance.toLocaleString()}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Amount */}
+              <div className="space-y-2">
+                <Label>{language === 'zh' ? '提现金额' : 'Withdrawal Amount'}</Label>
+                <Input
+                  type="number"
+                  placeholder="0.00"
+                  value={manualWithdrawal.amount}
+                  onChange={(e) => setManualWithdrawal({ ...manualWithdrawal, amount: e.target.value })}
+                />
+                {manualWithdrawal.merchantId && (
+                  <p className="text-xs text-muted-foreground">
+                    {language === 'zh' ? '可用余额: ' : 'Available: '}
+                    ₹{merchants.find(m => m.id === manualWithdrawal.merchantId)?.balance.toLocaleString() || 0}
+                  </p>
+                )}
+              </div>
+
+              {/* Type */}
+              <div className="space-y-2">
+                <Label>{language === 'zh' ? '提现方式' : 'Withdrawal Type'}</Label>
+                <Select 
+                  value={manualWithdrawal.type} 
+                  onValueChange={(v: 'bank' | 'usdt') => setManualWithdrawal({ ...manualWithdrawal, type: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="bank">
+                      <div className="flex items-center gap-2">
+                        <Building className="h-4 w-4" />
+                        {language === 'zh' ? '银行转账' : 'Bank Transfer'}
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="usdt">
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="h-4 w-4" />
+                        USDT (TRC20)
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Bank Details */}
+              {manualWithdrawal.type === 'bank' && (
+                <div className="space-y-3 p-3 rounded-lg bg-muted/50 border">
+                  <div className="space-y-2">
+                    <Label>{language === 'zh' ? '银行名称' : 'Bank Name'}</Label>
+                    <Input
+                      value={manualWithdrawal.bankName}
+                      onChange={(e) => setManualWithdrawal({ ...manualWithdrawal, bankName: e.target.value })}
+                      placeholder="ICICI Bank"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{language === 'zh' ? '账户号码' : 'Account Number'}</Label>
+                    <Input
+                      value={manualWithdrawal.accountNumber}
+                      onChange={(e) => setManualWithdrawal({ ...manualWithdrawal, accountNumber: e.target.value })}
+                      placeholder="1234567890"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{language === 'zh' ? '账户持有人姓名' : 'Account Holder Name'}</Label>
+                    <Input
+                      value={manualWithdrawal.accountHolderName}
+                      onChange={(e) => setManualWithdrawal({ ...manualWithdrawal, accountHolderName: e.target.value })}
+                      placeholder="John Doe"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>IFSC Code</Label>
+                    <Input
+                      value={manualWithdrawal.ifscCode}
+                      onChange={(e) => setManualWithdrawal({ ...manualWithdrawal, ifscCode: e.target.value })}
+                      placeholder="ICIC0001234"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* USDT Details */}
+              {manualWithdrawal.type === 'usdt' && (
+                <div className="space-y-2 p-3 rounded-lg bg-muted/50 border">
+                  <Label>{language === 'zh' ? 'USDT地址 (TRC20)' : 'USDT Address (TRC20)'}</Label>
+                  <Input
+                    value={manualWithdrawal.usdtAddress}
+                    onChange={(e) => setManualWithdrawal({ ...manualWithdrawal, usdtAddress: e.target.value })}
+                    placeholder="T..."
+                  />
+                </div>
+              )}
+
+              {/* Submit */}
+              <Button 
+                className="w-full" 
+                onClick={handleManualWithdrawal}
+                disabled={isCreatingManual || !manualWithdrawal.merchantId || !manualWithdrawal.amount}
+              >
+                {isCreatingManual ? t('common.loading') : (language === 'zh' ? '创建提现请求' : 'Create Withdrawal')}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
