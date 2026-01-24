@@ -72,8 +72,8 @@ const MerchantPaymentLinks = () => {
 
     const { gateway_type, currency } = gateway;
 
-    // BondPay - no selection needed (uses default)
-    if (gateway_type === 'bondpay') {
+    // HYPER PAY - no selection needed (uses default)
+    if (gateway_type === 'hyperpay') {
       return [{ value: 'default', label: 'UPI (Default)' }];
     }
 
