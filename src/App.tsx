@@ -41,10 +41,10 @@ import About from "./pages/About";
 import PublicDocs from "./pages/PublicDocs";
 
 // SDK Documentation Pages
-import BondPayINRDocs from "./pages/admin/sdk/BondPayINRDocs";
-import LGPayINRDocs from "./pages/admin/sdk/LGPayINRDocs";
-import LGPayPKRDocs from "./pages/admin/sdk/LGPayPKRDocs";
-import LGPayBDTDocs from "./pages/admin/sdk/LGPayBDTDocs";
+import HyperPayINRDocs from "./pages/admin/sdk/HyperPayINRDocs";
+import HyperSoftsINRDocs from "./pages/admin/sdk/HyperSoftsINRDocs";
+import HyperSoftsPKRDocs from "./pages/admin/sdk/HyperSoftsPKRDocs";
+import HyperSoftsBDTDocs from "./pages/admin/sdk/HyperSoftsBDTDocs";
 import AdminGateways from "./pages/admin/AdminGateways";
 import AdminGatewayHealth from "./pages/admin/AdminGatewayHealth";
 import AdminTelegram from "./pages/admin/AdminTelegram";
@@ -110,10 +110,10 @@ const AppRoutes = () => {
       <Route path="/admin/settings" element={<ProtectedRoute requiredRole="admin"><AdminSettings /></ProtectedRoute>} />
       
       {/* SDK Documentation Routes */}
-      <Route path="/admin/sdk/bondpay-inr" element={<ProtectedRoute requiredRole="admin"><BondPayINRDocs /></ProtectedRoute>} />
-      <Route path="/admin/sdk/lgpay-inr" element={<ProtectedRoute requiredRole="admin"><LGPayINRDocs /></ProtectedRoute>} />
-      <Route path="/admin/sdk/lgpay-pkr" element={<ProtectedRoute requiredRole="admin"><LGPayPKRDocs /></ProtectedRoute>} />
-      <Route path="/admin/sdk/lgpay-bdt" element={<ProtectedRoute requiredRole="admin"><LGPayBDTDocs /></ProtectedRoute>} />
+      <Route path="/admin/sdk/hyperpay-inr" element={<ProtectedRoute requiredRole="admin"><HyperPayINRDocs /></ProtectedRoute>} />
+      <Route path="/admin/sdk/hypersofts-inr" element={<ProtectedRoute requiredRole="admin"><HyperSoftsINRDocs /></ProtectedRoute>} />
+      <Route path="/admin/sdk/hypersofts-pkr" element={<ProtectedRoute requiredRole="admin"><HyperSoftsPKRDocs /></ProtectedRoute>} />
+      <Route path="/admin/sdk/hypersofts-bdt" element={<ProtectedRoute requiredRole="admin"><HyperSoftsBDTDocs /></ProtectedRoute>} />
       
       {/* Merchant Routes - Protected with 2FA requirement */}
       <Route path="/merchant" element={<ProtectedRoute requiredRole="merchant"><Require2FA><MerchantDashboard /></Require2FA></ProtectedRoute>} />

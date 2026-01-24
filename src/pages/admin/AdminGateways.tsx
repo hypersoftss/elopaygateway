@@ -50,7 +50,7 @@ const getTradeTypeOptions = (gatewayType: string, currency: string) => {
     return [{ value: '', label: 'Default' }];
   }
   
-  // LG Pay options
+  // HYPER SOFTS options
   if (currency === 'INR') {
     return [
       { value: 'INRUPI', label: 'INRUPI (UPI)' },
@@ -108,7 +108,7 @@ const AdminGatewaysPage = () => {
 
   const handleSaveGateway = async () => {
     try {
-      // For LG Pay, payout_key is same as api_key
+      // For HYPER SOFTS, payout_key is same as api_key
       const payoutKey = newGateway.gateway_type === 'lgpay' 
         ? newGateway.api_key 
         : (newGateway.payout_key || null);
@@ -399,23 +399,23 @@ const AdminGatewaysPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">{language === 'zh' ? 'LG Pay 配置' : 'LG Pay Configuration'}</CardTitle>
+              <CardTitle className="text-base">{language === 'zh' ? 'HYPER SOFTS 配置' : 'HYPER SOFTS Configuration'}</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground space-y-2">
               <p><strong>INR:</strong> Trade Type = INRUPI (UPI) or usdt (USDT), Payout Code = INR</p>
               <p><strong>PKR:</strong> Trade Type = PKRPH, Payout Code = PKR</p>
               <p><strong>BDT:</strong> Trade Type = nagad/bkash, Payout Code = BDT</p>
-              <p className="text-xs mt-2 text-primary">Note: LG Pay uses same key for payin and payout</p>
+              <p className="text-xs mt-2 text-primary">Note: HYPER SOFTS uses same key for payin and payout</p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">{language === 'zh' ? 'BondPay 配置' : 'BondPay Configuration'}</CardTitle>
+              <CardTitle className="text-base">{language === 'zh' ? 'HYPER PAY 配置' : 'HYPER PAY Configuration'}</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground space-y-2">
               <p><strong>INR:</strong> Requires separate Payout Key</p>
               <p><strong>Base URL:</strong> https://api.bond-pays.com</p>
-              <p className="text-xs mt-2 text-primary">Note: BondPay uses different keys for payin and payout</p>
+              <p className="text-xs mt-2 text-primary">Note: HYPER PAY uses different keys for payin and payout</p>
             </CardContent>
           </Card>
         </div>
@@ -453,7 +453,7 @@ const AdminGatewaysPage = () => {
                 <Input
                   value={newGateway.gateway_name}
                   onChange={(e) => setNewGateway(g => ({ ...g, gateway_name: e.target.value }))}
-                  placeholder="LG Pay INR"
+                  placeholder="HYPER SOFTS INR"
                 />
               </div>
             </div>
@@ -466,8 +466,8 @@ const AdminGatewaysPage = () => {
                   value={newGateway.gateway_type}
                   onChange={(e) => setNewGateway(g => ({ ...g, gateway_type: e.target.value, trade_type: '' }))}
                 >
-                  <option value="lgpay">LG Pay</option>
-                  <option value="bondpay">BondPay</option>
+                  <option value="lgpay">HYPER SOFTS</option>
+                  <option value="bondpay">HYPER PAY</option>
                 </select>
               </div>
               <div className="space-y-2">
@@ -526,12 +526,12 @@ const AdminGatewaysPage = () => {
               />
               {newGateway.gateway_type === 'lgpay' && (
                 <p className="text-xs text-muted-foreground">
-                  {language === 'zh' ? 'LG Pay使用相同的密钥进行收款和付款' : 'LG Pay uses the same key for payin and payout'}
+                  {language === 'zh' ? 'HYPER SOFTS使用相同的密钥进行收款和付款' : 'HYPER SOFTS uses the same key for payin and payout'}
                 </p>
               )}
             </div>
 
-            {/* Only show payout_key for BondPay */}
+            {/* Only show payout_key for HYPER PAY */}
             {newGateway.gateway_type === 'bondpay' && (
               <div className="space-y-2">
                 <Label>Payout Key</Label>
