@@ -5,6 +5,8 @@ import { useAuthStore } from '@/lib/auth';
 interface MerchantCurrencyData {
   currency: string;
   currencySymbol: string;
+  currencyFlag: string;
+  currencyWithFlag: string;
   gatewayType: string | null;
   tradeType: string | null;
   isLoading: boolean;
@@ -16,11 +18,19 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   BDT: '৳',
 };
 
+const CURRENCY_FLAGS: Record<string, string> = {
+  INR: '🇮🇳',
+  PKR: '🇵🇰',
+  BDT: '🇧🇩',
+};
+
 export const useMerchantCurrency = (): MerchantCurrencyData => {
   const { user } = useAuthStore();
   const [data, setData] = useState<MerchantCurrencyData>({
     currency: 'INR',
     currencySymbol: '₹',
+    currencyFlag: '🇮🇳',
+    currencyWithFlag: '🇮🇳 ₹',
     gatewayType: null,
     tradeType: null,
     isLoading: true,
@@ -51,9 +61,13 @@ export const useMerchantCurrency = (): MerchantCurrencyData => {
         if (merchant?.payment_gateways) {
           const gateway = merchant.payment_gateways as unknown as { gateway_type: string; currency: string };
           const currency = gateway.currency || 'INR';
+          const symbol = CURRENCY_SYMBOLS[currency] || '₹';
+          const flag = CURRENCY_FLAGS[currency] || '🇮🇳';
           setData({
             currency,
-            currencySymbol: CURRENCY_SYMBOLS[currency] || '₹',
+            currencySymbol: symbol,
+            currencyFlag: flag,
+            currencyWithFlag: `${flag} ${symbol}`,
             gatewayType: gateway.gateway_type,
             tradeType: merchant.trade_type,
             isLoading: false,
