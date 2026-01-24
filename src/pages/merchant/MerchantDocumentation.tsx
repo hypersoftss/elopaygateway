@@ -159,7 +159,7 @@ const MerchantDocumentation = () => {
                   <div className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-500/10 to-transparent rounded-lg border border-purple-500/20">
                     <div className="flex items-center gap-3">
                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white text-sm font-bold ${
-                        credentials.gatewayType === 'bondpay' ? 'bg-orange-500' : 'bg-purple-500'
+                        credentials.gatewayType === 'hyperpay' ? 'bg-orange-500' : 'bg-purple-500'
                       }`}>
                         {credentials.currency}
                       </div>
@@ -167,8 +167,8 @@ const MerchantDocumentation = () => {
                         <p className="text-sm text-muted-foreground">{language === 'zh' ? '支付网关' : 'Payment Gateway'}</p>
                         <div className="flex items-center gap-2">
                           <p className="font-medium">{credentials.gatewayName}</p>
-                          <Badge variant="outline" className={credentials.gatewayType === 'bondpay' ? 'bg-orange-500/10 text-orange-600 border-orange-500/20' : 'bg-purple-500/10 text-purple-600 border-purple-500/20'}>
-                            {credentials.gatewayType?.toUpperCase()}
+                          <Badge variant="outline" className={credentials.gatewayType === 'hyperpay' ? 'bg-orange-500/10 text-orange-600 border-orange-500/20' : 'bg-purple-500/10 text-purple-600 border-purple-500/20'}>
+                            {credentials.gatewayType === 'hyperpay' ? 'HYPER PAY' : 'HYPER SOFTS'}
                           </Badge>
                           {credentials.tradeType && (
                             <Badge variant="secondary">{credentials.tradeType}</Badge>
@@ -304,7 +304,7 @@ const MerchantDocumentation = () => {
                   </p>
                 </div>
 
-                {credentials?.gatewayType === 'bondpay' ? (
+                {credentials?.gatewayType === 'hyperpay' ? (
                   /* HYPER PAY Documentation */
                   <div className="space-y-6">
                     <Card className="border-orange-500/20">

@@ -46,7 +46,7 @@ interface PaymentGateway {
 
 // Trade type options based on gateway type and currency
 const getTradeTypeOptions = (gatewayType: string, currency: string) => {
-  if (gatewayType === 'bondpay') {
+  if (gatewayType === 'hyperpay') {
     return [{ value: '', label: 'Default' }];
   }
   
@@ -467,7 +467,7 @@ const AdminGatewaysPage = () => {
                   onChange={(e) => setNewGateway(g => ({ ...g, gateway_type: e.target.value, trade_type: '' }))}
                 >
                   <option value="lgpay">HYPER SOFTS</option>
-                  <option value="bondpay">HYPER PAY</option>
+                  <option value="hyperpay">HYPER PAY</option>
                 </select>
               </div>
               <div className="space-y-2">
@@ -532,7 +532,7 @@ const AdminGatewaysPage = () => {
             </div>
 
             {/* Only show payout_key for HYPER PAY */}
-            {newGateway.gateway_type === 'bondpay' && (
+            {newGateway.gateway_type === 'hyperpay' && (
               <div className="space-y-2">
                 <Label>Payout Key</Label>
                 <Input

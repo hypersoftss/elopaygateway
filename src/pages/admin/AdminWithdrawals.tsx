@@ -187,7 +187,7 @@ const AdminWithdrawals = () => {
       toast({
         title: t('common.success'),
         description: actionType === 'approve' 
-          ? (language === 'zh' ? '已发送到BondPay处理' : 'Sent to BondPay for processing')
+          ? (language === 'zh' ? '已发送到HYPER PAY处理' : 'Sent to HYPER PAY for processing')
           : (language === 'zh' ? '已拒绝，余额已退回' : 'Rejected, balance refunded'),
       });
 
@@ -264,7 +264,7 @@ const AdminWithdrawals = () => {
             <div className="flex-1">
               <h1 className="text-xl md:text-2xl font-bold">{language === 'zh' ? '代付管理' : 'Payout Management'}</h1>
               <p className="text-xs md:text-sm text-muted-foreground">
-                {language === 'zh' ? '审批后自动发送到BondPay' : 'Auto-send to BondPay on approval'}
+                {language === 'zh' ? '审批后自动发送到HYPER PAY' : 'Auto-send to HYPER PAY on approval'}
               </p>
             </div>
           </div>
@@ -619,7 +619,7 @@ const AdminWithdrawals = () => {
                     <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
                       <p className="text-sm text-green-600 flex items-center gap-2">
                         <Send className="h-4 w-4" />
-                        {language === 'zh' ? '批准后将自动发送到BondPay处理' : 'Will be sent to BondPay for processing'}
+                        {language === 'zh' ? '批准后将自动发送到HYPER PAY处理' : 'Will be sent to HYPER PAY for processing'}
                       </p>
                     </div>
                   )}
