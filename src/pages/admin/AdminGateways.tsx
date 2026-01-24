@@ -334,7 +334,7 @@ const AdminGatewaysPage = () => {
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">
-                          {gateway.gateway_type.toUpperCase()}
+                          {gateway.gateway_type === 'lgpay' ? 'HYPER SOFTS' : 'HYPER PAY'}
                         </Badge>
                       </TableCell>
                       <TableCell>{gateway.currency}</TableCell>
