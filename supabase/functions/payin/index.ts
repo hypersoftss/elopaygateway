@@ -12,18 +12,18 @@ function generateOrderNo(): string {
   return `PI${timestamp}${random}`
 }
 
-// BondPay signature (concatenation style)
-function verifyBondPaySignature(params: Record<string, string>, apiKey: string, signature: string): boolean {
+// HYPER PAY signature (concatenation style)
+function verifyHyperPaySignature(params: Record<string, string>, apiKey: string, signature: string): boolean {
   const signStr = `${params.merchant_id}${params.amount}${params.merchant_order_no}${apiKey}${params.callback_url}`
   const hash = new Md5()
   hash.update(signStr)
   const expectedSign = hash.toString()
-  console.log('BondPay signature verification:', { signStr, expectedSign, receivedSign: signature })
+  console.log('HYPER PAY signature verification:', { signStr, expectedSign, receivedSign: signature })
   return expectedSign.toLowerCase() === signature.toLowerCase()
 }
 
-// LG Pay signature (ASCII sorted + uppercase MD5)
-function generateLGPaySignature(params: Record<string, any>, key: string): string {
+// HYPER SOFTS signature (ASCII sorted + uppercase MD5)
+function generateHyperSoftsSignature(params: Record<string, any>, key: string): string {
   // Filter out empty values and sign itself
   const filteredParams = Object.entries(params)
     .filter(([k, v]) => v !== '' && v !== null && v !== undefined && k !== 'sign')
@@ -34,14 +34,14 @@ function generateLGPaySignature(params: Record<string, any>, key: string): strin
     .join('&')
   
   const signString = `${queryString}&key=${key}`
-  console.log('LG Pay sign string:', signString)
+  console.log('HYPER SOFTS sign string:', signString)
   
   const hash = new Md5()
   hash.update(signString)
   return hash.toString().toUpperCase()
 }
 
-function generateBondPaySignature(merchantId: string, amount: string, orderNo: string, apiKey: string, callbackUrl: string): string {
+function generateHyperPaySignature(merchantId: string, amount: string, orderNo: string, apiKey: string, callbackUrl: string): string {
   const signStr = `${merchantId}${amount}${orderNo}${apiKey}${callbackUrl}`
   const hash = new Md5()
   hash.update(signStr)
@@ -133,7 +133,7 @@ Deno.serve(async (req) => {
     }
 
     const merchant = merchants[0]
-    const gatewayType = (merchant.payment_gateways as any)?.gateway_type || 'bondpay'
+    const gatewayType = (merchant.payment_gateways as any)?.gateway_type || 'hyperpay'
 
     if (!merchant.is_active) {
       return new Response(
@@ -144,7 +144,7 @@ Deno.serve(async (req) => {
 
     // Verify signature based on gateway type
     // All merchants use the same signature format: md5(merchant_id + amount + merchant_order_no + api_key + callback_url)
-    const isValidSign = verifyBondPaySignature(
+    const isValidSign = verifyHyperPaySignature(
       { merchant_id, amount: amount.toString(), merchant_order_no, callback_url: callback_url || '' },
       merchant.api_key,
       sign
@@ -172,7 +172,7 @@ Deno.serve(async (req) => {
       gateway = gatewayData
     }
 
-    // Fallback to BondPay from admin_settings if no gateway assigned
+    // Fallback to HYPER PAY from admin_settings if no gateway assigned
     if (!gateway) {
       const { data: settings } = await supabaseAdmin
         .from('admin_settings')
@@ -188,7 +188,7 @@ Deno.serve(async (req) => {
       }
 
       gateway = {
-        gateway_type: 'bondpay',
+        gateway_type: 'hyperpay',
         app_id: settings[0].master_merchant_id,
         api_key: settings[0].master_api_key,
         base_url: settings[0].bondpay_base_url,
@@ -215,8 +215,8 @@ Deno.serve(async (req) => {
     let gatewayResponse = null
 
     // Route to appropriate gateway
-    if (gateway.gateway_type === 'lgpay') {
-      // LG Pay integration - trade_type logic varies by currency:
+    if (gateway.gateway_type === 'hypersofts') {
+      // HYPER SOFTS integration - trade_type logic varies by currency:
       // - PKR: Use gateway's trade_type (PKRPH) for all merchants
       // - BDT: Use merchant's trade_type directly (Nagad, bKash)
       // - INR: Use gateway's trade_type (INRUPI) or merchant's trade_type (usdt)
@@ -230,40 +230,40 @@ Deno.serve(async (req) => {
         tradeType = merchant.trade_type
       }
       
-      console.log('LG Pay payin v2 - Currency:', gateway.currency, 'Trade type:', tradeType, 'Merchant trade_type:', merchant.trade_type)
+      console.log('HYPER SOFTS payin v2 - Currency:', gateway.currency, 'Trade type:', tradeType, 'Merchant trade_type:', merchant.trade_type)
       
-      const lgParams: Record<string, any> = {
+      const hsParams: Record<string, any> = {
         app_id: gateway.app_id,
         trade_type: tradeType,
         order_sn: orderNo,
-        money: Math.round(amountNum * 100), // LG Pay uses cents
+        money: Math.round(amountNum * 100), // HYPER SOFTS uses cents
         notify_url: internalCallbackUrl,
         ip: '0.0.0.0',
         remark: merchant.id,
       }
 
-      lgParams.sign = generateLGPaySignature(lgParams, gateway.api_key)
+      hsParams.sign = generateHyperSoftsSignature(hsParams, gateway.api_key)
 
-      console.log('Calling LG Pay API:', lgParams)
+      console.log('Calling HYPER SOFTS API:', hsParams)
 
       const formBody = new URLSearchParams()
-      Object.entries(lgParams).forEach(([k, v]) => formBody.append(k, String(v)))
+      Object.entries(hsParams).forEach(([k, v]) => formBody.append(k, String(v)))
 
-      const lgResponse = await fetch(`${gateway.base_url}/api/order/create`, {
+      const hsResponse = await fetch(`${gateway.base_url}/api/order/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: formBody.toString()
       })
 
-      gatewayResponse = await lgResponse.json()
-      console.log('LG Pay response:', gatewayResponse)
+      gatewayResponse = await hsResponse.json()
+      console.log('HYPER SOFTS response:', gatewayResponse)
 
       if (gatewayResponse.status === 1 && gatewayResponse.data?.pay_url) {
         paymentUrl = gatewayResponse.data.pay_url
       }
     } else {
-      // BondPay integration (default)
-      const bondPaySignature = generateBondPaySignature(
+      // HYPER PAY integration (default)
+      const hyperPaySignature = generateHyperPaySignature(
         gateway.app_id,
         amount.toString(),
         orderNo,
@@ -271,9 +271,9 @@ Deno.serve(async (req) => {
         internalCallbackUrl
       )
 
-      console.log('Calling BondPay API with credentials...')
+      console.log('Calling HYPER PAY API with credentials...')
 
-      const bondPayResponse = await fetch(`${gateway.base_url}/v1/create`, {
+      const hyperPayResponse = await fetch(`${gateway.base_url}/v1/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -283,12 +283,12 @@ Deno.serve(async (req) => {
           merchant_order_no: orderNo,
           callback_url: internalCallbackUrl,
           extra: merchant.id,
-          signature: bondPaySignature
+          signature: hyperPaySignature
         })
       })
 
-      gatewayResponse = await bondPayResponse.json()
-      console.log('BondPay response:', gatewayResponse)
+      gatewayResponse = await hyperPayResponse.json()
+      console.log('HYPER PAY response:', gatewayResponse)
       paymentUrl = gatewayResponse.payment_url
     }
 

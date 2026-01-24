@@ -6,8 +6,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// BondPay payout signature
-function generateBondPayPayoutSignature(
+// HYPER PAY payout signature
+function generateHyperPayPayoutSignature(
   accountNumber: string, 
   amount: string, 
   bankName: string, 
@@ -24,8 +24,8 @@ function generateBondPayPayoutSignature(
   return hash.toString()
 }
 
-// LG Pay signature (ASCII sorted + uppercase MD5)
-function generateLGPaySignature(params: Record<string, any>, key: string): string {
+// HYPER SOFTS signature (ASCII sorted + uppercase MD5)
+function generateHyperSoftsSignature(params: Record<string, any>, key: string): string {
   const filteredParams = Object.entries(params)
     .filter(([k, v]) => v !== '' && v !== null && v !== undefined && k !== 'sign')
     .sort(([a], [b]) => a.localeCompare(b))
@@ -35,7 +35,7 @@ function generateLGPaySignature(params: Record<string, any>, key: string): strin
     .join('&')
   
   const signString = `${queryString}&key=${key}`
-  console.log('LG Pay payout sign string:', signString)
+  console.log('HYPER SOFTS payout sign string:', signString)
   
   const hash = new Md5()
   hash.update(signString)
@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
         gateway = gatewayData
       }
 
-      // Fallback to BondPay from admin_settings
+      // Fallback to HYPER PAY from admin_settings
       if (!gateway) {
         const { data: settings } = await supabaseAdmin
           .from('admin_settings')
@@ -144,7 +144,7 @@ Deno.serve(async (req) => {
         }
 
         gateway = {
-          gateway_type: 'bondpay',
+          gateway_type: 'hyperpay',
           app_id: settings.master_merchant_id,
           api_key: settings.master_api_key,
           payout_key: settings.master_payout_key,
@@ -156,8 +156,8 @@ Deno.serve(async (req) => {
       const internalCallbackUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/callback-handler`
       let gatewayResponse = null
 
-      if (gateway.gateway_type === 'lgpay') {
-        // LG Pay payout - use specific withdrawal codes per currency
+      if (gateway.gateway_type === 'hypersofts') {
+        // HYPER SOFTS payout - use specific withdrawal codes per currency
         // Deposit codes differ from withdrawal codes:
         // PKR: Deposit = PKRPH, Withdrawal = PKR
         // BDT: Deposit = BDTBNK (or nagad/bkash), Withdrawal = BDT
@@ -173,13 +173,13 @@ Deno.serve(async (req) => {
           withdrawalCode = 'INR' // INR payout code
         }
         
-        console.log('LG Pay payout - Currency:', gateway.currency, 'Withdrawal code:', withdrawalCode)
+        console.log('HYPER SOFTS payout - Currency:', gateway.currency, 'Withdrawal code:', withdrawalCode)
         
-        const lgParams: Record<string, any> = {
+        const hsParams: Record<string, any> = {
           app_id: gateway.app_id,
           order_sn: transaction.order_no,
           currency: withdrawalCode, // Use withdrawal-specific code
-          money: Math.round(transaction.amount * 100), // LG Pay uses cents
+          money: Math.round(transaction.amount * 100), // HYPER SOFTS uses cents
           notify_url: internalCallbackUrl,
           name: transaction.account_holder_name || '',
           card_number: transaction.account_number || '',
@@ -189,28 +189,28 @@ Deno.serve(async (req) => {
 
         // Add IFSC for India
         if (gateway.currency === 'INR' && transaction.ifsc_code) {
-          lgParams.addon1 = transaction.ifsc_code
+          hsParams.addon1 = transaction.ifsc_code
         }
 
-        lgParams.sign = generateLGPaySignature(lgParams, gateway.payout_key || gateway.api_key)
+        hsParams.sign = generateHyperSoftsSignature(hsParams, gateway.payout_key || gateway.api_key)
 
-        console.log('Calling LG Pay Payout API:', lgParams)
+        console.log('Calling HYPER SOFTS Payout API:', hsParams)
 
         const formBody = new URLSearchParams()
-        Object.entries(lgParams).forEach(([k, v]) => formBody.append(k, String(v)))
+        Object.entries(hsParams).forEach(([k, v]) => formBody.append(k, String(v)))
 
-        const lgResponse = await fetch(`${gateway.base_url}/api/deposit/create`, {
+        const hsResponse = await fetch(`${gateway.base_url}/api/deposit/create`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           body: formBody.toString()
         })
 
-        gatewayResponse = await lgResponse.json()
-        console.log('LG Pay Payout response:', gatewayResponse)
+        gatewayResponse = await hsResponse.json()
+        console.log('HYPER SOFTS Payout response:', gatewayResponse)
 
       } else {
-        // BondPay payout (default)
-        const bondPaySignature = generateBondPayPayoutSignature(
+        // HYPER PAY payout (default)
+        const hyperPaySignature = generateHyperPayPayoutSignature(
           transaction.account_number || '',
           transaction.amount.toString(),
           transaction.bank_name || '',
@@ -222,7 +222,7 @@ Deno.serve(async (req) => {
           gateway.payout_key
         )
 
-        console.log('Calling BondPay Payout API for approved transaction...')
+        console.log('Calling HYPER PAY Payout API for approved transaction...')
 
         const formData = new URLSearchParams()
         formData.append('merchant_id', gateway.app_id)
@@ -233,16 +233,16 @@ Deno.serve(async (req) => {
         formData.append('name', transaction.account_holder_name || '')
         formData.append('bank_name', transaction.bank_name || '')
         formData.append('callback_url', internalCallbackUrl)
-        formData.append('signature', bondPaySignature)
+        formData.append('signature', hyperPaySignature)
 
-        const bondPayResponse = await fetch(`${gateway.base_url}/payout/payment.php`, {
+        const hyperPayResponse = await fetch(`${gateway.base_url}/payout/payment.php`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           body: formData.toString()
         })
 
-        gatewayResponse = await bondPayResponse.json()
-        console.log('BondPay Payout response:', gatewayResponse)
+        gatewayResponse = await hyperPayResponse.json()
+        console.log('HYPER PAY Payout response:', gatewayResponse)
       }
 
       // Update transaction with gateway response
