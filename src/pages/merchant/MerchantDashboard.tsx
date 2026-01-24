@@ -44,7 +44,7 @@ const MerchantDashboard = () => {
   const { t } = useTranslation();
   const { user } = useAuthStore();
   const { toast } = useToast();
-  const { currencySymbol: cs } = useMerchantCurrency();
+  const { currencySymbol: cs, currencyFlag } = useMerchantCurrency();
   const [merchantData, setMerchantData] = useState<MerchantData | null>(null);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
@@ -189,7 +189,7 @@ const MerchantDashboard = () => {
             <CardContent className="p-6">
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-white/80 text-sm font-medium">Total Balance</p>
+                  <p className="text-white/80 text-sm font-medium">{currencyFlag} Total Balance</p>
                   <p className="text-3xl font-bold mt-1">{formatCurrency(totalBalance, cs)}</p>
                 </div>
                 <Button 
@@ -209,7 +209,7 @@ const MerchantDashboard = () => {
             <CardContent className="p-6">
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-white/80 text-sm font-medium">Available Balance</p>
+                  <p className="text-white/80 text-sm font-medium">{currencyFlag} Available Balance</p>
                   <p className="text-3xl font-bold mt-1">{formatCurrency(merchantData?.balance || 0, cs)}</p>
                 </div>
                 <div className="p-2 bg-white/10 rounded-full">
@@ -224,7 +224,7 @@ const MerchantDashboard = () => {
             <CardContent className="p-6">
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-white/80 text-sm font-medium">Frozen Balance</p>
+                  <p className="text-white/80 text-sm font-medium">{currencyFlag} Frozen Balance</p>
                   <p className="text-3xl font-bold mt-1">{formatCurrency(merchantData?.frozenBalance || 0, cs)}</p>
                 </div>
                 <div className="p-2 bg-white/10 rounded-full">

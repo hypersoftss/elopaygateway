@@ -27,6 +27,13 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   BDT: '৳',
 };
 
+// Currency flags
+const CURRENCY_FLAGS: Record<string, string> = {
+  INR: '🇮🇳',
+  PKR: '🇵🇰',
+  BDT: '🇧🇩',
+};
+
 // Withdrawal methods by currency
 const WITHDRAWAL_METHODS: Record<string, { value: string; label: string; icon: string }[]> = {
   INR: [
@@ -67,6 +74,7 @@ const MerchantWithdrawal = () => {
 
   const currency = merchantData?.currency || 'INR';
   const currencySymbol = CURRENCY_SYMBOLS[currency] || '₹';
+  const currencyFlag = CURRENCY_FLAGS[currency] || '🇮🇳';
   const availableMethods = WITHDRAWAL_METHODS[currency] || WITHDRAWAL_METHODS.INR;
 
   useEffect(() => {
@@ -298,7 +306,7 @@ const MerchantWithdrawal = () => {
           <div>
             <h1 className="text-2xl font-bold">{language === 'zh' ? '提现' : 'Withdrawal'}</h1>
             <p className="text-sm text-muted-foreground">
-              {language === 'zh' ? '申请提现到您的账户' : 'Request withdrawal to your account'} • {currency}
+              {language === 'zh' ? '申请提现到您的账户' : 'Request withdrawal to your account'} • {currencyFlag} {currency}
             </p>
           </div>
         </div>
@@ -309,7 +317,7 @@ const MerchantWithdrawal = () => {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">{language === 'zh' ? '可用余额' : 'Available Balance'}</p>
+                  <p className="text-sm text-muted-foreground">{currencyFlag} {language === 'zh' ? '可用余额' : 'Available Balance'}</p>
                   <p className="text-2xl font-bold text-[hsl(var(--success))]">
                     {currencySymbol}{merchantData.balance.toLocaleString()}
                   </p>
@@ -325,7 +333,7 @@ const MerchantWithdrawal = () => {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">{language === 'zh' ? '冻结余额' : 'Frozen Balance'}</p>
+                  <p className="text-sm text-muted-foreground">{currencyFlag} {language === 'zh' ? '冻结余额' : 'Frozen Balance'}</p>
                   <p className="text-2xl font-bold text-[hsl(var(--warning))]">
                     {currencySymbol}{merchantData.frozen_balance.toLocaleString()}
                   </p>
