@@ -98,10 +98,10 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       label: language === 'zh' ? 'SDK文档' : 'SDK Documentation',
       icon: <BookOpen className="h-5 w-5" />,
       children: [
-        { label: 'BondPay INR', icon: <FileText className="h-4 w-4" />, href: '/admin/sdk/bondpay-inr' },
-        { label: 'LG Pay INR', icon: <FileText className="h-4 w-4" />, href: '/admin/sdk/lgpay-inr' },
-        { label: 'LG Pay PKR', icon: <FileText className="h-4 w-4" />, href: '/admin/sdk/lgpay-pkr' },
-        { label: 'LG Pay BDT', icon: <FileText className="h-4 w-4" />, href: '/admin/sdk/lgpay-bdt' },
+        { label: 'HYPER PAY INR', icon: <FileText className="h-4 w-4" />, href: '/admin/sdk/hyperpay-inr' },
+        { label: 'HYPER SOFTS INR', icon: <FileText className="h-4 w-4" />, href: '/admin/sdk/hypersofts-inr' },
+        { label: 'HYPER SOFTS PKR', icon: <FileText className="h-4 w-4" />, href: '/admin/sdk/hypersofts-pkr' },
+        { label: 'HYPER SOFTS BDT', icon: <FileText className="h-4 w-4" />, href: '/admin/sdk/hypersofts-bdt' },
       ]
     },
     { label: t('sidebar.settings'), icon: <Settings className="h-5 w-5" />, href: '/admin/settings' },

@@ -545,7 +545,7 @@ const AdminDashboard = () => {
 
                       <div className="mt-2 flex items-center justify-between text-xs">
                         <span className="text-muted-foreground">
-                          {gateway.gateway_type === 'lgpay' ? 'LG Pay' : 'BondPay'}
+                          {gateway.gateway_type === 'lgpay' ? 'HYPER SOFTS' : 'HYPER PAY'}
                         </span>
                         <span className={
                           balanceInfo?.status === 'online' ? 'text-green-500' : 
