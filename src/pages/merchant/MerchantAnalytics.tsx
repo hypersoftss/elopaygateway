@@ -11,13 +11,13 @@ import { Badge } from '@/components/ui/badge';
 import { BarChart3, TrendingUp, ArrowDownToLine, ArrowUpFromLine, Download, RefreshCw, Activity, Zap } from 'lucide-react';
 import { format, subDays, startOfDay } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { useMerchantCurrency } from '@/hooks/useMerchantCurrency';
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
-
 interface DailyStats {
   date: string;
   payin: number;
@@ -45,6 +45,7 @@ const MerchantAnalytics = () => {
   const { t, language } = useTranslation();
   const { user } = useAuthStore();
   const { toast } = useToast();
+  const { currencySymbol: cs } = useMerchantCurrency();
   const [isLoading, setIsLoading] = useState(true);
   const [period, setPeriod] = useState('7');
   const [dailyStats, setDailyStats] = useState<DailyStats[]>([]);
@@ -285,9 +286,9 @@ const MerchantAnalytics = () => {
                 <Skeleton className="h-16 w-full" />
               ) : (
                 <div className="flex justify-between items-center">
-                  <div>
+                <div>
                     <p className="text-xs text-muted-foreground">{t('merchant.totalPayin')}</p>
-                    <p className="text-xl font-bold text-[hsl(var(--success))]">₹{totals.totalPayin.toLocaleString()}</p>
+                    <p className="text-xl font-bold text-[hsl(var(--success))]">{cs}{totals.totalPayin.toLocaleString()}</p>
                     <p className="text-xs text-muted-foreground">{totals.totalPayinCount} {language === 'zh' ? '笔' : 'txns'}</p>
                   </div>
                   <div className="p-2 rounded-full bg-[hsl(var(--success))]/10">
@@ -304,9 +305,9 @@ const MerchantAnalytics = () => {
                 <Skeleton className="h-16 w-full" />
               ) : (
                 <div className="flex justify-between items-center">
-                  <div>
+                <div>
                     <p className="text-xs text-muted-foreground">{t('merchant.totalPayout')}</p>
-                    <p className="text-xl font-bold text-[hsl(var(--warning))]">₹{totals.totalPayout.toLocaleString()}</p>
+                    <p className="text-xl font-bold text-[hsl(var(--warning))]">{cs}{totals.totalPayout.toLocaleString()}</p>
                     <p className="text-xs text-muted-foreground">{totals.totalPayoutCount} {language === 'zh' ? '笔' : 'txns'}</p>
                   </div>
                   <div className="p-2 rounded-full bg-[hsl(var(--warning))]/10">
@@ -342,9 +343,9 @@ const MerchantAnalytics = () => {
                 <Skeleton className="h-16 w-full" />
               ) : (
                 <div className="flex justify-between items-center">
-                  <div>
+                <div>
                     <p className="text-xs text-muted-foreground">{language === 'zh' ? '平均交易' : 'Avg Transaction'}</p>
-                    <p className="text-xl font-bold text-purple-500">₹{totals.avgPayinAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                    <p className="text-xl font-bold text-purple-500">{cs}{totals.avgPayinAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
                     <p className="text-xs text-muted-foreground">{language === 'zh' ? 'Pay-In均值' : 'per pay-in'}</p>
                   </div>
                   <div className="p-2 rounded-full bg-purple-500/10">
@@ -515,7 +516,7 @@ const MerchantAnalytics = () => {
                       </div>
                       <div className="text-right">
                         <p className={`font-semibold ${tx.transaction_type === 'payin' ? 'text-[hsl(var(--success))]' : 'text-[hsl(var(--warning))]'}`}>
-                          {tx.transaction_type === 'payin' ? '+' : '-'}₹{tx.amount.toLocaleString()}
+                          {tx.transaction_type === 'payin' ? '+' : '-'}{cs}{tx.amount.toLocaleString()}
                         </p>
                         <Badge 
                           variant="outline" 
