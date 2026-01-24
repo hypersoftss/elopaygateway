@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { useTranslation } from '@/lib/i18n';
 import { useAuthStore } from '@/lib/auth';
 import { useRealtimeBalance } from '@/hooks/useRealtimeBalance';
+import { useMerchantCurrency, formatCurrency } from '@/hooks/useMerchantCurrency';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -43,6 +44,7 @@ const MerchantDashboard = () => {
   const { t } = useTranslation();
   const { user } = useAuthStore();
   const { toast } = useToast();
+  const { currencySymbol: cs } = useMerchantCurrency();
   const [merchantData, setMerchantData] = useState<MerchantData | null>(null);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
@@ -188,7 +190,7 @@ const MerchantDashboard = () => {
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-white/80 text-sm font-medium">Total Balance</p>
-                  <p className="text-3xl font-bold mt-1">₹{totalBalance.toFixed(2)}</p>
+                  <p className="text-3xl font-bold mt-1">{formatCurrency(totalBalance, cs)}</p>
                 </div>
                 <Button 
                   size="icon" 
@@ -208,7 +210,7 @@ const MerchantDashboard = () => {
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-white/80 text-sm font-medium">Available Balance</p>
-                  <p className="text-3xl font-bold mt-1">₹{merchantData?.balance.toFixed(2)}</p>
+                  <p className="text-3xl font-bold mt-1">{formatCurrency(merchantData?.balance || 0, cs)}</p>
                 </div>
                 <div className="p-2 bg-white/10 rounded-full">
                   <TrendingUp className="h-5 w-5" />
@@ -223,7 +225,7 @@ const MerchantDashboard = () => {
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-white/80 text-sm font-medium">Frozen Balance</p>
-                  <p className="text-3xl font-bold mt-1">₹{merchantData?.frozenBalance.toFixed(2)}</p>
+                  <p className="text-3xl font-bold mt-1">{formatCurrency(merchantData?.frozenBalance || 0, cs)}</p>
                 </div>
                 <div className="p-2 bg-white/10 rounded-full">
                   <Wallet className="h-5 w-5" />
@@ -245,7 +247,7 @@ const MerchantDashboard = () => {
                 </div>
                 <Badge variant="outline" className="text-xs bg-[hsl(var(--success))]/10 text-[hsl(var(--success))] border-0">DAY</Badge>
               </div>
-              <p className="text-2xl font-bold">₹{stats?.todayPayinAmount.toFixed(2)}</p>
+              <p className="text-2xl font-bold">{formatCurrency(stats?.todayPayinAmount || 0, cs)}</p>
               <p className="text-xs text-muted-foreground mt-1">{stats?.todayPayinCount} transactions</p>
             </CardContent>
           </Card>
@@ -257,7 +259,7 @@ const MerchantDashboard = () => {
                 <ArrowDownToLine className="h-4 w-4 text-[hsl(var(--success))]" />
                 <span className="text-sm text-muted-foreground">Yesterday's Pay-In</span>
               </div>
-              <p className="text-2xl font-bold">₹{stats?.yesterdayPayinAmount.toFixed(2)}</p>
+              <p className="text-2xl font-bold">{formatCurrency(stats?.yesterdayPayinAmount || 0, cs)}</p>
               <p className="text-xs text-muted-foreground mt-1">{stats?.yesterdayPayinCount} transactions</p>
             </CardContent>
           </Card>
@@ -272,7 +274,7 @@ const MerchantDashboard = () => {
                 </div>
                 <Badge variant="outline" className="text-xs bg-[hsl(var(--warning))]/10 text-[hsl(var(--warning))] border-0">DAY</Badge>
               </div>
-              <p className="text-2xl font-bold">₹{stats?.todayPayoutAmount.toFixed(2)}</p>
+              <p className="text-2xl font-bold">{formatCurrency(stats?.todayPayoutAmount || 0, cs)}</p>
               <p className="text-xs text-muted-foreground mt-1">{stats?.todayPayoutCount} transactions</p>
             </CardContent>
           </Card>
@@ -284,7 +286,7 @@ const MerchantDashboard = () => {
                 <ArrowUpFromLine className="h-4 w-4 text-[hsl(var(--warning))]" />
                 <span className="text-sm text-muted-foreground">Yesterday's Pay-Out</span>
               </div>
-              <p className="text-2xl font-bold">₹{stats?.yesterdayPayoutAmount.toFixed(2)}</p>
+              <p className="text-2xl font-bold">{formatCurrency(stats?.yesterdayPayoutAmount || 0, cs)}</p>
               <p className="text-xs text-muted-foreground mt-1">{stats?.yesterdayPayoutCount} transactions</p>
             </CardContent>
           </Card>
@@ -330,7 +332,7 @@ const MerchantDashboard = () => {
                         {tx.status.charAt(0).toUpperCase() + tx.status.slice(1)}
                       </Badge>
                       <span className={`font-semibold ${tx.transaction_type === 'payin' ? 'text-[hsl(var(--success))]' : 'text-[hsl(var(--warning))]'}`}>
-                        {tx.transaction_type === 'payin' ? '+' : '-'}₹{Number(tx.amount).toFixed(2)}
+                        {tx.transaction_type === 'payin' ? '+' : '-'}{cs}{Number(tx.amount).toFixed(2)}
                       </span>
                     </div>
                   </div>

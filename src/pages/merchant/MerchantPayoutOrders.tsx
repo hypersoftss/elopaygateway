@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { format } from 'date-fns';
 import { Search, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useMerchantCurrency } from '@/hooks/useMerchantCurrency';
 
 interface Transaction {
   id: string;
@@ -26,6 +27,7 @@ interface Transaction {
 const MerchantPayoutOrders = () => {
   const { user } = useAuthStore();
   const { toast } = useToast();
+  const { currencySymbol: cs } = useMerchantCurrency();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -202,8 +204,8 @@ const MerchantPayoutOrders = () => {
                           <p className="text-xs text-muted-foreground">{user?.accountNumber}</p>
                         </div>
                       </TableCell>
-                      <TableCell className="font-semibold">₹{Number(tx.amount).toFixed(2)}</TableCell>
-                      <TableCell className="text-muted-foreground">₹{Number(tx.fee || 0).toFixed(2)}</TableCell>
+                      <TableCell className="font-semibold">{cs}{Number(tx.amount).toFixed(2)}</TableCell>
+                      <TableCell className="text-muted-foreground">{cs}{Number(tx.fee || 0).toFixed(2)}</TableCell>
                       <TableCell>
                         <Badge 
                           variant="outline"

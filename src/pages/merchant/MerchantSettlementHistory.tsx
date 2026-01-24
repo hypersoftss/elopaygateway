@@ -24,6 +24,7 @@ import { useTranslation } from '@/lib/i18n';
 import { useAuthStore } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
+import { useMerchantCurrency } from '@/hooks/useMerchantCurrency';
 
 interface Settlement {
   id: string;
@@ -42,6 +43,7 @@ interface Settlement {
 const MerchantSettlementHistory = () => {
   const { t, language } = useTranslation();
   const { user } = useAuthStore();
+  const { currencySymbol: cs } = useMerchantCurrency();
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -144,7 +146,7 @@ const MerchantSettlementHistory = () => {
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">{t('common.total')}</p>
               <p className="text-2xl font-bold">{stats.total}</p>
-              <p className="text-sm text-blue-500">₹{stats.totalAmount.toLocaleString()}</p>
+              <p className="text-sm text-blue-500">{cs}{stats.totalAmount.toLocaleString()}</p>
             </CardContent>
           </Card>
           <Card className="bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 border-yellow-500/20">
@@ -157,7 +159,7 @@ const MerchantSettlementHistory = () => {
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">{t('transactions.success')}</p>
               <p className="text-2xl font-bold text-green-500">{stats.success}</p>
-              <p className="text-sm text-green-500">₹{stats.successAmount.toLocaleString()}</p>
+              <p className="text-sm text-green-500">{cs}{stats.successAmount.toLocaleString()}</p>
             </CardContent>
           </Card>
           <Card className="bg-gradient-to-br from-red-500/10 to-red-600/5 border-red-500/20">
@@ -234,9 +236,9 @@ const MerchantSettlementHistory = () => {
                           {settlement.usdt_address ? 'USDT' : settlement.bank_name || 'Bank'}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right font-medium">₹{settlement.amount.toLocaleString()}</TableCell>
-                      <TableCell className="text-right text-muted-foreground">₹{settlement.fee?.toLocaleString() || 0}</TableCell>
-                      <TableCell className="text-right text-green-500">₹{settlement.net_amount?.toLocaleString() || settlement.amount}</TableCell>
+                      <TableCell className="text-right font-medium">{cs}{settlement.amount.toLocaleString()}</TableCell>
+                      <TableCell className="text-right text-muted-foreground">{cs}{settlement.fee?.toLocaleString() || 0}</TableCell>
+                      <TableCell className="text-right text-green-500">{cs}{settlement.net_amount?.toLocaleString() || settlement.amount}</TableCell>
                       <TableCell>{getStatusBadge(settlement.status)}</TableCell>
                       <TableCell className="text-muted-foreground">
                         {format(new Date(settlement.created_at), 'MM-dd HH:mm')}
