@@ -3,16 +3,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Copy, ExternalLink } from 'lucide-react';
+import { Copy } from 'lucide-react';
 import { toast } from 'sonner';
 
-const BondPayINRDocs = () => {
+const HyperPayINRDocs = () => {
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`${label} copied to clipboard`);
   };
 
-  const payinSignatureCode = `// BondPay Payin Signature (MD5)
+  const payinSignatureCode = `// HYPER PAY Payin Signature (MD5)
 const crypto = require('crypto');
 
 function generatePayinSignature(merchantId, amount, orderNo, apiKey, callbackUrl) {
@@ -29,7 +29,7 @@ const sign = generatePayinSignature(
   'https://yoursite.com/callback'
 );`;
 
-  const payoutSignatureCode = `// BondPay Payout Signature (MD5)
+  const payoutSignatureCode = `// HYPER PAY Payout Signature (MD5)
 const crypto = require('crypto');
 
 function generatePayoutSignature(params, payoutKey) {
@@ -98,7 +98,7 @@ Content-Type: application/json
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">BondPay India (INR)</h1>
+            <h1 className="text-2xl font-bold">HYPER PAY India (INR)</h1>
             <p className="text-muted-foreground">Payment Gateway Integration Documentation</p>
           </div>
           <Badge variant="default" className="bg-orange-500">India Only</Badge>
@@ -227,7 +227,7 @@ Content-Type: application/json
             <Card>
               <CardHeader>
                 <CardTitle>Signature Generation</CardTitle>
-                <CardDescription>MD5 concatenation method for BondPay</CardDescription>
+                <CardDescription>MD5 concatenation method for HYPER PAY</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
@@ -267,7 +267,7 @@ Content-Type: application/json
             <Card>
               <CardHeader>
                 <CardTitle>Callback Handling</CardTitle>
-                <CardDescription>Process payment notifications from BondPay</CardDescription>
+                <CardDescription>Process payment notifications from HYPER PAY</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-end">
@@ -284,7 +284,7 @@ Content-Type: application/json
                   <ul className="list-disc list-inside text-sm mt-2 space-y-1">
                     <li>Always verify the signature before processing callbacks</li>
                     <li>Return "ok" (plain text) to acknowledge successful receipt</li>
-                    <li>BondPay will retry callbacks up to 5 times if no "ok" is received</li>
+                    <li>HYPER PAY will retry callbacks up to 5 times if no "ok" is received</li>
                     <li>Process callbacks idempotently to handle retries</li>
                   </ul>
                 </div>
@@ -297,4 +297,4 @@ Content-Type: application/json
   );
 };
 
-export default BondPayINRDocs;
+export default HyperPayINRDocs;

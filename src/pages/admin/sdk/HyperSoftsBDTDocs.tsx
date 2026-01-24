@@ -6,16 +6,16 @@ import { Button } from '@/components/ui/button';
 import { Copy, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
 
-const LGPayBDTDocs = () => {
+const HyperSoftsBDTDocs = () => {
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`${label} copied to clipboard`);
   };
 
-  const signatureCode = `// LG Pay Signature Algorithm (ASCII Sorted MD5)
+  const signatureCode = `// HYPER SOFTS Signature Algorithm (ASCII Sorted MD5)
 const crypto = require('crypto');
 
-function generateLGPaySignature(params, secretKey) {
+function generateHyperSoftsSignature(params, secretKey) {
   // Step 1: Filter out empty values and 'sign' key
   const filteredParams = Object.entries(params)
     .filter(([key, value]) => value !== '' && value !== null && value !== undefined && key !== 'sign');
@@ -36,7 +36,7 @@ function generateLGPaySignature(params, secretKey) {
 }
 
 // Example
-const sign = generateLGPaySignature({
+const sign = generateHyperSoftsSignature({
   app_id: 'MJL3126',
   order_sn: 'ORDER123456',
   money: 100000, // 1000 BDT * 100
@@ -115,7 +115,7 @@ money: X    // Will stay pending (no callback)`;
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">LG Pay Bangladesh (BDT)</h1>
+            <h1 className="text-2xl font-bold">HYPER SOFTS Bangladesh (BDT)</h1>
             <p className="text-muted-foreground">Nagad & bKash Integration</p>
           </div>
           <Badge variant="default" className="bg-emerald-600">Bangladesh</Badge>
@@ -198,7 +198,7 @@ money: X    // Will stay pending (no callback)`;
           <TabsContent value="signature">
             <Card>
               <CardHeader>
-                <CardTitle>LG Pay Signature Algorithm</CardTitle>
+                <CardTitle>HYPER SOFTS Signature Algorithm</CardTitle>
                 <CardDescription>ASCII-sorted MD5 with uppercase output</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -328,7 +328,7 @@ money: X    // Will stay pending (no callback)`;
             <Card>
               <CardHeader>
                 <CardTitle>Callback Handling</CardTitle>
-                <CardDescription>Process payment notifications from LG Pay</CardDescription>
+                <CardDescription>Process payment notifications from HYPER SOFTS</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-end">
@@ -355,4 +355,4 @@ money: X    // Will stay pending (no callback)`;
   );
 };
 
-export default LGPayBDTDocs;
+export default HyperSoftsBDTDocs;

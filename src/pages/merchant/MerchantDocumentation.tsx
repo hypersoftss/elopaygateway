@@ -305,13 +305,13 @@ const MerchantDocumentation = () => {
                 </div>
 
                 {credentials?.gatewayType === 'bondpay' ? (
-                  /* BondPay Documentation */
+                  /* HYPER PAY Documentation */
                   <div className="space-y-6">
                     <Card className="border-orange-500/20">
                       <CardHeader className="bg-orange-500/5">
                         <CardTitle className="flex items-center gap-2 text-orange-600">
-                          <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center text-white text-xs font-bold">BP</div>
-                          BondPay (India - INR)
+                          <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center text-white text-xs font-bold">HP</div>
+                          HYPER PAY (India - INR)
                         </CardTitle>
                         <CardDescription>
                           {language === 'zh' ? '印度卢比支付通道' : 'Indian Rupee payment gateway'}
@@ -338,13 +338,13 @@ const MerchantDocumentation = () => {
                     </Card>
                   </div>
                 ) : credentials?.gatewayType === 'lgpay' ? (
-                  /* LG Pay Documentation */
+                  /* HYPER SOFTS Documentation */
                   <div className="space-y-6">
                     <Card className="border-purple-500/20">
                       <CardHeader className="bg-purple-500/5">
                         <CardTitle className="flex items-center gap-2 text-purple-600">
-                          <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center text-white text-xs font-bold">LG</div>
-                          LG Pay ({credentials.currency})
+                          <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center text-white text-xs font-bold">HS</div>
+                          HYPER SOFTS ({credentials.currency})
                           {credentials.tradeType && <Badge variant="secondary">{credentials.tradeType}</Badge>}
                         </CardTitle>
                         <CardDescription>
@@ -364,7 +364,7 @@ const MerchantDocumentation = () => {
                           </div>
                           <pre className="mt-2 p-3 bg-muted rounded-lg text-xs overflow-x-auto font-mono">
 {`// JavaScript Example
-function generateLGPaySign(params, apiKey) {
+function generateHyperSoftsSign(params, apiKey) {
   const filtered = Object.entries(params)
     .filter(([k, v]) => v !== '' && v != null && k !== 'sign')
     .sort(([a], [b]) => a.localeCompare(b));
