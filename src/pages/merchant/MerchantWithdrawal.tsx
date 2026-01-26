@@ -17,7 +17,7 @@ interface MerchantData {
   frozen_balance: number;
   payout_fee: number;
   currency: string | null;
-  withdrawal_password: string | null;
+  hasWithdrawalPassword: boolean;
 }
 
 // Currency symbols
@@ -83,7 +83,7 @@ const MerchantWithdrawal = () => {
 
       const { data } = await supabase
         .from('merchants')
-        .select('balance, frozen_balance, payout_fee, withdrawal_password, gateway_id')
+        .select('balance, frozen_balance, payout_fee, withdrawal_password_hash, withdrawal_password, gateway_id')
         .eq('id', user.merchantId)
         .single();
 
@@ -106,7 +106,8 @@ const MerchantWithdrawal = () => {
           frozen_balance: Number(data.frozen_balance) || 0,
           payout_fee: Number(data.payout_fee) || 0,
           currency,
-          withdrawal_password: data.withdrawal_password,
+          // Check if either hashed or legacy password exists
+          hasWithdrawalPassword: !!(data.withdrawal_password_hash || data.withdrawal_password),
         });
 
         // Set default method based on currency
@@ -120,8 +121,9 @@ const MerchantWithdrawal = () => {
     fetchMerchantData();
   }, [user?.merchantId]);
 
-  const validatePassword = (): boolean => {
-    if (!merchantData?.withdrawal_password) {
+  // Server-side password verification using edge function
+  const validatePassword = async (): Promise<boolean> => {
+    if (!merchantData?.hasWithdrawalPassword) {
       toast({
         title: language === 'zh' ? '错误' : 'Error',
         description: language === 'zh' ? '请先设置提现密码' : 'Please set withdrawal password first',
@@ -130,16 +132,45 @@ const MerchantWithdrawal = () => {
       return false;
     }
 
-    if (form.withdrawalPassword !== merchantData.withdrawal_password) {
+    if (!form.withdrawalPassword) {
       toast({
         title: language === 'zh' ? '错误' : 'Error',
-        description: language === 'zh' ? '提现密码错误' : 'Invalid withdrawal password',
+        description: language === 'zh' ? '请输入提现密码' : 'Please enter withdrawal password',
         variant: 'destructive',
       });
       return false;
     }
 
-    return true;
+    try {
+      // Verify password server-side
+      const { data, error } = await supabase.functions.invoke('verify-withdrawal-password', {
+        body: {
+          merchantId: user?.merchantId,
+          password: form.withdrawalPassword,
+          action: 'verify'
+        }
+      });
+
+      if (error) throw error;
+
+      if (!data.success || !data.valid) {
+        toast({
+          title: language === 'zh' ? '错误' : 'Error',
+          description: language === 'zh' ? '提现密码错误' : 'Invalid withdrawal password',
+          variant: 'destructive',
+        });
+        return false;
+      }
+
+      return true;
+    } catch (error: any) {
+      toast({
+        title: language === 'zh' ? '错误' : 'Error',
+        description: error.message || 'Password verification failed',
+        variant: 'destructive',
+      });
+      return false;
+    }
   };
 
   const handleWithdrawal = async () => {
@@ -164,8 +195,9 @@ const MerchantWithdrawal = () => {
       return;
     }
 
-    // Validate withdrawal password
-    if (!validatePassword()) return;
+    // Validate withdrawal password (now async)
+    const isPasswordValid = await validatePassword();
+    if (!isPasswordValid) return;
 
     // Validate required fields based on method
     if (selectedMethod === 'usdt') {
@@ -361,7 +393,7 @@ const MerchantWithdrawal = () => {
         </div>
 
         {/* No Password Warning */}
-        {!merchantData.withdrawal_password && (
+        {!merchantData.hasWithdrawalPassword && (
           <Card className="premium-card border-destructive/30 bg-destructive/5">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
@@ -614,7 +646,7 @@ const MerchantWithdrawal = () => {
             <Button
               className="w-full h-12 bg-[hsl(var(--success))] hover:bg-[hsl(var(--success))]/90 text-white font-semibold gap-2"
               onClick={handleWithdrawal}
-              disabled={isLoading || !form.amount || !form.withdrawalPassword || !merchantData.withdrawal_password}
+              disabled={isLoading || !form.amount || !form.withdrawalPassword || !merchantData.hasWithdrawalPassword}
             >
               {isLoading ? (
                 <>{language === 'zh' ? '处理中...' : 'Processing...'}</>

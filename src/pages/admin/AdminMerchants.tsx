@@ -397,12 +397,17 @@ const AdminMerchants = () => {
 
     setIsUpdating(true);
     try {
-      const { error } = await supabase
-        .from('merchants')
-        .update({ withdrawal_password: newWithdrawalPassword })
-        .eq('id', editingMerchant.id);
+      // Use edge function to securely hash and store password
+      const { data, error } = await supabase.functions.invoke('verify-withdrawal-password', {
+        body: {
+          merchantId: editingMerchant.id,
+          password: newWithdrawalPassword,
+          action: 'set'
+        }
+      });
 
       if (error) throw error;
+      if (!data.success) throw new Error(data.error || 'Failed to set password');
 
       toast({
         title: t('common.success'),

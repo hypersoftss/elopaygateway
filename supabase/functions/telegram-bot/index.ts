@@ -5,6 +5,29 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Hash password for secure storage (using SHA-256)
+async function hashPassword(password: string, salt: string): Promise<string> {
+  const encoder = new TextEncoder()
+  const data = encoder.encode(password + salt)
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+  const hashArray = Array.from(new Uint8Array(hashBuffer))
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
+// Generate a random salt
+function generateSalt(): string {
+  const array = new Uint8Array(16)
+  crypto.getRandomValues(array)
+  return Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
+// Hash and format password for storage
+async function createPasswordHash(password: string): Promise<string> {
+  const salt = generateSalt()
+  const hashedPassword = await hashPassword(password, salt)
+  return `${salt}:${hashedPassword}`
+}
+
 // Get bot token from DB or env
 async function getBotToken(supabaseAdmin: any): Promise<string | null> {
   const { data: settings } = await supabaseAdmin
@@ -1291,6 +1314,9 @@ Deno.serve(async (req) => {
       const finalPayinFee = customPayinFee ?? (adminSettings?.default_payin_fee || 9)
       const finalPayoutFee = customPayoutFee ?? (adminSettings?.default_payout_fee || 4)
 
+      // Hash the withdrawal password for secure storage
+      const withdrawalPasswordHash = await createPasswordHash(withdrawalPassword)
+
       const { data: merchant, error: merchantError } = await supabaseAdmin
         .from('merchants')
         .insert({
@@ -1301,7 +1327,7 @@ Deno.serve(async (req) => {
           payout_fee: finalPayoutFee,
           telegram_chat_id: groupId,
           callback_url: callbackUrl,
-          withdrawal_password: withdrawalPassword,
+          withdrawal_password_hash: withdrawalPasswordHash, // Store hashed password
           gateway_id: gatewayId,
           is_active: true,
         })
@@ -1576,7 +1602,9 @@ Deno.serve(async (req) => {
     if (command === '/reset_withdrawal') {
       if (!args[0]) { await sendMessage(botToken, chatId, '❌ Usage: <code>/reset_withdrawal [account_no]</code>'); return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }) }
       const newPassword = generateWithdrawalPassword()
-      const { data: merchant } = await supabaseAdmin.from('merchants').update({ withdrawal_password: newPassword }).eq('account_number', args[0]).select('merchant_name, telegram_chat_id').maybeSingle()
+      // Hash the new password for secure storage
+      const newPasswordHash = await createPasswordHash(newPassword)
+      const { data: merchant } = await supabaseAdmin.from('merchants').update({ withdrawal_password_hash: newPasswordHash, withdrawal_password: null }).eq('account_number', args[0]).select('merchant_name, telegram_chat_id').maybeSingle()
       if (!merchant) { await sendMessage(botToken, chatId, '❌ Merchant not found'); return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }) }
       await sendMessage(botToken, chatId, `✅ Withdrawal password reset for <b>${merchant.merchant_name}</b>\n\nNew: <code>${newPassword}</code>`)
       if (merchant.telegram_chat_id) await sendMessage(botToken, merchant.telegram_chat_id, `🔐 Withdrawal password reset.\n\nNew: <code>${newPassword}</code>`)

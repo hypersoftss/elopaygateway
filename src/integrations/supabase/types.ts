@@ -547,6 +547,16 @@ export type Database = {
     }
     Functions: {
       generate_account_number: { Args: never; Returns: string }
+      get_gateway_branding: {
+        Args: never
+        Returns: {
+          favicon_url: string
+          gateway_domain: string
+          gateway_name: string
+          logo_url: string
+          support_email: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
