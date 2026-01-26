@@ -279,22 +279,25 @@ const AdminSettingsPage = () => {
         faviconUrl = urlData.publicUrl;
       }
 
+      // Sanitize gateway domain - remove trailing slashes
+      const sanitizedDomain = settings.gateway_domain?.replace(/\/+$/, '') || null;
+
       const { error } = await supabase
         .from('admin_settings')
         .update({
           default_payin_fee: settings.default_payin_fee,
           default_payout_fee: settings.default_payout_fee,
-          gateway_name: settings.gateway_name,
-          gateway_domain: settings.gateway_domain,
+          gateway_name: settings.gateway_name?.trim() || 'PayGate',
+          gateway_domain: sanitizedDomain,
           logo_url: logoUrl,
           favicon_url: faviconUrl,
-          support_email: settings.support_email,
+          support_email: settings.support_email?.trim() || null,
           large_payin_threshold: settings.large_payin_threshold,
           large_payout_threshold: settings.large_payout_threshold,
           large_withdrawal_threshold: settings.large_withdrawal_threshold,
-          admin_telegram_chat_id: settings.admin_telegram_chat_id,
-          telegram_bot_token: settings.telegram_bot_token,
-          telegram_webhook_url: settings.telegram_webhook_url,
+          admin_telegram_chat_id: settings.admin_telegram_chat_id?.trim() || null,
+          telegram_bot_token: settings.telegram_bot_token?.trim() || null,
+          telegram_webhook_url: settings.telegram_webhook_url?.trim() || null,
           balance_threshold_inr: settings.balance_threshold_inr,
           balance_threshold_pkr: settings.balance_threshold_pkr,
           balance_threshold_bdt: settings.balance_threshold_bdt,
@@ -482,11 +485,15 @@ const AdminSettingsPage = () => {
                     </Label>
                     <Input
                       value={settings?.gateway_domain || ''}
-                      onChange={(e) => setSettings(s => s ? { ...s, gateway_domain: e.target.value } : null)}
+                      onChange={(e) => {
+                        // Auto-remove trailing slashes on input
+                        const value = e.target.value.replace(/\/+$/, '');
+                        setSettings(s => s ? { ...s, gateway_domain: value } : null);
+                      }}
                       placeholder="https://your-gateway.com"
                     />
                     <p className="text-xs text-muted-foreground">
-                      {language === 'zh' ? '您网关的公共URL，用于API文档' : "Your gateway's public URL for API documentation"}
+                      {language === 'zh' ? '您网关的公共URL，用于API文档（无需末尾斜杠）' : "Your gateway's public URL for API documentation (no trailing slash)"}
                     </p>
                   </div>
                 </div>
