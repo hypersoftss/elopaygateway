@@ -3,16 +3,20 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Copy } from 'lucide-react';
+import { Copy, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { useGatewaySettings } from '@/hooks/useGatewaySettings';
 
 const HyperPayINRDocs = () => {
+  const { settings } = useGatewaySettings();
+  const gatewayName = settings.gatewayName || 'HYPER PAY';
+
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`${label} copied to clipboard`);
   };
 
-  const payinSignatureCode = `// HYPER PAY Payin Signature (MD5)
+  const payinSignatureCode = `// ${gatewayName} Payin Signature (MD5)
 const crypto = require('crypto');
 
 function generatePayinSignature(merchantId, amount, orderNo, apiKey, callbackUrl) {
@@ -22,14 +26,14 @@ function generatePayinSignature(merchantId, amount, orderNo, apiKey, callbackUrl
 
 // Example
 const sign = generatePayinSignature(
-  '100888140',      // merchant_id
-  '1000',           // amount (INR)
-  'PI1234567890',   // order_no
-  'your_api_key',   // api_key
+  'YOUR_MERCHANT_ID',      // merchant_id
+  '1000',                  // amount (INR)
+  'PI1234567890',          // order_no
+  'YOUR_API_KEY',          // api_key
   'https://yoursite.com/callback'
 );`;
 
-  const payoutSignatureCode = `// HYPER PAY Payout Signature (MD5)
+  const payoutSignatureCode = `// ${gatewayName} Payout Signature (MD5)
 const crypto = require('crypto');
 
 function generatePayoutSignature(params, payoutKey) {
@@ -45,18 +49,18 @@ const sign = generatePayoutSignature({
   bank_name: 'HDFC Bank',
   callback_url: 'https://yoursite.com/callback',
   ifsc: 'HDFC0001234',
-  merchant_id: '100888140',
+  merchant_id: 'YOUR_MERCHANT_ID',
   name: 'John Doe',
   transaction_id: 'PO1234567890'
-}, 'your_payout_key');`;
+}, 'YOUR_PAYOUT_KEY');`;
 
   const payinRequest = `// Payin Request
-POST https://api.bond-pays.com/v1/create
+POST {GATEWAY_BASE_URL}/v1/create
 
 Content-Type: application/json
 
 {
-  "merchant_id": "100888140",
+  "merchant_id": "YOUR_MERCHANT_ID",
   "amount": "1000",
   "order_no": "PI1234567890",
   "callback_url": "https://yoursite.com/callback",
@@ -64,12 +68,12 @@ Content-Type: application/json
 }`;
 
   const payoutRequest = `// Payout Request  
-POST https://api.bond-pays.com/payout/payment.php
+POST {GATEWAY_BASE_URL}/payout/payment.php
 
 Content-Type: application/json
 
 {
-  "merchant_id": "100888140",
+  "merchant_id": "YOUR_MERCHANT_ID",
   "amount": "1000",
   "transaction_id": "PO1234567890",
   "name": "Account Holder Name",
@@ -82,7 +86,7 @@ Content-Type: application/json
 
   const callbackExample = `// Callback Response (POST to your callback_url)
 {
-  "merchant_id": "100888140",
+  "merchant_id": "YOUR_MERCHANT_ID",
   "order_no": "PI1234567890",
   "amount": "1000",
   "status": "success",
@@ -98,11 +102,22 @@ Content-Type: application/json
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">HYPER PAY India (INR)</h1>
+            <h1 className="text-2xl font-bold">{gatewayName} India (INR)</h1>
             <p className="text-muted-foreground">Payment Gateway Integration Documentation</p>
           </div>
-          <Badge variant="default" className="bg-orange-500">India Only</Badge>
+          <Badge variant="default" className="bg-orange-500">🇮🇳 India Only</Badge>
         </div>
+
+        {/* Confidential Notice */}
+        <Card className="border-yellow-500/50 bg-yellow-500/10">
+          <CardContent className="p-4 flex items-center gap-3">
+            <AlertTriangle className="h-5 w-5 text-yellow-600" />
+            <div>
+              <p className="font-medium text-yellow-700">Confidential Documentation</p>
+              <p className="text-sm text-yellow-600">This documentation is for internal use only. Do not share gateway credentials or endpoints with unauthorized parties.</p>
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
@@ -110,7 +125,7 @@ Content-Type: application/json
               <CardTitle className="text-sm">Base URL</CardTitle>
             </CardHeader>
             <CardContent>
-              <code className="text-xs bg-muted px-2 py-1 rounded">https://api.bond-pays.com</code>
+              <code className="text-xs bg-muted px-2 py-1 rounded">Configured in Gateway Settings</code>
             </CardContent>
           </Card>
           <Card>
@@ -227,7 +242,7 @@ Content-Type: application/json
             <Card>
               <CardHeader>
                 <CardTitle>Signature Generation</CardTitle>
-                <CardDescription>MD5 concatenation method for HYPER PAY</CardDescription>
+                <CardDescription>MD5 concatenation method</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
@@ -267,7 +282,7 @@ Content-Type: application/json
             <Card>
               <CardHeader>
                 <CardTitle>Callback Handling</CardTitle>
-                <CardDescription>Process payment notifications from HYPER PAY</CardDescription>
+                <CardDescription>Process payment notifications</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-end">
@@ -284,7 +299,7 @@ Content-Type: application/json
                   <ul className="list-disc list-inside text-sm mt-2 space-y-1">
                     <li>Always verify the signature before processing callbacks</li>
                     <li>Return "ok" (plain text) to acknowledge successful receipt</li>
-                    <li>HYPER PAY will retry callbacks up to 5 times if no "ok" is received</li>
+                    <li>Gateway will retry callbacks up to 5 times if no "ok" is received</li>
                     <li>Process callbacks idempotently to handle retries</li>
                   </ul>
                 </div>
