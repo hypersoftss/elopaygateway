@@ -105,8 +105,10 @@ export const AdminNotifications = () => {
   const getIcon = (type: string) => {
     switch (type) {
       case 'large_payin':
+      case 'new_payin':
         return <ArrowDownToLine className="h-4 w-4 text-green-500" />;
       case 'large_payout':
+      case 'new_payout_request':
         return <ArrowUpFromLine className="h-4 w-4 text-blue-500" />;
       case 'large_withdrawal':
         return <Wallet className="h-4 w-4 text-orange-500" />;

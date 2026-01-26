@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { useTranslation } from '@/lib/i18n';
 import { useAuthStore } from '@/lib/auth';
 import { useRealtimeBalance } from '@/hooks/useRealtimeBalance';
+import { useRealtimeTransactions } from '@/hooks/useRealtimeTransactions';
 import { useMerchantCurrency, formatCurrency } from '@/hooks/useMerchantCurrency';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
@@ -60,6 +61,48 @@ const MerchantDashboard = () => {
   useRealtimeBalance({
     merchantId: user?.merchantId || '',
     onBalanceChange: handleBalanceChange,
+  });
+
+  // Handle new transactions in real-time
+  const handleNewTransaction = useCallback((tx: any) => {
+    setRecentTransactions(prev => [tx, ...prev.slice(0, 9)]);
+    
+    // Update today's stats
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const txDate = new Date(tx.created_at);
+    
+    if (txDate >= today) {
+      setStats(prev => {
+        if (!prev) return prev;
+        if (tx.transaction_type === 'payin') {
+          return {
+            ...prev,
+            todayPayinCount: prev.todayPayinCount + 1,
+            todayPayinAmount: prev.todayPayinAmount + Number(tx.amount),
+          };
+        } else {
+          return {
+            ...prev,
+            todayPayoutCount: prev.todayPayoutCount + 1,
+            todayPayoutAmount: prev.todayPayoutAmount + Number(tx.amount),
+          };
+        }
+      });
+    }
+  }, []);
+
+  const handleTransactionUpdate = useCallback((tx: any) => {
+    setRecentTransactions(prev => 
+      prev.map(t => t.id === tx.id ? { ...t, ...tx } : t)
+    );
+  }, []);
+
+  // Subscribe to real-time transactions for this merchant
+  useRealtimeTransactions({
+    merchantId: user?.merchantId,
+    onNewTransaction: handleNewTransaction,
+    onTransactionUpdate: handleTransactionUpdate,
   });
 
   const fetchData = async () => {
