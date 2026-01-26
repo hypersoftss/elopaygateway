@@ -672,14 +672,14 @@ const AdminDashboard = () => {
                     <span className="text-sm font-medium">{language === 'zh' ? '响应时间' : 'Response Time'}</span>
                   </div>
                   <p className="text-2xl font-bold">
-                    {currentHealth?.responseTime !== null ? `${currentHealth.responseTime}ms` : '--'}
+                    {currentHealth && currentHealth.responseTime !== null ? `${currentHealth.responseTime}ms` : '--'}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {currentHealth?.responseTime !== null && currentHealth.responseTime < 500 
+                    {currentHealth && currentHealth.responseTime !== null && currentHealth.responseTime < 500 
                       ? (language === 'zh' ? '良好' : 'Good')
-                      : currentHealth?.responseTime !== null && currentHealth.responseTime < 1000
+                      : currentHealth && currentHealth.responseTime !== null && currentHealth.responseTime < 1000
                       ? (language === 'zh' ? '中等' : 'Medium')
-                      : currentHealth?.responseTime !== null
+                      : currentHealth && currentHealth.responseTime !== null
                       ? (language === 'zh' ? '缓慢' : 'Slow')
                       : ''
                     }
