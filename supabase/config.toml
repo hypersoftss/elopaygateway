@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.check-gateway-balance]
 verify_jwt = false
+
+[functions.daily-summary]
+verify_jwt = false
