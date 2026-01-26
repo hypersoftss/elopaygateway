@@ -89,8 +89,12 @@ interface Transaction {
   status: 'pending' | 'success' | 'failed';
   created_at: string;
   extra: string | null;
+  gateway_id: string | null;
   merchants: {
     merchant_name: string;
+    payment_gateways: {
+      currency: string;
+    } | null;
   } | null;
 }
 
@@ -333,7 +337,7 @@ const AdminDashboard = () => {
         successRate,
       });
 
-      // Fetch recent transactions
+      // Fetch recent transactions with gateway currency
       const { data: transactions } = await supabase
         .from('transactions')
         .select(`
@@ -344,8 +348,12 @@ const AdminDashboard = () => {
           status,
           created_at,
           extra,
+          gateway_id,
           merchants (
-            merchant_name
+            merchant_name,
+            payment_gateways (
+              currency
+            )
           )
         `)
         .order('created_at', { ascending: false })
@@ -452,8 +460,8 @@ const AdminDashboard = () => {
                     <ArrowDownToLine className="h-4 w-4 md:h-5 md:w-5" />
                   </div>
                 </div>
-                <p className="text-lg md:text-2xl lg:text-3xl font-bold truncate">₹{stats?.todayPayinAmount.toLocaleString()}</p>
-                <p className="text-xs opacity-80">{stats?.todayPayinCount} {language === 'zh' ? '笔' : 'txns'}</p>
+                <p className="text-lg md:text-2xl lg:text-3xl font-bold truncate">{stats?.todayPayinAmount.toLocaleString()}</p>
+                <p className="text-xs opacity-80">{stats?.todayPayinCount} {language === 'zh' ? '笔' : 'transactions'}</p>
               </div>
               <div className="absolute -bottom-4 -right-4 opacity-10">
                 <CircleDollarSign className="h-16 w-16 md:h-20 md:w-20" />
@@ -471,8 +479,8 @@ const AdminDashboard = () => {
                     <ArrowUpFromLine className="h-4 w-4 md:h-5 md:w-5" />
                   </div>
                 </div>
-                <p className="text-lg md:text-2xl lg:text-3xl font-bold truncate">₹{stats?.todayPayoutAmount.toLocaleString()}</p>
-                <p className="text-xs opacity-80">{stats?.todayPayoutCount} {language === 'zh' ? '笔' : 'txns'}</p>
+                <p className="text-lg md:text-2xl lg:text-3xl font-bold truncate">{stats?.todayPayoutAmount.toLocaleString()}</p>
+                <p className="text-xs opacity-80">{stats?.todayPayoutCount} {language === 'zh' ? '笔' : 'transactions'}</p>
               </div>
               <div className="absolute -bottom-4 -right-4 opacity-10">
                 <CircleDollarSign className="h-16 w-16 md:h-20 md:w-20" />
@@ -490,7 +498,7 @@ const AdminDashboard = () => {
                     <Wallet className="h-4 w-4 md:h-5 md:w-5" />
                   </div>
                 </div>
-                <p className="text-lg md:text-2xl lg:text-3xl font-bold truncate">₹{stats?.totalBalance.toLocaleString()}</p>
+                <p className="text-lg md:text-2xl lg:text-3xl font-bold truncate">{stats?.totalBalance.toLocaleString()}</p>
                 <p className="text-xs opacity-80">{language === 'zh' ? '所有商户' : 'All merchants'}</p>
               </div>
               <div className="absolute -bottom-4 -right-4 opacity-10">
@@ -915,7 +923,14 @@ const AdminDashboard = () => {
                   {t('common.noData')}
                 </div>
               ) : (
-                recentTransactions.map((tx) => (
+                recentTransactions.map((tx) => {
+                  const currency = tx.merchants?.payment_gateways?.currency || 'INR';
+                  const currencySymbol = currency === 'INR' ? '₹' : currency === 'PKR' ? 'Rs.' : currency === 'BDT' ? '৳' : '$';
+                  const currencyColor = currency === 'INR' ? 'bg-amber-500/10 text-amber-600' : 
+                                       currency === 'PKR' ? 'bg-emerald-500/10 text-emerald-600' : 
+                                       currency === 'BDT' ? 'bg-sky-500/10 text-sky-600' : 'bg-purple-500/10 text-purple-600';
+                  
+                  return (
                   <div key={tx.id} className="flex items-center justify-between p-3 md:p-4 hover:bg-muted/50 transition-colors">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div className={`p-1.5 md:p-2 rounded-full shrink-0 ${
@@ -929,7 +944,7 @@ const AdminDashboard = () => {
                         }
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-mono text-xs md:text-sm font-medium truncate">{tx.order_no}</p>
                           <span className={`text-xs px-1.5 py-0.5 rounded ${
                             tx.transaction_type === 'payin' 
@@ -937,6 +952,9 @@ const AdminDashboard = () => {
                               : 'bg-orange-500/10 text-orange-600'
                           }`}>
                             {tx.transaction_type === 'payin' ? 'IN' : 'OUT'}
+                          </span>
+                          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${currencyColor}`}>
+                            {currency}
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground truncate">
@@ -948,12 +966,13 @@ const AdminDashboard = () => {
                       <span className={`text-xs md:text-sm font-semibold ${
                         tx.transaction_type === 'payin' ? 'text-green-500' : 'text-orange-500'
                       }`}>
-                        {tx.transaction_type === 'payin' ? '+' : '-'}₹{Number(tx.amount).toLocaleString()}
+                        {tx.transaction_type === 'payin' ? '+' : '-'}{currencySymbol}{Number(tx.amount).toLocaleString()}
                       </span>
                       <StatusBadge status={tx.status} />
                     </div>
                   </div>
-                ))
+                  );
+                })
               )}
             </div>
           </CardContent>

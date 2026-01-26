@@ -584,6 +584,7 @@ const AdminMerchants = () => {
   const [isBulkGatewayOpen, setIsBulkGatewayOpen] = useState(false);
   const [bulkGatewayId, setBulkGatewayId] = useState('');
   const [isAssigningGateway, setIsAssigningGateway] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   const handleBulkGatewayAssign = async () => {
     if (selectedMerchants.size === 0 || !bulkGatewayId) return;
@@ -621,6 +622,78 @@ const AdminMerchants = () => {
       toast({ title: t('common.error'), description: err.message, variant: 'destructive' });
     } finally {
       setIsAssigningGateway(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedMerchants.size === 0) return;
+    
+    const confirmMessage = language === 'zh' 
+      ? `确定删除 ${selectedMerchants.size} 个商户吗？此操作不可撤销！所有关联数据（交易、通知、支付链接）都将被删除。` 
+      : `Are you sure you want to delete ${selectedMerchants.size} merchants? This action cannot be undone! All associated data (transactions, notifications, payment links) will be deleted.`;
+    
+    if (!confirm(confirmMessage)) return;
+    
+    setIsBulkDeleting(true);
+    const { data: session } = await supabase.auth.getSession();
+    let successCount = 0;
+    let failCount = 0;
+    
+    try {
+      for (const merchantId of Array.from(selectedMerchants)) {
+        const merchant = merchants.find(m => m.id === merchantId);
+        if (!merchant) continue;
+        
+        try {
+          const response = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-update-merchant`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session?.session?.access_token}`,
+              },
+              body: JSON.stringify({
+                merchantId: merchant.id,
+                userId: merchant.user_id,
+                action: 'delete',
+              }),
+            }
+          );
+          
+          const result = await response.json();
+          if (response.ok) {
+            successCount++;
+          } else {
+            console.error(`Failed to delete ${merchant.merchant_name}:`, result.error);
+            failCount++;
+          }
+        } catch (err) {
+          console.error(`Error deleting ${merchant.merchant_name}:`, err);
+          failCount++;
+        }
+      }
+      
+      if (successCount > 0) {
+        toast({ 
+          title: t('common.success'), 
+          description: `${successCount} merchants deleted${failCount > 0 ? `, ${failCount} failed` : ''}` 
+        });
+      }
+      if (failCount > 0 && successCount === 0) {
+        toast({ 
+          title: t('common.error'), 
+          description: `Failed to delete merchants`, 
+          variant: 'destructive' 
+        });
+      }
+      
+      setSelectedMerchants(new Set());
+      fetchMerchants();
+    } catch (err: any) {
+      toast({ title: t('common.error'), description: err.message, variant: 'destructive' });
+    } finally {
+      setIsBulkDeleting(false);
     }
   };
 
@@ -861,7 +934,7 @@ const AdminMerchants = () => {
               />
             </div>
             {selectedMerchants.size > 0 && (
-              <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
+              <div className="flex items-center gap-2 p-2 bg-muted rounded-lg flex-wrap">
                 <span className="text-sm font-medium">{selectedMerchants.size} selected</span>
                 <Button size="sm" variant="outline" onClick={handleBulkEnable} className="h-7">
                   <Power className="h-3 w-3 mr-1" /> Enable
@@ -874,6 +947,16 @@ const AdminMerchants = () => {
                 </Button>
                 <Button size="sm" variant="outline" onClick={exportSelectedToCSV} className="h-7">
                   <Download className="h-3 w-3 mr-1" /> Export
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="destructive" 
+                  onClick={handleBulkDelete} 
+                  className="h-7"
+                  disabled={isBulkDeleting}
+                >
+                  <Trash2 className="h-3 w-3 mr-1" /> 
+                  {isBulkDeleting ? (language === 'zh' ? '删除中...' : 'Deleting...') : (language === 'zh' ? '删除' : 'Delete')}
                 </Button>
               </div>
             )}

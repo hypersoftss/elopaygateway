@@ -138,6 +138,20 @@ const MerchantLogin = () => {
           setIsSubmitting(false);
           return;
         }
+        
+        // Log merchant login (without 2FA)
+        if (merchant?.id) {
+          try {
+            await supabase.from('merchant_activity_logs').insert({
+              merchant_id: merchant.id,
+              admin_user_id: null,
+              action_type: 'login',
+              action_details: { timestamp: new Date().toISOString(), with_2fa: false },
+            });
+          } catch (logErr) {
+            console.error('Failed to log login:', logErr);
+          }
+        }
       }
     } catch (error) {
       toast({
@@ -188,6 +202,18 @@ const MerchantLogin = () => {
           variant: 'destructive',
         });
       } else {
+        // Log merchant login
+        try {
+          await supabase.from('merchant_activity_logs').insert({
+            merchant_id: pendingSession.merchantId,
+            admin_user_id: null,
+            action_type: 'login',
+            action_details: { timestamp: new Date().toISOString(), with_2fa: true },
+          });
+        } catch (logErr) {
+          console.error('Failed to log login:', logErr);
+        }
+        
         setShow2FAStep(false);
         setPendingSession(null);
       }

@@ -35,6 +35,21 @@ export const useAuthStore = create<AuthState>()(
       setRememberMe: (rememberMe) => set({ rememberMe }),
       logout: async () => {
         const currentUser = useAuthStore.getState().user;
+        
+        // Log merchant logout before signing out
+        if (currentUser?.role === 'merchant' && currentUser.merchantId) {
+          try {
+            await supabase.from('merchant_activity_logs').insert({
+              merchant_id: currentUser.merchantId,
+              admin_user_id: null,
+              action_type: 'logout',
+              action_details: { timestamp: new Date().toISOString() },
+            });
+          } catch (err) {
+            console.error('Failed to log logout:', err);
+          }
+        }
+        
         await supabase.auth.signOut();
         set({ user: null });
         // Redirect to appropriate login page based on role
