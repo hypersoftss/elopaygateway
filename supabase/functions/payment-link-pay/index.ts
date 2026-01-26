@@ -155,7 +155,7 @@ Deno.serve(async (req) => {
     // Determine trade_type: link-level > merchant-level > gateway-level
     const tradeType = link.trade_type || merchant?.trade_type || gateway?.trade_type
 
-    // Route based on gateway type (hypersofts = lgpay rebranded)
+    // Route based on gateway type
     if (gateway && (gateway.gateway_type === 'hypersofts' || gateway.gateway_type === 'lgpay')) {
       // HYPER SOFTS Integration
       console.log('Using HYPER SOFTS gateway:', gateway.gateway_code)
@@ -214,9 +214,52 @@ Deno.serve(async (req) => {
         )
       }
 
+    } else if (gateway && (gateway.gateway_type === 'hyperpay' || gateway.gateway_type === 'bondpay')) {
+      // HYPER PAY Integration (formerly BondPay) - using gateway credentials
+      console.log('Using HYPER PAY gateway:', gateway.gateway_code)
+      gatewayId = gateway.id
+
+      const signature = generateBondPaySignature(
+        gateway.app_id,
+        amount.toString(),
+        orderNo,
+        gateway.api_key,
+        internalCallbackUrl
+      )
+
+      console.log('Calling HYPER PAY API:', `${gateway.base_url}/v1/create`)
+
+      const hpResponse = await fetch(`${gateway.base_url}/v1/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          merchant_id: gateway.app_id,
+          api_key: gateway.api_key,
+          amount: amount.toString(),
+          merchant_order_no: orderNo,
+          callback_url: internalCallbackUrl,
+          extra: merchant?.id || link.merchant_id,
+          signature: signature
+        })
+      })
+
+      const hpData = await hpResponse.json()
+      console.log('HYPER PAY response:', hpData)
+
+      if (hpData.payment_url) {
+        paymentUrl = hpData.payment_url
+        gatewayOrderNo = hpData.order_no
+      } else {
+        console.error('HYPER PAY error:', hpData)
+        return new Response(
+          JSON.stringify({ error: hpData.message || 'Gateway error' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
     } else {
-      // BondPay Integration (default)
-      console.log('Using BondPay gateway (default)')
+      // Fallback to admin BondPay settings (legacy)
+      console.log('Using fallback BondPay settings (no gateway assigned)')
 
       // Get admin settings for BondPay credentials
       const { data: settings, error: settingsError } = await supabaseAdmin
@@ -261,8 +304,16 @@ Deno.serve(async (req) => {
       const bondPayData = await bondPayResponse.json()
       console.log('BondPay response:', bondPayData)
 
-      paymentUrl = bondPayData.payment_url
-      gatewayOrderNo = bondPayData.order_no
+      if (bondPayData.payment_url) {
+        paymentUrl = bondPayData.payment_url
+        gatewayOrderNo = bondPayData.order_no
+      } else {
+        console.error('BondPay error:', bondPayData)
+        return new Response(
+          JSON.stringify({ error: bondPayData.message || 'Gateway error' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
     }
 
     // Create transaction record
