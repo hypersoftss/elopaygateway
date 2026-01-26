@@ -44,37 +44,44 @@ export const useMerchantCurrency = (): MerchantCurrencyData => {
       }
 
       try {
-        const { data: merchant, error } = await supabase
+        // First get the merchant's gateway_id and trade_type
+        const { data: merchant, error: merchantError } = await supabase
           .from('merchants')
-          .select(`
-            trade_type,
-            payment_gateways (
-              gateway_type,
-              currency
-            )
-          `)
+          .select('gateway_id, trade_type')
           .eq('id', user.merchantId)
           .single();
 
-        if (error) throw error;
+        if (merchantError) throw merchantError;
 
-        if (merchant?.payment_gateways) {
-          const gateway = merchant.payment_gateways as unknown as { gateway_type: string; currency: string };
-          const currency = gateway.currency || 'INR';
-          const symbol = CURRENCY_SYMBOLS[currency] || '₹';
-          const flag = CURRENCY_FLAGS[currency] || '🇮🇳';
-          setData({
-            currency,
-            currencySymbol: symbol,
-            currencyFlag: flag,
-            currencyWithFlag: `${flag} ${symbol}`,
-            gatewayType: gateway.gateway_type,
-            tradeType: merchant.trade_type,
-            isLoading: false,
-          });
-        } else {
-          setData(prev => ({ ...prev, isLoading: false }));
+        if (merchant?.gateway_id) {
+          // Then get the gateway details
+          const { data: gateway, error: gatewayError } = await supabase
+            .from('payment_gateways')
+            .select('gateway_type, currency')
+            .eq('id', merchant.gateway_id)
+            .single();
+
+          if (gatewayError) throw gatewayError;
+
+          if (gateway) {
+            const currency = gateway.currency || 'INR';
+            const symbol = CURRENCY_SYMBOLS[currency] || '₹';
+            const flag = CURRENCY_FLAGS[currency] || '🇮🇳';
+            setData({
+              currency,
+              currencySymbol: symbol,
+              currencyFlag: flag,
+              currencyWithFlag: `${flag} ${symbol}`,
+              gatewayType: gateway.gateway_type,
+              tradeType: merchant.trade_type,
+              isLoading: false,
+            });
+            return;
+          }
         }
+
+        // Fallback to INR if no gateway found
+        setData(prev => ({ ...prev, isLoading: false }));
       } catch (error) {
         console.error('Error fetching merchant currency:', error);
         setData(prev => ({ ...prev, isLoading: false }));
