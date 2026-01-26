@@ -57,26 +57,25 @@ const MerchantSecurity = () => {
       if (!user?.merchantId) return;
       
       try {
-        // Fetch merchant data
+        // Fetch merchant data - check for hashed password
         const { data, error } = await supabase
           .from('merchants')
-          .select('withdrawal_password, is_2fa_enabled, google_2fa_secret, merchant_name')
+          .select('withdrawal_password_hash, withdrawal_password, is_2fa_enabled, google_2fa_secret, merchant_name')
           .eq('id', user.merchantId)
           .single();
 
         if (error) throw error;
-        setHasWithdrawalPassword(!!data.withdrawal_password);
+        // Has password if either hash or legacy plaintext exists
+        setHasWithdrawalPassword(!!(data.withdrawal_password_hash || data.withdrawal_password));
         setIs2FAEnabled(!!data.is_2fa_enabled);
         setMerchantName(data.merchant_name || 'Merchant');
 
-        // Fetch gateway name from admin_settings
-        const { data: settingsData } = await supabase
-          .from('admin_settings')
-          .select('gateway_name')
-          .limit(1);
+        // Fetch gateway name using secure RPC function
+        const { data: brandingData } = await supabase.rpc('get_gateway_branding' as any);
         
-        if (settingsData && settingsData.length > 0) {
-          setGatewayName(settingsData[0].gateway_name || 'PayGate');
+        if (brandingData) {
+          const branding = Array.isArray(brandingData) ? brandingData[0] : brandingData;
+          setGatewayName(branding?.gateway_name || 'PayGate');
         }
       } catch (error) {
         console.error('Error fetching settings:', error);
@@ -231,12 +230,17 @@ const MerchantSecurity = () => {
 
     setIsSaving(true);
     try {
-      const { error } = await supabase
-        .from('merchants')
-        .update({ withdrawal_password: withdrawalForm.password })
-        .eq('id', user.merchantId);
+      // Use edge function to securely hash and store password
+      const { data, error } = await supabase.functions.invoke('verify-withdrawal-password', {
+        body: {
+          merchantId: user.merchantId,
+          password: withdrawalForm.password,
+          action: 'set'
+        }
+      });
 
       if (error) throw error;
+      if (!data.success) throw new Error(data.error || 'Failed to set password');
 
       setHasWithdrawalPassword(true);
       toast({ title: t('common.success'), description: language === 'zh' ? '提现密码已设置' : 'Withdrawal password set successfully' });
@@ -244,7 +248,7 @@ const MerchantSecurity = () => {
     } catch (error: any) {
       toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
     } finally {
-    setIsSaving(false);
+      setIsSaving(false);
     }
   };
 
