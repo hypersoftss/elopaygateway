@@ -16,19 +16,34 @@ interface HealthCheckResult {
 // Store last known status to prevent duplicate alerts
 let lastAlertStatus: 'online' | 'offline' | 'slow' | null = null
 let lastAlertTime: number = 0
+let lastReportTime: number = 0
 const ALERT_COOLDOWN_MS = 5 * 60 * 1000 // 5 minutes between same alerts
+const REPORT_INTERVAL_MS = 5 * 60 * 60 * 1000 // 5 hours between regular status reports
 
 async function sendTelegramAlert(
   result: HealthCheckResult,
   adminChatId: string,
   botToken: string,
-  responseThreshold: number
+  responseThreshold: number,
+  isScheduledReport: boolean = false
 ) {
   let emoji = ''
   let title = ''
   let details = ''
+  const now = Date.now()
 
-  if (result.status === 'offline') {
+  if (isScheduledReport && result.status === 'online') {
+    // Scheduled 5-hour status report
+    emoji = '📊'
+    title = 'SERVER STATUS REPORT'
+    details = `✅ Server is running normally\n` +
+      `🌐 Domain: ${result.domain}\n` +
+      `⏱️ Response Time: ${result.responseTime}ms\n` +
+      `📊 Threshold: ${responseThreshold}ms`
+    
+    // Update last report time
+    lastReportTime = now
+  } else if (result.status === 'offline') {
     emoji = '🔴'
     title = 'SERVER OFFLINE ALERT'
     details = `❌ Server is not responding!\n` +
@@ -41,21 +56,20 @@ async function sendTelegramAlert(
       `🌐 Domain: ${result.domain}\n` +
       `⏱️ Response Time: ${result.responseTime}ms\n` +
       `📊 Threshold: ${responseThreshold}ms`
-  } else if (result.status === 'online' && lastAlertStatus !== 'online') {
-    // Server recovered
+  } else if (result.status === 'online' && lastAlertStatus !== 'online' && lastAlertStatus !== null) {
+    // Server recovered from offline/slow
     emoji = '🟢'
     title = 'SERVER RECOVERED'
     details = `✅ Server is back online!\n` +
       `🌐 Domain: ${result.domain}\n` +
       `⏱️ Response Time: ${result.responseTime}ms`
-  } else {
+  } else if (!isScheduledReport) {
     // Online and was already online, no alert needed
     return
   }
 
-  // Check cooldown to prevent spam
-  const now = Date.now()
-  if (result.status === lastAlertStatus && (now - lastAlertTime) < ALERT_COOLDOWN_MS) {
+  // Check cooldown to prevent spam (only for error alerts, not scheduled reports)
+  if (!isScheduledReport && result.status === lastAlertStatus && (now - lastAlertTime) < ALERT_COOLDOWN_MS) {
     console.log('Skipping alert due to cooldown')
     return
   }
@@ -76,9 +90,11 @@ async function sendTelegramAlert(
     })
 
     if (response.ok) {
-      console.log(`Alert sent: ${result.status}`)
+      console.log(`Alert sent: ${result.status} (scheduled: ${isScheduledReport})`)
       lastAlertStatus = result.status
-      lastAlertTime = now
+      if (!isScheduledReport) {
+        lastAlertTime = now
+      }
     } else {
       console.error('Failed to send Telegram alert:', await response.text())
     }
@@ -188,8 +204,22 @@ Deno.serve(async (req) => {
 
     // Send Telegram alert if needed
     if (botToken && adminChatId) {
-      if (result.status !== 'online' || lastAlertStatus !== 'online') {
-        await sendTelegramAlert(result, adminChatId, botToken, responseThreshold)
+      const now = Date.now()
+      const timeSinceLastReport = now - lastReportTime
+      const shouldSendScheduledReport = result.status === 'online' && timeSinceLastReport >= REPORT_INTERVAL_MS
+
+      if (result.status !== 'online') {
+        // Send immediate alert for offline/slow
+        await sendTelegramAlert(result, adminChatId, botToken, responseThreshold, false)
+      } else if (lastAlertStatus !== 'online' && lastAlertStatus !== null) {
+        // Server recovered - send recovery alert
+        await sendTelegramAlert(result, adminChatId, botToken, responseThreshold, false)
+      } else if (shouldSendScheduledReport) {
+        // Send scheduled 5-hour status report
+        console.log(`Sending scheduled status report (last report: ${timeSinceLastReport / 1000 / 60 / 60} hours ago)`)
+        await sendTelegramAlert(result, adminChatId, botToken, responseThreshold, true)
+      } else {
+        console.log(`Server online. Next report in ${Math.round((REPORT_INTERVAL_MS - timeSinceLastReport) / 1000 / 60)} minutes`)
       }
     } else {
       console.log('Telegram alerts not configured - missing bot token or admin chat ID')
