@@ -82,6 +82,69 @@ Deno.serve(async (req) => {
       );
     }
 
+    if (action === 'delete') {
+      if (!merchantId || !userId) {
+        return new Response(
+          JSON.stringify({ error: 'Missing merchantId or userId' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Delete all related data first
+      // 1. Delete transactions
+      await supabase
+        .from('transactions')
+        .delete()
+        .eq('merchant_id', merchantId);
+
+      // 2. Delete admin notifications
+      await supabase
+        .from('admin_notifications')
+        .delete()
+        .eq('merchant_id', merchantId);
+
+      // 3. Delete payment links
+      await supabase
+        .from('payment_links')
+        .delete()
+        .eq('merchant_id', merchantId);
+
+      // 4. Delete merchant record
+      const { error: merchantError } = await supabase
+        .from('merchants')
+        .delete()
+        .eq('id', merchantId);
+
+      if (merchantError) {
+        console.error('Merchant delete error:', merchantError);
+        return new Response(
+          JSON.stringify({ error: merchantError.message }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // 5. Delete user role
+      await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', userId);
+
+      // 6. Delete auth user
+      const { error: authDeleteError } = await supabase.auth.admin.deleteUser(userId);
+
+      if (authDeleteError) {
+        console.error('Auth user delete error:', authDeleteError);
+        // Continue anyway, merchant data is already deleted
+      }
+
+      console.log(`Merchant ${merchantId} deleted successfully`);
+
+      return new Response(
+        JSON.stringify({ success: true, message: 'Merchant deleted successfully' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     return new Response(
       JSON.stringify({ error: 'Invalid action' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

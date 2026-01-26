@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, MoreHorizontal, RefreshCw, Power, Eye, EyeOff, Copy, Download, Users, TrendingUp, Wallet, Shield, ShieldOff, KeyRound, Lock, RotateCcw, Edit } from 'lucide-react';
+import { Plus, Search, MoreHorizontal, RefreshCw, Power, Eye, EyeOff, Copy, Download, Users, TrendingUp, Wallet, Shield, ShieldOff, KeyRound, Lock, RotateCcw, Edit, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -358,6 +358,48 @@ const AdminMerchants = () => {
       });
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleDeleteMerchant = async (merchant: Merchant) => {
+    if (!confirm(language === 'zh' 
+      ? `确定删除商户 "${merchant.merchant_name}" 吗？此操作不可撤销！` 
+      : `Are you sure you want to delete "${merchant.merchant_name}"? This action cannot be undone!`)) {
+      return;
+    }
+
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-update-merchant`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.session?.access_token}`,
+          },
+          body: JSON.stringify({
+            merchantId: merchant.id,
+            userId: merchant.user_id,
+            action: 'delete',
+          }),
+        }
+      );
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+
+      toast({
+        title: t('common.success'),
+        description: language === 'zh' ? '商户已删除' : 'Merchant deleted successfully',
+      });
+      fetchMerchants();
+    } catch (err: any) {
+      toast({
+        title: t('common.error'),
+        description: err.message,
+        variant: 'destructive',
+      });
     }
   };
 
@@ -784,6 +826,14 @@ const AdminMerchants = () => {
                             <DropdownMenuItem onClick={() => copyToClipboard(merchant.payout_key, 'Payout Key')}>
                               <Copy className="h-4 w-4 mr-2" />
                               {language === 'zh' ? '复制提现密钥' : 'Copy Payout Key'}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteMerchant(merchant)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              {language === 'zh' ? '删除商户' : 'Delete Merchant'}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>

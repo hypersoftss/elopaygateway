@@ -82,7 +82,7 @@ const AdminGatewaysPage = () => {
   const [newGateway, setNewGateway] = useState({
     gateway_code: '',
     gateway_name: '',
-    gateway_type: 'lgpay',
+    gateway_type: 'hypersofts',
     base_url: 'https://www.lg-pay.com',
     app_id: '',
     api_key: '',
@@ -109,7 +109,7 @@ const AdminGatewaysPage = () => {
   const handleSaveGateway = async () => {
     try {
       // For HYPER SOFTS, payout_key is same as api_key
-      const payoutKey = newGateway.gateway_type === 'lgpay' 
+      const payoutKey = newGateway.gateway_type === 'hypersofts' 
         ? newGateway.api_key 
         : (newGateway.payout_key || null);
 
@@ -170,7 +170,7 @@ const AdminGatewaysPage = () => {
     setNewGateway({
       gateway_code: '',
       gateway_name: '',
-      gateway_type: 'lgpay',
+      gateway_type: 'hypersofts',
       base_url: 'https://www.lg-pay.com',
       app_id: '',
       api_key: '',
@@ -334,7 +334,7 @@ const AdminGatewaysPage = () => {
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">
-                          {gateway.gateway_type === 'lgpay' ? 'HYPER SOFTS' : 'HYPER PAY'}
+                          {gateway.gateway_type === 'hypersofts' ? 'HYPER SOFTS' : 'HYPER PAY'}
                         </Badge>
                       </TableCell>
                       <TableCell>{gateway.currency}</TableCell>
@@ -466,7 +466,7 @@ const AdminGatewaysPage = () => {
                   value={newGateway.gateway_type}
                   onChange={(e) => setNewGateway(g => ({ ...g, gateway_type: e.target.value, trade_type: '' }))}
                 >
-                  <option value="lgpay">HYPER SOFTS</option>
+                  <option value="hypersofts">HYPER SOFTS</option>
                   <option value="hyperpay">HYPER PAY</option>
                 </select>
               </div>
@@ -524,7 +524,7 @@ const AdminGatewaysPage = () => {
                 onChange={(e) => setNewGateway(g => ({ ...g, api_key: e.target.value }))}
                 placeholder="Enter API Key"
               />
-              {newGateway.gateway_type === 'lgpay' && (
+              {newGateway.gateway_type === 'hypersofts' && (
                 <p className="text-xs text-muted-foreground">
                   {language === 'zh' ? 'HYPER SOFTS使用相同的密钥进行收款和付款' : 'HYPER SOFTS uses the same key for payin and payout'}
                 </p>

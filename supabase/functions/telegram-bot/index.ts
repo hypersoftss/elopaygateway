@@ -218,8 +218,11 @@ Deno.serve(async (req) => {
         const status = m.is_active ? '✅ Active' : '❌ Inactive'
         const twoFa = m.is_2fa_enabled ? '🔐 Enabled' : '🔓 Disabled'
         const total = (m.balance || 0) + (m.frozen_balance || 0)
+        const currency = m.payment_gateways?.currency || 'INR'
+        const gatewayType = m.payment_gateways?.gateway_code?.startsWith('hypersofts') ? 'HYPER SOFTS' : 
+                           m.payment_gateways?.gateway_code?.startsWith('hyperpay') ? 'HYPER PAY' : 'Default'
         const gatewayDisplay = m.payment_gateways 
-          ? `${m.payment_gateways.gateway_name} (${m.payment_gateways.currency})`
+          ? `${gatewayType} (${currency})`
           : 'Default'
 
         const msg = `👤 <b>My Account</b>\n\n` +
@@ -229,10 +232,10 @@ Deno.serve(async (req) => {
           `📊 Status: ${status}\n` +
           `🔐 2FA: ${twoFa}\n` +
           `🌐 Gateway: ${gatewayDisplay}\n\n` +
-          `━━━ 💰 BALANCE ━━━\n` +
-          `💵 Available: ${formatINR(m.balance || 0)}\n` +
-          `🧊 Frozen: ${formatINR(m.frozen_balance || 0)}\n` +
-          `📊 Total: ${formatINR(total)}\n\n` +
+          `━━━ 💰 BALANCE (${currency}) ━━━\n` +
+          `💵 Available: ${formatAmount(m.balance || 0, currency)}\n` +
+          `🧊 Frozen: ${formatAmount(m.frozen_balance || 0, currency)}\n` +
+          `📊 Total: ${formatAmount(total, currency)}\n\n` +
           `━━━ 💳 FEES ━━━\n` +
           `📥 Payin: ${m.payin_fee}%\n` +
           `📤 Payout: ${m.payout_fee}%\n\n` +
@@ -246,12 +249,13 @@ Deno.serve(async (req) => {
       if (command === '/mybalance' || command === '/bal') {
         const m = merchantByChat
         const total = (m.balance || 0) + (m.frozen_balance || 0)
+        const currency = m.payment_gateways?.currency || 'INR'
         
-        const msg = `💰 <b>${m.merchant_name}</b>\n\n` +
-          `💵 Available: ${formatINR(m.balance || 0)}\n` +
-          `🧊 Frozen: ${formatINR(m.frozen_balance || 0)}\n` +
+        const msg = `💰 <b>${m.merchant_name}</b> (${currency})\n\n` +
+          `💵 Available: ${formatAmount(m.balance || 0, currency)}\n` +
+          `🧊 Frozen: ${formatAmount(m.frozen_balance || 0, currency)}\n` +
           `━━━━━━━━━━━━━━━━━━\n` +
-          `📊 Total: ${formatINR(total)}`
+          `📊 Total: ${formatAmount(total, currency)}`
 
         await sendMessage(botToken, chatId, msg)
         return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
@@ -564,12 +568,13 @@ Deno.serve(async (req) => {
         // Get available gateways
         const { data: availableGateways } = await supabaseAdmin
           .from('payment_gateways')
-          .select('gateway_code, gateway_name, currency')
+          .select('gateway_code, gateway_name, currency, gateway_type')
           .eq('is_active', true)
         
         let gatewayList = 'Available gateways:\n'
         availableGateways?.forEach(g => {
-          gatewayList += `• <code>${g.gateway_code}</code> - ${g.gateway_name} (${g.currency})\n`
+          const typeLabel = g.gateway_code?.startsWith('hypersofts') ? 'HYPER SOFTS' : 'HYPER PAY'
+          gatewayList += `• <code>${g.gateway_code}</code> - ${typeLabel} (${g.currency})\n`
         })
         
         await sendMessage(botToken, chatId, 
@@ -678,13 +683,14 @@ Deno.serve(async (req) => {
       })
 
       // Send confirmation to admin
+      const gatewayTypeLabel = gatewayInfo ? (gatewayCode?.startsWith('hypersofts') ? 'HYPER SOFTS' : 'HYPER PAY') : 'Default'
       const adminMsg = `✅ <b>Merchant Created Successfully!</b>\n\n` +
         `━━━━━━━━━━━━━━━━━━\n` +
         `👤 Name: ${merchantName}\n` +
         `📧 Email: <code>${email}</code>\n` +
         `🆔 Account: <code>${accountNum}</code>\n` +
         `📱 Telegram: <code>${groupId}</code>\n` +
-        `🌐 Gateway: ${gatewayInfo ? `${gatewayInfo.gateway_name} (${gatewayInfo.currency})` : 'Not Set'}\n` +
+        `🌐 Gateway: ${gatewayInfo ? `${gatewayTypeLabel} (${gatewayInfo.currency})` : 'Not Set'}\n` +
         `🔗 Callback: ${callbackUrl || 'Not Set'}\n` +
         `💳 Payin: ${merchant.payin_fee}%\n` +
         `💸 Payout: ${merchant.payout_fee}%\n` +
@@ -694,12 +700,13 @@ Deno.serve(async (req) => {
       await sendMessage(botToken, chatId, adminMsg)
 
       // Send credentials to merchant's group
+      const merchantGatewayLabel = gatewayInfo ? (gatewayCode?.startsWith('hypersofts') ? 'HYPER SOFTS' : 'HYPER PAY') : 'Default'
       const merchantMsg = `🎉 <b>Welcome to ${gatewayName}!</b>\n\n` +
         `Your merchant account has been created.\n\n` +
         `━━━ 📋 ACCOUNT DETAILS ━━━\n` +
         `👤 Name: ${merchantName}\n` +
         `🆔 Merchant ID: <code>${accountNum}</code>\n` +
-        `🌐 Gateway: ${gatewayInfo ? `${gatewayInfo.gateway_name} (${gatewayInfo.currency})` : 'Default'}\n\n` +
+        `🌐 Gateway: ${gatewayInfo ? `${merchantGatewayLabel} (${gatewayInfo.currency})` : 'Default'}\n\n` +
         `━━━ 🔐 LOGIN CREDENTIALS ━━━\n` +
         `📧 Email: <code>${email}</code>\n` +
         `🔑 Password: <code>${password}</code>\n\n` +
@@ -805,8 +812,11 @@ Deno.serve(async (req) => {
 
       const status = merchant.is_active ? '✅ Active' : '❌ Inactive'
       const twoFa = merchant.is_2fa_enabled ? '🔐 Enabled' : '🔓 Disabled'
+      const currency = merchant.payment_gateways?.currency || 'INR'
+      const gatewayType = merchant.payment_gateways?.gateway_code?.startsWith('hypersofts') ? 'HYPER SOFTS' : 
+                         merchant.payment_gateways?.gateway_code?.startsWith('hyperpay') ? 'HYPER PAY' : 'Default'
       const gatewayDisplay = merchant.payment_gateways 
-        ? `${merchant.payment_gateways.gateway_name} (${merchant.payment_gateways.currency})`
+        ? `${gatewayType} (${currency})`
         : 'Not Set'
 
       const msg = `👤 <b>Merchant Details</b>\n\n` +
@@ -816,10 +826,10 @@ Deno.serve(async (req) => {
         `📊 Status: ${status}\n` +
         `🔐 2FA: ${twoFa}\n` +
         `🌐 Gateway: ${gatewayDisplay}\n\n` +
-        `━━━ 💰 BALANCE ━━━\n` +
-        `💵 Available: ${formatINR(merchant.balance || 0)}\n` +
-        `🧊 Frozen: ${formatINR(merchant.frozen_balance || 0)}\n` +
-        `📊 Total: ${formatINR((merchant.balance || 0) + (merchant.frozen_balance || 0))}\n\n` +
+        `━━━ 💰 BALANCE (${currency}) ━━━\n` +
+        `💵 Available: ${formatAmount(merchant.balance || 0, currency)}\n` +
+        `🧊 Frozen: ${formatAmount(merchant.frozen_balance || 0, currency)}\n` +
+        `📊 Total: ${formatAmount((merchant.balance || 0) + (merchant.frozen_balance || 0), currency)}\n\n` +
         `━━━ 💳 FEES ━━━\n` +
         `📥 Payin: ${merchant.payin_fee}%\n` +
         `📤 Payout: ${merchant.payout_fee}%\n\n` +
