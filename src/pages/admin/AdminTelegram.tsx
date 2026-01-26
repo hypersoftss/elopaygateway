@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Send, Eye, EyeOff, MessageSquare, Terminal, Users, Wallet, Shield, Info } from 'lucide-react';
+import { Send, Eye, EyeOff, MessageSquare, Terminal, Users, Wallet, Shield, Info, Play, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,9 +9,272 @@ import { DashboardLayout } from '@/components/DashboardLayout';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useTranslation } from '@/lib/i18n';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+
+// Telegram Bot Tester Component
+const TelegramBotTester = ({ botToken }: { botToken: string | null }) => {
+  const { language } = useTranslation();
+  const { toast } = useToast();
+  const [testChatId, setTestChatId] = useState('');
+  const [testCommand, setTestCommand] = useState('/help');
+  const [testResponse, setTestResponse] = useState<string>('');
+  const [isTesting, setIsTesting] = useState(false);
+  const [testHistory, setTestHistory] = useState<{ command: string; response: string; status: 'success' | 'error'; time: string }[]>([]);
+
+  const quickCommands = [
+    { cmd: '/help', desc: 'Show help menu' },
+    { cmd: '/tg_id', desc: 'Get chat ID' },
+    { cmd: '/merchants', desc: 'List merchants (Admin)' },
+    { cmd: '/pending', desc: 'Pending transactions' },
+    { cmd: '/stats', desc: 'System statistics' },
+    { cmd: '/top', desc: 'Top merchants' },
+    { cmd: '/setmenu', desc: 'Setup bot menu' },
+  ];
+
+  const handleTest = async () => {
+    if (!botToken) {
+      toast({
+        title: language === 'zh' ? '错误' : 'Error',
+        description: language === 'zh' ? '请先配置 Bot Token' : 'Please configure Bot Token first',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!testChatId) {
+      toast({
+        title: language === 'zh' ? '错误' : 'Error',
+        description: language === 'zh' ? '请输入 Chat ID' : 'Please enter Chat ID',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsTesting(true);
+    setTestResponse('');
+
+    try {
+      // Simulate sending message to the bot by calling our edge function
+      const { data: session } = await supabase.auth.getSession();
+      
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/telegram-bot`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.session?.access_token}`,
+          },
+          body: JSON.stringify({
+            message: {
+              chat: { id: parseInt(testChatId), type: 'group' },
+              text: testCommand,
+              from: { id: 0, first_name: 'Admin Test' }
+            }
+          }),
+        }
+      );
+
+      const result = await response.json();
+      
+      const resultStr = JSON.stringify(result, null, 2);
+      setTestResponse(resultStr);
+      
+      const historyItem = {
+        command: testCommand,
+        response: result.ok ? 'Command executed successfully' : (result.error || 'Unknown error'),
+        status: (result.ok ? 'success' : 'error') as 'success' | 'error',
+        time: new Date().toLocaleTimeString(),
+      };
+      
+      setTestHistory(prev => [historyItem, ...prev].slice(0, 10));
+
+      toast({
+        title: result.ok ? (language === 'zh' ? '成功' : 'Success') : (language === 'zh' ? '错误' : 'Error'),
+        description: result.ok 
+          ? (language === 'zh' ? '命令已执行' : 'Command executed') 
+          : (result.error || 'Failed'),
+        variant: result.ok ? 'default' : 'destructive',
+      });
+    } catch (err: any) {
+      setTestResponse(`Error: ${err.message}`);
+      setTestHistory(prev => [{
+        command: testCommand,
+        response: err.message,
+        status: 'error' as 'success' | 'error',
+        time: new Date().toLocaleTimeString(),
+      }, ...prev].slice(0, 10));
+      
+      toast({
+        title: language === 'zh' ? '错误' : 'Error',
+        description: err.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  const handleGetBotInfo = async () => {
+    if (!botToken) return;
+    setIsTesting(true);
+    try {
+      const response = await fetch(`https://api.telegram.org/bot${botToken}/getMe`);
+      const result = await response.json();
+      setTestResponse(JSON.stringify(result, null, 2));
+    } catch (err: any) {
+      setTestResponse(`Error: ${err.message}`);
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  const handleGetUpdates = async () => {
+    if (!botToken) return;
+    setIsTesting(true);
+    try {
+      const response = await fetch(`https://api.telegram.org/bot${botToken}/getWebhookInfo`);
+      const result = await response.json();
+      setTestResponse(JSON.stringify(result, null, 2));
+    } catch (err: any) {
+      setTestResponse(`Error: ${err.message}`);
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      {/* Test Panel */}
+      <Card className="border-border">
+        <CardHeader className="bg-gradient-to-r from-purple-500/10 to-transparent border-b">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-purple-500/20">
+              <Play className="h-5 w-5 text-purple-500" />
+            </div>
+            <div>
+              <CardTitle className="text-base">{language === 'zh' ? '命令测试' : 'Command Tester'}</CardTitle>
+              <CardDescription>{language === 'zh' ? '模拟发送命令到 Bot' : 'Simulate sending commands to Bot'}</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-6 space-y-4">
+          {/* Chat ID Input */}
+          <div className="space-y-2">
+            <Label>{language === 'zh' ? '目标 Chat ID' : 'Target Chat ID'}</Label>
+            <Input
+              value={testChatId}
+              onChange={(e) => setTestChatId(e.target.value)}
+              placeholder="-1001234567890"
+              className="font-mono"
+            />
+            <p className="text-xs text-muted-foreground">
+              {language === 'zh' ? '输入要模拟的 Chat ID (Admin 或 Merchant 群组)' : 'Enter Chat ID to simulate (Admin or Merchant group)'}
+            </p>
+          </div>
+
+          {/* Command Input */}
+          <div className="space-y-2">
+            <Label>{language === 'zh' ? '命令' : 'Command'}</Label>
+            <Input
+              value={testCommand}
+              onChange={(e) => setTestCommand(e.target.value)}
+              placeholder="/help"
+              className="font-mono"
+            />
+          </div>
+
+          {/* Quick Commands */}
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">{language === 'zh' ? '快捷命令' : 'Quick Commands'}</Label>
+            <div className="flex flex-wrap gap-2">
+              {quickCommands.map((qc) => (
+                <Button
+                  key={qc.cmd}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setTestCommand(qc.cmd)}
+                  className="text-xs font-mono"
+                >
+                  {qc.cmd}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-2">
+            <Button onClick={handleTest} disabled={isTesting} className="flex-1">
+              {isTesting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+              {language === 'zh' ? '执行命令' : 'Execute'}
+            </Button>
+            <Button variant="outline" onClick={handleGetBotInfo} disabled={isTesting}>
+              {language === 'zh' ? 'Bot 信息' : 'Bot Info'}
+            </Button>
+            <Button variant="outline" onClick={handleGetUpdates} disabled={isTesting}>
+              Webhook
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Response Panel */}
+      <Card className="border-border">
+        <CardHeader className="bg-gradient-to-r from-green-500/10 to-transparent border-b">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-green-500/20">
+              <Terminal className="h-5 w-5 text-green-500" />
+            </div>
+            <div>
+              <CardTitle className="text-base">{language === 'zh' ? '响应输出' : 'Response Output'}</CardTitle>
+              <CardDescription>{language === 'zh' ? 'Bot 返回的结果' : 'Results from Bot'}</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-6 space-y-4">
+          {/* Response Area */}
+          <div className="space-y-2">
+            <Label>{language === 'zh' ? '响应' : 'Response'}</Label>
+            <Textarea
+              value={testResponse}
+              readOnly
+              className="font-mono text-xs h-40 bg-muted/50"
+              placeholder={language === 'zh' ? '响应将显示在这里...' : 'Response will appear here...'}
+            />
+          </div>
+
+          {/* History */}
+          {testHistory.length > 0 && (
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">{language === 'zh' ? '历史记录' : 'History'}</Label>
+              <ScrollArea className="h-32 rounded-md border">
+                <div className="p-2 space-y-2">
+                  {testHistory.map((item, i) => (
+                    <div key={i} className="flex items-center gap-2 text-xs p-2 rounded bg-muted/50">
+                      {item.status === 'success' ? (
+                        <CheckCircle2 className="h-3 w-3 text-green-500 shrink-0" />
+                      ) : (
+                        <AlertCircle className="h-3 w-3 text-red-500 shrink-0" />
+                      )}
+                      <code className="text-primary">{item.command}</code>
+                      <span className="text-muted-foreground">-</span>
+                      <span className="truncate flex-1">{item.response}</span>
+                      <span className="text-muted-foreground shrink-0">{item.time}</span>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
 
 interface TelegramSettings {
   telegram_bot_token: string | null;
@@ -159,10 +422,14 @@ const AdminTelegram = () => {
         </div>
 
         <Tabs defaultValue="config" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="config" className="flex items-center gap-2">
               <Terminal className="h-4 w-4" />
               <span>{language === 'zh' ? '配置' : 'Configuration'}</span>
+            </TabsTrigger>
+            <TabsTrigger value="testing" className="flex items-center gap-2">
+              <Send className="h-4 w-4" />
+              <span>{language === 'zh' ? '测试' : 'Testing'}</span>
             </TabsTrigger>
             <TabsTrigger value="commands" className="flex items-center gap-2">
               <Info className="h-4 w-4" />
@@ -273,6 +540,11 @@ const AdminTelegram = () => {
                 </Alert>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Testing Tab */}
+          <TabsContent value="testing" className="space-y-6">
+            <TelegramBotTester botToken={settings?.telegram_bot_token} />
           </TabsContent>
 
           {/* Commands Tab */}

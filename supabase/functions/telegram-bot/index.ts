@@ -559,10 +559,10 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // ============ CREATE MERCHANT (with callback_url and gateway support) ============
+    // ============ CREATE MERCHANT (with fees and gateway support) ============
     if (command === '/create_merchant') {
-      // Parse: /create_merchant "Name" email group_id [gateway_code] [callback_url]
-      const match = text.match(/\/create_merchant\s+"([^"]+)"\s+(\S+)\s+(-?\d+)(?:\s+(\S+))?(?:\s+(\S+))?/i)
+      // Parse: /create_merchant "Name" email group_id [gateway_code] [payin_fee] [payout_fee] [callback_url]
+      const match = text.match(/\/create_merchant\s+"([^"]+)"\s+(\S+)\s+(-?\d+)(?:\s+(\S+))?(?:\s+([\d.]+))?(?:\s+([\d.]+))?(?:\s+(\S+))?/i)
       
       if (!match) {
         // Get available gateways
@@ -579,16 +579,22 @@ Deno.serve(async (req) => {
         
         await sendMessage(botToken, chatId, 
           `❌ <b>Invalid Format</b>\n\n` +
-          `Usage:\n` +
-          `<code>/create_merchant "Merchant Name" email@example.com -1001234567890 gateway_code</code>\n\n` +
-          `With callback URL:\n` +
-          `<code>/create_merchant "Merchant Name" email@example.com -1001234567890 gateway_code https://callback.url/api</code>\n\n` +
+          `<b>Basic Usage:</b>\n` +
+          `<code>/create_merchant "Name" email group_id gateway_code</code>\n\n` +
+          `<b>With Custom Fees:</b>\n` +
+          `<code>/create_merchant "Name" email group_id gateway_code payin% payout%</code>\n\n` +
+          `<b>Full Command:</b>\n` +
+          `<code>/create_merchant "Name" email group_id gateway_code payin% payout% callback_url</code>\n\n` +
+          `<b>Example:</b>\n` +
+          `<code>/create_merchant "Test Shop" test@email.com -1001234 hypersofts_bdt 8.5 3.5 https://api.test.com/callback</code>\n\n` +
           `<b>Parameters:</b>\n` +
           `• Name: In quotes "..."\n` +
           `• Email: Valid email address\n` +
-          `• Group ID: Telegram group ID (use /tg_id in group)\n` +
-          `• Gateway Code: Payment gateway to use\n` +
-          `• Callback URL: Optional API callback endpoint\n\n` +
+          `• Group ID: Telegram group ID (use /tg_id)\n` +
+          `• Gateway: Payment gateway code\n` +
+          `• Payin Fee: (optional) e.g., 9.0\n` +
+          `• Payout Fee: (optional) e.g., 4.0\n` +
+          `• Callback URL: (optional) API endpoint\n\n` +
           `${gatewayList}`
         )
         return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
@@ -598,7 +604,9 @@ Deno.serve(async (req) => {
       const email = match[2]
       const groupId = match[3]
       const gatewayCode = match[4] || null
-      const callbackUrl = match[5] || null
+      const customPayinFee = match[5] ? parseFloat(match[5]) : null
+      const customPayoutFee = match[6] ? parseFloat(match[6]) : null
+      const callbackUrl = match[7] || null
 
       // Validate email
       if (!email.includes('@') || !email.includes('.')) {
@@ -652,6 +660,10 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
       }
 
+      // Determine fees - custom if provided, otherwise defaults
+      const finalPayinFee = customPayinFee !== null ? customPayinFee : (adminSettings?.default_payin_fee || 9)
+      const finalPayoutFee = customPayoutFee !== null ? customPayoutFee : (adminSettings?.default_payout_fee || 4)
+
       // Create merchant
       const { data: merchant, error: merchantError } = await supabaseAdmin
         .from('merchants')
@@ -659,8 +671,8 @@ Deno.serve(async (req) => {
           user_id: authData.user.id,
           account_number: accountNum,
           merchant_name: merchantName,
-          payin_fee: adminSettings?.default_payin_fee || 9,
-          payout_fee: adminSettings?.default_payout_fee || 4,
+          payin_fee: finalPayinFee,
+          payout_fee: finalPayoutFee,
           telegram_chat_id: groupId,
           callback_url: callbackUrl,
           withdrawal_password: withdrawalPassword,

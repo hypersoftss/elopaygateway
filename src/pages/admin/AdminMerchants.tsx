@@ -101,6 +101,12 @@ const AdminMerchants = () => {
   const [newPassword, setNewPassword] = useState('');
   const [newWithdrawalPassword, setNewWithdrawalPassword] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
+  
+  // Extended edit fields
+  const [editPayinFee, setEditPayinFee] = useState('');
+  const [editPayoutFee, setEditPayoutFee] = useState('');
+  const [editGatewayId, setEditGatewayId] = useState('');
+  const [editTradeType, setEditTradeType] = useState('');
 
   const [gateways, setGateways] = useState<Gateway[]>([]);
   const [selectedMerchants, setSelectedMerchants] = useState<Set<string>>(new Set());
@@ -242,7 +248,78 @@ const AdminMerchants = () => {
     setEditingMerchant(merchant);
     setNewPassword('');
     setNewWithdrawalPassword('');
+    setEditPayinFee(merchant.payin_fee?.toString() || '9');
+    setEditPayoutFee(merchant.payout_fee?.toString() || '4');
+    setEditGatewayId(merchant.gateway_id || '');
+    setEditTradeType('');
     setIsEditOpen(true);
+  };
+
+  const handleUpdateFees = async () => {
+    if (!editingMerchant) return;
+    setIsUpdating(true);
+    try {
+      const { error } = await supabase
+        .from('merchants')
+        .update({ 
+          payin_fee: parseFloat(editPayinFee),
+          payout_fee: parseFloat(editPayoutFee)
+        })
+        .eq('id', editingMerchant.id);
+
+      if (error) throw error;
+
+      toast({
+        title: t('common.success'),
+        description: language === 'zh' ? '费率已更新' : 'Fees updated successfully',
+      });
+      setEditingMerchant({ ...editingMerchant, payin_fee: parseFloat(editPayinFee), payout_fee: parseFloat(editPayoutFee) });
+      fetchMerchants();
+    } catch (err: any) {
+      toast({
+        title: t('common.error'),
+        description: err.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleUpdateGateway = async () => {
+    if (!editingMerchant || !editGatewayId) return;
+    setIsUpdating(true);
+    try {
+      const updateData: any = { 
+        gateway_id: editGatewayId,
+      };
+      // Add trade type if selected
+      if (editTradeType) {
+        updateData.trade_type = editTradeType;
+      }
+      
+      const { error } = await supabase
+        .from('merchants')
+        .update(updateData)
+        .eq('id', editingMerchant.id);
+
+      if (error) throw error;
+
+      toast({
+        title: t('common.success'),
+        description: language === 'zh' ? '网关已更新' : 'Gateway updated successfully',
+      });
+      fetchMerchants();
+      setIsEditOpen(false);
+    } catch (err: any) {
+      toast({
+        title: t('common.error'),
+        description: err.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const handleResetPassword = async () => {
@@ -974,7 +1051,7 @@ const AdminMerchants = () => {
 
         {/* Edit Merchant Dialog */}
         <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Edit className="h-5 w-5" />
@@ -984,7 +1061,86 @@ const AdminMerchants = () => {
                 {editingMerchant?.merchant_name} ({editingMerchant?.account_number})
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-6">
+            <div className="space-y-4">
+              {/* Fees Section */}
+              <div className="space-y-3 p-4 rounded-lg bg-muted/50 border">
+                <div className="flex items-center gap-2">
+                  <Wallet className="h-4 w-4 text-green-500" />
+                  <Label className="font-medium">{language === 'zh' ? '费率设置' : 'Fee Settings'}</Label>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">{language === 'zh' ? '收款费率 (%)' : 'Payin Fee (%)'}</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      value={editPayinFee}
+                      onChange={(e) => setEditPayinFee(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">{language === 'zh' ? '提款费率 (%)' : 'Payout Fee (%)'}</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      value={editPayoutFee}
+                      onChange={(e) => setEditPayoutFee(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <Button onClick={handleUpdateFees} disabled={isUpdating} size="sm" className="w-full">
+                  {language === 'zh' ? '更新费率' : 'Update Fees'}
+                </Button>
+              </div>
+
+              {/* Gateway Assignment */}
+              <div className="space-y-3 p-4 rounded-lg bg-muted/50 border">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-blue-500" />
+                  <Label className="font-medium">{language === 'zh' ? '网关分配' : 'Gateway Assignment'}</Label>
+                </div>
+                <div className="space-y-3">
+                  <select
+                    className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                    value={editGatewayId}
+                    onChange={(e) => {
+                      setEditGatewayId(e.target.value);
+                      setEditTradeType('');
+                    }}
+                  >
+                    <option value="">{language === 'zh' ? '选择网关...' : 'Select gateway...'}</option>
+                    {gateways.map((gw) => (
+                      <option key={gw.id} value={gw.id}>
+                        {gw.gateway_name} ({gw.currency})
+                      </option>
+                    ))}
+                  </select>
+                  {/* Trade Type */}
+                  {(() => {
+                    const selectedGateway = gateways.find(g => g.id === editGatewayId);
+                    const tradeTypes = selectedGateway ? TRADE_TYPE_OPTIONS[selectedGateway.currency] || [] : [];
+                    if (tradeTypes.length === 0) return null;
+                    return (
+                      <select
+                        className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                        value={editTradeType}
+                        onChange={(e) => setEditTradeType(e.target.value)}
+                      >
+                        <option value="">{language === 'zh' ? '选择支付方式...' : 'Select trade type...'}</option>
+                        {tradeTypes.map((tt) => (
+                          <option key={tt.value} value={tt.value}>
+                            {tt.label}
+                          </option>
+                        ))}
+                      </select>
+                    );
+                  })()}
+                </div>
+                <Button onClick={handleUpdateGateway} disabled={isUpdating || !editGatewayId} size="sm" className="w-full">
+                  {language === 'zh' ? '更新网关' : 'Update Gateway'}
+                </Button>
+              </div>
+
               {/* Reset Login Password */}
               <div className="space-y-3 p-4 rounded-lg bg-muted/50 border">
                 <div className="flex items-center gap-2">
@@ -998,7 +1154,7 @@ const AdminMerchants = () => {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                   />
-                  <Button onClick={handleResetPassword} disabled={isUpdating || !newPassword}>
+                  <Button onClick={handleResetPassword} disabled={isUpdating || !newPassword} size="sm">
                     {language === 'zh' ? '重置' : 'Reset'}
                   </Button>
                 </div>
@@ -1017,7 +1173,7 @@ const AdminMerchants = () => {
                     value={newWithdrawalPassword}
                     onChange={(e) => setNewWithdrawalPassword(e.target.value)}
                   />
-                  <Button onClick={handleResetWithdrawalPassword} disabled={isUpdating || !newWithdrawalPassword}>
+                  <Button onClick={handleResetWithdrawalPassword} disabled={isUpdating || !newWithdrawalPassword} size="sm">
                     {language === 'zh' ? '重置' : 'Reset'}
                   </Button>
                 </div>
@@ -1028,21 +1184,17 @@ const AdminMerchants = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <RotateCcw className="h-4 w-4 text-destructive" />
-                    <Label className="font-medium">{language === 'zh' ? '重置双重认证 (2FA)' : 'Reset Two-Factor Auth (2FA)'}</Label>
+                    <Label className="font-medium">{language === 'zh' ? '重置双重认证' : 'Reset 2FA'}</Label>
                   </div>
                   <Badge variant={editingMerchant?.is_2fa_enabled ? 'default' : 'secondary'}>
                     {editingMerchant?.is_2fa_enabled ? '2FA ON' : '2FA OFF'}
                   </Badge>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  {language === 'zh' 
-                    ? '重置后商户需要重新设置2FA' 
-                    : 'After reset, merchant will need to set up 2FA again'}
-                </p>
                 <Button 
                   variant="destructive" 
                   onClick={handleReset2FA} 
                   disabled={isUpdating || !editingMerchant?.is_2fa_enabled}
+                  size="sm"
                   className="w-full"
                 >
                   <RotateCcw className="h-4 w-4 mr-2" />
