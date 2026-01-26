@@ -99,10 +99,10 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       label: language === 'zh' ? 'SDK文档' : 'SDK Documentation',
       icon: <BookOpen className="h-5 w-5" />,
       children: [
-        { label: 'ELOPAY GATEWAY', icon: <FileText className="h-4 w-4" />, href: '/admin/sdk/hyperpay-inr' },
-        { label: 'ELOPAY India', icon: <FileText className="h-4 w-4" />, href: '/admin/sdk/hypersofts-inr' },
-        { label: 'ELOPAY Pakistan', icon: <FileText className="h-4 w-4" />, href: '/admin/sdk/hypersofts-pkr' },
-        { label: 'ELOPAY Bangladesh', icon: <FileText className="h-4 w-4" />, href: '/admin/sdk/hypersofts-bdt' },
+        { label: 'ELOPAYGATEWAY_INR', icon: <FileText className="h-4 w-4" />, href: '/admin/sdk/hyperpay-inr' },
+        { label: 'ELOPAY_INR', icon: <FileText className="h-4 w-4" />, href: '/admin/sdk/hypersofts-inr' },
+        { label: 'ELOPAY_PKR', icon: <FileText className="h-4 w-4" />, href: '/admin/sdk/hypersofts-pkr' },
+        { label: 'ELOPAY_BDT', icon: <FileText className="h-4 w-4" />, href: '/admin/sdk/hypersofts-bdt' },
       ]
     },
     { label: language === 'zh' ? '活动日志' : 'Activity Logs', icon: <History className="h-5 w-5" />, href: '/admin/activity-logs' },
