@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, Settings, Percent, Eye, EyeOff, Upload, AlertTriangle, Globe, Mail, Image, Bell, Shield, Smartphone, Check, X, QrCode, Loader2, CheckCircle2, XCircle, Database, Download, Server, Copy, Terminal, FileCode, ExternalLink } from 'lucide-react';
+import { Save, Settings, Percent, Eye, EyeOff, Upload, AlertTriangle, Globe, Mail, Image, Bell, Shield, Smartphone, Check, X, QrCode, Loader2, CheckCircle2, XCircle, Database, Download, Server, Copy, Terminal, FileCode, ExternalLink, Wifi, Lock, RefreshCw, Zap } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -71,6 +71,20 @@ const AdminSettingsPage = () => {
   
   // Database export state
   const [isExporting, setIsExporting] = useState(false);
+  
+  // Domain checker state
+  const [domainToCheck, setDomainToCheck] = useState('');
+  const [isCheckingDomain, setIsCheckingDomain] = useState(false);
+  const [domainCheckResults, setDomainCheckResults] = useState<{
+    dns: { status: 'success' | 'error' | 'pending'; message: string } | null;
+    ssl: { status: 'success' | 'error' | 'pending'; message: string } | null;
+    http: { status: 'success' | 'error' | 'pending'; message: string } | null;
+  } | null>(null);
+  
+  // Deploy script state
+  const [deployScriptDomain, setDeployScriptDomain] = useState('');
+  const [deployScriptGithubUrl, setDeployScriptGithubUrl] = useState('');
+  const [showDeployScript, setShowDeployScript] = useState(false);
 
   // Test gateway domain connectivity
   const testDomainConnection = async () => {
@@ -139,6 +153,258 @@ const AdminSettingsPage = () => {
     }
   };
 
+  // Domain validation function
+  const checkDomainConfiguration = async () => {
+    if (!domainToCheck) {
+      toast({
+        title: language === 'zh' ? '错误' : 'Error',
+        description: language === 'zh' ? '请输入域名' : 'Please enter a domain',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    let cleanDomain = domainToCheck.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    
+    setIsCheckingDomain(true);
+    setDomainCheckResults({
+      dns: { status: 'pending', message: language === 'zh' ? '检查中...' : 'Checking...' },
+      ssl: { status: 'pending', message: language === 'zh' ? '检查中...' : 'Checking...' },
+      http: { status: 'pending', message: language === 'zh' ? '检查中...' : 'Checking...' },
+    });
+
+    // Check DNS using public DNS API
+    try {
+      const dnsResponse = await fetch(`https://dns.google/resolve?name=${cleanDomain}&type=A`);
+      const dnsData = await dnsResponse.json();
+      
+      if (dnsData.Answer && dnsData.Answer.length > 0) {
+        const ips = dnsData.Answer.filter((a: any) => a.type === 1).map((a: any) => a.data);
+        setDomainCheckResults(prev => prev ? {
+          ...prev,
+          dns: { 
+            status: 'success', 
+            message: `${language === 'zh' ? 'A记录' : 'A Records'}: ${ips.join(', ')}` 
+          }
+        } : null);
+      } else {
+        setDomainCheckResults(prev => prev ? {
+          ...prev,
+          dns: { 
+            status: 'error', 
+            message: language === 'zh' ? '未找到A记录' : 'No A records found' 
+          }
+        } : null);
+      }
+    } catch {
+      setDomainCheckResults(prev => prev ? {
+        ...prev,
+        dns: { 
+          status: 'error', 
+          message: language === 'zh' ? 'DNS查询失败' : 'DNS lookup failed' 
+        }
+      } : null);
+    }
+
+    // Check HTTP/HTTPS connectivity
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
+      await fetch(`https://${cleanDomain}`, {
+        method: 'HEAD',
+        mode: 'no-cors',
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+      
+      setDomainCheckResults(prev => prev ? {
+        ...prev,
+        http: { 
+          status: 'success', 
+          message: language === 'zh' ? 'HTTPS可访问' : 'HTTPS accessible' 
+        },
+        ssl: { 
+          status: 'success', 
+          message: language === 'zh' ? 'SSL证书有效' : 'SSL certificate valid' 
+        }
+      } : null);
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        setDomainCheckResults(prev => prev ? {
+          ...prev,
+          http: { 
+            status: 'error', 
+            message: language === 'zh' ? '连接超时' : 'Connection timeout' 
+          },
+          ssl: { 
+            status: 'error', 
+            message: language === 'zh' ? '无法验证' : 'Cannot verify' 
+          }
+        } : null);
+      } else {
+        // Try HTTP fallback
+        try {
+          const controller2 = new AbortController();
+          const timeoutId2 = setTimeout(() => controller2.abort(), 5000);
+          
+          await fetch(`http://${cleanDomain}`, {
+            method: 'HEAD',
+            mode: 'no-cors',
+            signal: controller2.signal,
+          });
+          
+          clearTimeout(timeoutId2);
+          
+          setDomainCheckResults(prev => prev ? {
+            ...prev,
+            http: { 
+              status: 'success', 
+              message: language === 'zh' ? 'HTTP可访问 (无SSL)' : 'HTTP accessible (no SSL)' 
+            },
+            ssl: { 
+              status: 'error', 
+              message: language === 'zh' ? '未配置SSL' : 'SSL not configured' 
+            }
+          } : null);
+        } catch {
+          setDomainCheckResults(prev => prev ? {
+            ...prev,
+            http: { 
+              status: 'error', 
+              message: language === 'zh' ? '无法访问' : 'Not accessible' 
+            },
+            ssl: { 
+              status: 'error', 
+              message: language === 'zh' ? '无法验证' : 'Cannot verify' 
+            }
+          } : null);
+        }
+      }
+    }
+
+    setIsCheckingDomain(false);
+  };
+
+  // Generate deployment script
+  const generateDeployScript = () => {
+    const projectId = 'YOUR_SUPABASE_PROJECT_ID';
+    const domain = deployScriptDomain || 'your-domain.com';
+    const githubUrl = deployScriptGithubUrl || 'YOUR_GITHUB_REPO_URL';
+    const folderName = githubUrl.split('/').pop()?.replace('.git', '') || 'gateway';
+    
+    return `#!/bin/bash
+# ===============================================
+# HYPER SOFTS GATEWAY - AUTO DEPLOY SCRIPT
+# Generated: ${new Date().toISOString()}
+# ===============================================
+
+set -e
+
+echo "🚀 Starting Gateway Deployment..."
+
+# ==================== VARIABLES ====================
+DOMAIN="${domain}"
+GITHUB_URL="${githubUrl}"
+PROJECT_FOLDER="${folderName}"
+SUPABASE_PROJECT_ID="${projectId}"
+WEB_ROOT="/var/www/gateway"
+
+# ==================== PREREQUISITES ====================
+echo "📦 Installing prerequisites..."
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y nginx nodejs npm git certbot python3-certbot-nginx
+
+# Install Node.js 18+ if needed
+if ! command -v node &> /dev/null || [[ $(node -v | cut -d. -f1 | tr -d 'v') -lt 18 ]]; then
+    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+    sudo apt-get install -y nodejs
+fi
+
+npm install -g pm2 supabase
+
+# ==================== CLONE & BUILD ====================
+echo "📥 Cloning repository..."
+cd /home
+rm -rf \${PROJECT_FOLDER}
+git clone \${GITHUB_URL}
+cd \${PROJECT_FOLDER}
+
+echo "⚙️ Creating .env file..."
+cat > .env << EOF
+VITE_SUPABASE_URL=https://\${SUPABASE_PROJECT_ID}.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=YOUR_ANON_KEY_HERE
+VITE_SUPABASE_PROJECT_ID=\${SUPABASE_PROJECT_ID}
+EOF
+
+echo "📦 Installing dependencies..."
+npm install
+
+echo "🔨 Building project..."
+npm run build
+
+# ==================== DEPLOY FILES ====================
+echo "📂 Deploying to web root..."
+sudo mkdir -p \${WEB_ROOT}
+sudo rm -rf \${WEB_ROOT}/*
+sudo cp -r dist/* \${WEB_ROOT}/
+sudo chown -R www-data:www-data \${WEB_ROOT}
+
+# ==================== NGINX CONFIG ====================
+echo "⚡ Configuring Nginx..."
+sudo tee /etc/nginx/sites-available/gateway > /dev/null << 'NGINX'
+server {
+    listen 80;
+    server_name ${domain};
+    root /var/www/gateway;
+    index index.html;
+
+    location / {
+        try_files \\$uri \\$uri/ /index.html;
+    }
+
+    location ~* \\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
+}
+NGINX
+
+sudo ln -sf /etc/nginx/sites-available/gateway /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t && sudo systemctl reload nginx
+
+# ==================== SSL CERTIFICATE ====================
+echo "🔒 Installing SSL certificate..."
+sudo certbot --nginx -d \${DOMAIN} --non-interactive --agree-tos --email admin@\${DOMAIN} || true
+
+# ==================== EDGE FUNCTIONS ====================
+echo "☁️ Note: Deploy edge functions manually:"
+echo "   supabase login"
+echo "   supabase link --project-ref \${SUPABASE_PROJECT_ID}"
+echo "   supabase functions deploy"
+
+# ==================== COMPLETE ====================
+echo ""
+echo "✅ =========================================="
+echo "✅ DEPLOYMENT COMPLETE!"
+echo "✅ =========================================="
+echo ""
+echo "🌐 Your gateway is now live at: https://\${DOMAIN}"
+echo ""
+echo "📝 Next steps:"
+echo "   1. Update .env with your actual Supabase anon key"
+echo "   2. Run SQL backup in Supabase SQL Editor"
+echo "   3. Deploy edge functions using supabase CLI"
+echo ""
+`;
+  };
 
   const fetchSettings = async () => {
     setIsLoading(true);
@@ -1590,6 +1856,259 @@ supabase functions deploy`;
                 </div>
               </CardContent>
             </Card>
+
+            {/* Domain Configuration Checker */}
+            <Card className="border-2 border-primary/20 overflow-hidden mt-6">
+              <CardHeader className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/20">
+                    <Wifi className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle>
+                      {language === 'zh' ? '域名配置检查器' : 'Domain Configuration Checker'}
+                    </CardTitle>
+                    <CardDescription>
+                      {language === 'zh' 
+                        ? '验证DNS、SSL和HTTP配置' 
+                        : 'Validate DNS, SSL and HTTP configuration'}
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6 space-y-4">
+                <div className="flex gap-3">
+                  <Input
+                    placeholder={language === 'zh' ? '输入域名 (例如: example.com)' : 'Enter domain (e.g., example.com)'}
+                    value={domainToCheck}
+                    onChange={(e) => setDomainToCheck(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button 
+                    onClick={checkDomainConfiguration}
+                    disabled={isCheckingDomain}
+                    className="btn-gradient-primary"
+                  >
+                    {isCheckingDomain ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        {language === 'zh' ? '检查中...' : 'Checking...'}
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        {language === 'zh' ? '检查域名' : 'Check Domain'}
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {domainCheckResults && (
+                  <div className="space-y-3 mt-4">
+                    {/* DNS Check */}
+                    <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                        domainCheckResults.dns?.status === 'success' 
+                          ? 'bg-[hsl(var(--success))]/20 text-[hsl(var(--success))]'
+                          : domainCheckResults.dns?.status === 'error'
+                          ? 'bg-destructive/20 text-destructive'
+                          : 'bg-muted-foreground/20 text-muted-foreground'
+                      }`}>
+                        {domainCheckResults.dns?.status === 'success' ? (
+                          <Check className="h-4 w-4" />
+                        ) : domainCheckResults.dns?.status === 'error' ? (
+                          <X className="h-4 w-4" />
+                        ) : (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">DNS Records</p>
+                        <p className="text-xs text-muted-foreground">{domainCheckResults.dns?.message}</p>
+                      </div>
+                    </div>
+
+                    {/* SSL Check */}
+                    <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                        domainCheckResults.ssl?.status === 'success' 
+                          ? 'bg-[hsl(var(--success))]/20 text-[hsl(var(--success))]'
+                          : domainCheckResults.ssl?.status === 'error'
+                          ? 'bg-destructive/20 text-destructive'
+                          : 'bg-muted-foreground/20 text-muted-foreground'
+                      }`}>
+                        {domainCheckResults.ssl?.status === 'success' ? (
+                          <Lock className="h-4 w-4" />
+                        ) : domainCheckResults.ssl?.status === 'error' ? (
+                          <X className="h-4 w-4" />
+                        ) : (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">SSL Certificate</p>
+                        <p className="text-xs text-muted-foreground">{domainCheckResults.ssl?.message}</p>
+                      </div>
+                    </div>
+
+                    {/* HTTP Check */}
+                    <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                        domainCheckResults.http?.status === 'success' 
+                          ? 'bg-[hsl(var(--success))]/20 text-[hsl(var(--success))]'
+                          : domainCheckResults.http?.status === 'error'
+                          ? 'bg-destructive/20 text-destructive'
+                          : 'bg-muted-foreground/20 text-muted-foreground'
+                      }`}>
+                        {domainCheckResults.http?.status === 'success' ? (
+                          <Globe className="h-4 w-4" />
+                        ) : domainCheckResults.http?.status === 'error' ? (
+                          <X className="h-4 w-4" />
+                        ) : (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">HTTP/HTTPS Access</p>
+                        <p className="text-xs text-muted-foreground">{domainCheckResults.http?.message}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <Alert className="border-primary/30 bg-primary/5">
+                  <Globe className="h-4 w-4" />
+                  <AlertDescription className="text-sm">
+                    {language === 'zh' 
+                      ? '使用DNSChecker.org进行更详细的DNS传播检查' 
+                      : 'Use DNSChecker.org for detailed DNS propagation checks'}
+                    <Button 
+                      variant="link" 
+                      size="sm" 
+                      className="p-0 h-auto ml-2"
+                      onClick={() => window.open('https://dnschecker.org', '_blank')}
+                    >
+                      <ExternalLink className="h-3 w-3 mr-1" />
+                      DNSChecker.org
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              </CardContent>
+            </Card>
+
+            {/* Custom Deploy Script Generator */}
+            <Card className="border-2 border-primary/20 overflow-hidden mt-6">
+              <CardHeader className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/20">
+                    <Zap className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle>
+                      {language === 'zh' ? '一键部署脚本生成器' : 'One-Click Deploy Script Generator'}
+                    </CardTitle>
+                    <CardDescription>
+                      {language === 'zh' 
+                        ? '生成预填充的自动部署脚本' 
+                        : 'Generate pre-filled automated deployment script'}
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6 space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>{language === 'zh' ? '您的域名' : 'Your Domain'}</Label>
+                    <Input
+                      placeholder="example.com"
+                      value={deployScriptDomain}
+                      onChange={(e) => setDeployScriptDomain(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{language === 'zh' ? 'GitHub仓库URL' : 'GitHub Repo URL'}</Label>
+                    <Input
+                      placeholder="https://github.com/user/repo"
+                      value={deployScriptGithubUrl}
+                      onChange={(e) => setDeployScriptGithubUrl(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <Button 
+                    onClick={() => setShowDeployScript(true)}
+                    className="btn-gradient-primary flex-1"
+                  >
+                    <FileCode className="h-4 w-4 mr-2" />
+                    {language === 'zh' ? '生成部署脚本' : 'Generate Deploy Script'}
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => {
+                      const script = generateDeployScript();
+                      const blob = new Blob([script], { type: 'text/plain' });
+                      const url = window.URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = 'deploy-gateway.sh';
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      window.URL.revokeObjectURL(url);
+                      toast({ 
+                        title: language === 'zh' ? '已下载' : 'Downloaded',
+                        description: 'deploy-gateway.sh'
+                      });
+                    }}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    {language === 'zh' ? '下载.sh文件' : 'Download .sh'}
+                  </Button>
+                </div>
+
+                {showDeployScript && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label>{language === 'zh' ? '生成的脚本' : 'Generated Script'}</Label>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText(generateDeployScript());
+                          toast({ title: language === 'zh' ? '已复制脚本' : 'Script Copied' });
+                        }}
+                      >
+                        <Copy className="h-4 w-4 mr-2" />
+                        {language === 'zh' ? '复制' : 'Copy'}
+                      </Button>
+                    </div>
+                    <div className="p-4 bg-muted rounded-lg font-mono text-xs max-h-64 overflow-y-auto">
+                      <pre className="whitespace-pre-wrap">{generateDeployScript()}</pre>
+                    </div>
+                  </div>
+                )}
+
+                <Alert className="border-[hsl(var(--warning))]/30 bg-[hsl(var(--warning))]/5">
+                  <AlertTriangle className="h-4 w-4 text-[hsl(var(--warning))]" />
+                  <AlertDescription className="text-sm">
+                    {language === 'zh' 
+                      ? '运行脚本前请编辑 .env 文件中的 VITE_SUPABASE_PUBLISHABLE_KEY' 
+                      : 'Edit VITE_SUPABASE_PUBLISHABLE_KEY in .env before running the script'}
+                  </AlertDescription>
+                </Alert>
+
+                <div className="p-4 bg-muted rounded-lg">
+                  <p className="font-medium text-sm mb-2">{language === 'zh' ? '使用方法' : 'How to Use'}</p>
+                  <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
+                    <li>{language === 'zh' ? '填写域名和GitHub仓库URL' : 'Fill in your domain and GitHub repo URL'}</li>
+                    <li>{language === 'zh' ? '下载脚本或复制到VPS' : 'Download script or copy to VPS'}</li>
+                    <li>{language === 'zh' ? '运行: chmod +x deploy-gateway.sh && ./deploy-gateway.sh' : 'Run: chmod +x deploy-gateway.sh && ./deploy-gateway.sh'}</li>
+                  </ol>
+                </div>
+              </CardContent>
+            </Card>
+
             <Card className="bg-card border-border mt-6">
               <CardContent className="p-6">
                 <div className="flex items-start gap-3">
