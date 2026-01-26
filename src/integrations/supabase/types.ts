@@ -271,6 +271,7 @@ export type Database = {
           updated_at: string | null
           user_id: string
           withdrawal_password: string | null
+          withdrawal_password_hash: string | null
         }
         Insert: {
           account_number: string
@@ -296,6 +297,7 @@ export type Database = {
           updated_at?: string | null
           user_id: string
           withdrawal_password?: string | null
+          withdrawal_password_hash?: string | null
         }
         Update: {
           account_number?: string
@@ -321,6 +323,7 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
           withdrawal_password?: string | null
+          withdrawal_password_hash?: string | null
         }
         Relationships: [
           {
@@ -531,7 +534,16 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      gateway_branding: {
+        Row: {
+          favicon_url: string | null
+          gateway_domain: string | null
+          gateway_name: string | null
+          logo_url: string | null
+          support_email: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       generate_account_number: { Args: never; Returns: string }

@@ -25,6 +25,31 @@ function verifyHyperSoftsSignature(params: Record<string, any>, key: string, rec
   return expectedSign === receivedSign
 }
 
+// Verify HyperPay callback signature (MD5-based)
+function verifyHyperPaySignature(params: Record<string, any>, apiKey: string, receivedSign: string): boolean {
+  // HyperPay uses similar MD5 signature verification
+  const filteredParams = Object.entries(params)
+    .filter(([k, v]) => v !== '' && v !== null && v !== undefined && k !== 'sign' && k !== 'signature')
+    .sort(([a], [b]) => a.localeCompare(b))
+  
+  const queryString = filteredParams
+    .map(([k, v]) => `${k}=${v}`)
+    .join('&')
+  
+  const signString = `${queryString}&key=${apiKey}`
+  const hash = new Md5()
+  hash.update(signString)
+  const expectedSign = hash.toString().toUpperCase()
+  
+  console.log('HyperPay callback signature verification:', { expectedSign, receivedSign })
+  return expectedSign === receivedSign
+}
+
+// Check if callback has already been processed (idempotency)
+function isCallbackProcessed(callbackData: any): boolean {
+  return callbackData?.processed === true
+}
+
 // Retry helper function with exponential backoff
 async function sendWebhookWithRetry(
   url: string, 
@@ -113,7 +138,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log('Callback received:', body)
+    console.log('Callback received:', JSON.stringify(body, null, 2))
 
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -131,7 +156,6 @@ Deno.serve(async (req) => {
     if (isHyperSoftsCallback) {
       // HYPER SOFTS callback handler
       const { order_sn, money, status, pay_time, msg, remark, sign } = body
-      const isPayoutCallback = body.hasOwnProperty('status') && !body.hasOwnProperty('pay_time') === false
 
       console.log('Processing HYPER SOFTS callback for order:', order_sn)
 
@@ -143,33 +167,64 @@ Deno.serve(async (req) => {
         .limit(1)
 
       if (txFindError || !transactions || transactions.length === 0) {
-        console.error('Transaction not found for LG Pay callback:', order_sn)
+        console.error('Transaction not found for HYPER SOFTS callback:', order_sn)
         return new Response('ok', { headers: corsHeaders })
       }
 
       const transaction = transactions[0]
       const gateway = transaction.payment_gateways
 
-      // Verify signature if gateway exists
+      // SECURITY: Check idempotency - prevent replay attacks
+      if (isCallbackProcessed(transaction.callback_data)) {
+        console.warn(`Callback already processed for order ${order_sn}, rejecting replay`)
+        return new Response('ok', { headers: corsHeaders })
+      }
+
+      // SECURITY: Verify signature - REJECT on failure
       if (gateway && sign) {
         const signParams = { ...body }
         delete signParams.sign
         const isValidSign = verifyHyperSoftsSignature(signParams, gateway.api_key, sign)
         if (!isValidSign) {
-          console.error('Invalid HYPER SOFTS callback signature')
-          // Continue processing anyway as HYPER SOFTS might retry
+          console.error('SECURITY: Invalid HYPER SOFTS callback signature - REJECTING')
+          return new Response(
+            JSON.stringify({ status: 'error', message: 'Invalid signature' }),
+            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
         }
+        console.log('HYPER SOFTS signature verified successfully')
+      } else if (!sign) {
+        console.error('SECURITY: Missing signature in HYPER SOFTS callback - REJECTING')
+        return new Response(
+          JSON.stringify({ status: 'error', message: 'Missing signature' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // SECURITY: Verify amount matches
+      const callbackAmount = parseFloat(money)
+      if (Math.abs(callbackAmount - transaction.amount) > 0.01) {
+        console.error(`SECURITY: Amount mismatch - expected ${transaction.amount}, got ${callbackAmount}`)
+        return new Response(
+          JSON.stringify({ status: 'error', message: 'Amount mismatch' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
       }
 
       // HYPER SOFTS: status 1 = success, 0 = failed (for payout), payin only sends success
       const newStatus = status === 1 || status === '1' ? 'success' : 'failed'
 
-      // Update transaction status
+      // Update transaction status with processed flag for idempotency
       await supabaseAdmin
         .from('transactions')
         .update({
           status: newStatus,
-          callback_data: body
+          callback_data: { 
+            ...body, 
+            processed: true, 
+            processed_at: new Date().toISOString(),
+            verified: true
+          }
         })
         .eq('id', transaction.id)
 
@@ -272,11 +327,12 @@ Deno.serve(async (req) => {
 
     // Handle HYPER PAY payin callback
     if (isHyperPayPayin) {
-      const { orderNo, merchantOrder, status, amount } = body
+      const { orderNo, merchantOrder, status, amount, sign, signature } = body
+      const receivedSign = sign || signature
 
       const { data: transactions, error: txFindError } = await supabaseAdmin
         .from('transactions')
-        .select('*, merchants(*)')
+        .select('*, merchants(*), payment_gateways(*)')
         .eq('order_no', merchantOrder)
         .limit(1)
 
@@ -289,14 +345,57 @@ Deno.serve(async (req) => {
       }
 
       const transaction = transactions[0]
+      const gateway = transaction.payment_gateways
+
+      // SECURITY: Check idempotency - prevent replay attacks
+      if (isCallbackProcessed(transaction.callback_data)) {
+        console.warn(`Callback already processed for order ${merchantOrder}, rejecting replay`)
+        return new Response(
+          JSON.stringify({ status: 'ok', message: 'Already processed' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // SECURITY: Verify signature if available
+      if (gateway && receivedSign) {
+        const signParams = { ...body }
+        delete signParams.sign
+        delete signParams.signature
+        const isValidSign = verifyHyperPaySignature(signParams, gateway.api_key, receivedSign)
+        if (!isValidSign) {
+          console.error('SECURITY: Invalid HyperPay callback signature - REJECTING')
+          return new Response(
+            JSON.stringify({ status: 'error', message: 'Invalid signature' }),
+            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+        console.log('HyperPay signature verified successfully')
+      }
+
+      // SECURITY: Verify amount matches
+      const callbackAmount = parseFloat(amount)
+      if (!isNaN(callbackAmount) && Math.abs(callbackAmount - transaction.amount) > 0.01) {
+        console.error(`SECURITY: Amount mismatch - expected ${transaction.amount}, got ${callbackAmount}`)
+        return new Response(
+          JSON.stringify({ status: 'error', message: 'Amount mismatch' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
       const newStatus = status.toLowerCase() === 'success' ? 'success' : 
                        status.toLowerCase() === 'failed' ? 'failed' : 'pending'
 
+      // Update with processed flag for idempotency
       await supabaseAdmin
         .from('transactions')
         .update({
           status: newStatus,
-          callback_data: body
+          callback_data: {
+            ...body,
+            processed: true,
+            processed_at: new Date().toISOString(),
+            verified: !!receivedSign
+          }
         })
         .eq('id', transaction.id)
 
@@ -399,11 +498,12 @@ Deno.serve(async (req) => {
 
     // Handle HYPER PAY payout callback
     if (isHyperPayPayout) {
-      const { transaction_id, status } = body
+      const { transaction_id, status, sign, signature } = body
+      const receivedSign = sign || signature
 
       const { data: transactions, error: txFindError } = await supabaseAdmin
         .from('transactions')
-        .select('*, merchants(*)')
+        .select('*, merchants(*), payment_gateways(*)')
         .eq('order_no', transaction_id)
         .limit(1)
 
@@ -416,6 +516,33 @@ Deno.serve(async (req) => {
       }
 
       const transaction = transactions[0]
+      const gateway = transaction.payment_gateways
+
+      // SECURITY: Check idempotency - prevent replay attacks
+      if (isCallbackProcessed(transaction.callback_data)) {
+        console.warn(`Payout callback already processed for order ${transaction_id}, rejecting replay`)
+        return new Response(
+          JSON.stringify({ status: 'ok', message: 'Already processed' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // SECURITY: Verify signature if available
+      if (gateway && receivedSign) {
+        const signParams = { ...body }
+        delete signParams.sign
+        delete signParams.signature
+        const isValidSign = verifyHyperPaySignature(signParams, gateway.payout_key || gateway.api_key, receivedSign)
+        if (!isValidSign) {
+          console.error('SECURITY: Invalid HyperPay payout callback signature - REJECTING')
+          return new Response(
+            JSON.stringify({ status: 'error', message: 'Invalid signature' }),
+            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+        console.log('HyperPay payout signature verified successfully')
+      }
+
       const newStatus = status.toUpperCase() === 'SUCCESS' ? 'success' : 
                        status.toUpperCase() === 'FAILED' ? 'failed' : 'pending'
 
@@ -423,7 +550,12 @@ Deno.serve(async (req) => {
         .from('transactions')
         .update({
           status: newStatus,
-          callback_data: body
+          callback_data: {
+            ...body,
+            processed: true,
+            processed_at: new Date().toISOString(),
+            verified: !!receivedSign
+          }
         })
         .eq('id', transaction.id)
 
