@@ -25,6 +25,44 @@ function verifyHyperSoftsSignature(params: Record<string, any>, key: string, rec
   return expectedSign === receivedSign
 }
 
+// Retry helper function with exponential backoff
+async function sendWebhookWithRetry(
+  url: string, 
+  payload: Record<string, any>, 
+  maxRetries: number = 3
+): Promise<{ success: boolean; attempt: number; error?: string }> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      
+      if (response.ok) {
+        console.log(`Webhook sent successfully on attempt ${attempt}`)
+        return { success: true, attempt }
+      }
+      
+      console.log(`Webhook attempt ${attempt} failed with status ${response.status}`)
+      
+      // If it's a client error (4xx), don't retry
+      if (response.status >= 400 && response.status < 500) {
+        return { success: false, attempt, error: `Client error: ${response.status}` }
+      }
+    } catch (error) {
+      console.error(`Webhook attempt ${attempt} error:`, error)
+    }
+    
+    // Wait before retrying (exponential backoff: 1s, 2s, 4s)
+    if (attempt < maxRetries) {
+      await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000))
+    }
+  }
+  
+  return { success: false, attempt: maxRetries, error: 'Max retries exceeded' }
+}
+
 // Helper function to send Telegram notification
 async function sendTelegramNotification(supabaseAdmin: any, type: string, merchantId: string, data: any) {
   try {
@@ -189,26 +227,24 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Forward callback to merchant
+      // Forward callback to merchant with retry logic
       const extraData = transaction.extra ? JSON.parse(transaction.extra) : {}
       if (extraData.merchant_callback) {
-        try {
-          await fetch(extraData.merchant_callback, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              orderNo: transaction.order_no,
-              merchantOrder: transaction.merchant_order_no,
-              status: newStatus,
-              amount: transaction.amount,
-              fee: transaction.fee,
-              net_amount: transaction.net_amount,
-              timestamp: new Date().toISOString()
-            })
-          })
-          console.log('Forwarded HYPER SOFTS callback to merchant')
-        } catch (callbackError) {
-          console.error('Failed to forward callback to merchant:', callbackError)
+        const webhookPayload = {
+          orderNo: transaction.order_no,
+          merchantOrder: transaction.merchant_order_no,
+          status: newStatus,
+          amount: transaction.amount,
+          fee: transaction.fee,
+          net_amount: transaction.net_amount,
+          timestamp: new Date().toISOString()
+        }
+        
+        const result = await sendWebhookWithRetry(extraData.merchant_callback, webhookPayload, 3)
+        if (result.success) {
+          console.log(`Forwarded HYPER SOFTS callback to merchant on attempt ${result.attempt}`)
+        } else {
+          console.error(`Failed to forward callback after ${result.attempt} attempts: ${result.error}`)
         }
       }
 
@@ -321,23 +357,21 @@ Deno.serve(async (req) => {
       const extraData = transaction.extra ? JSON.parse(transaction.extra) : {}
       
       if (extraData.merchant_callback) {
-        try {
-          await fetch(extraData.merchant_callback, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              orderNo: transaction.order_no,
-              merchantOrder: transaction.merchant_order_no,
-              status: newStatus,
-              amount: transaction.amount,
-              fee: transaction.fee,
-              net_amount: transaction.net_amount,
-              timestamp: new Date().toISOString()
-            })
-          })
-          console.log('Forwarded callback to merchant:', extraData.merchant_callback)
-        } catch (callbackError) {
-          console.error('Failed to forward callback to merchant:', callbackError)
+        const webhookPayload = {
+          orderNo: transaction.order_no,
+          merchantOrder: transaction.merchant_order_no,
+          status: newStatus,
+          amount: transaction.amount,
+          fee: transaction.fee,
+          net_amount: transaction.net_amount,
+          timestamp: new Date().toISOString()
+        }
+        
+        const result = await sendWebhookWithRetry(extraData.merchant_callback, webhookPayload, 3)
+        if (result.success) {
+          console.log(`Forwarded callback to merchant on attempt ${result.attempt}`)
+        } else {
+          console.error(`Failed to forward callback after ${result.attempt} attempts: ${result.error}`)
         }
       }
 
@@ -426,21 +460,19 @@ Deno.serve(async (req) => {
 
       const extraData = transaction.extra ? JSON.parse(transaction.extra) : {}
       if (extraData.merchant_callback) {
-        try {
-          await fetch(extraData.merchant_callback, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              merchant_id: transaction.merchants.account_number,
-              transaction_id: transaction.merchant_order_no,
-              amount: transaction.amount.toString(),
-              status: newStatus.toUpperCase(),
-              timestamp: new Date().toISOString()
-            })
-          })
-          console.log('Forwarded payout callback to merchant:', extraData.merchant_callback)
-        } catch (callbackError) {
-          console.error('Failed to forward callback to merchant:', callbackError)
+        const webhookPayload = {
+          merchant_id: transaction.merchants.account_number,
+          transaction_id: transaction.merchant_order_no,
+          amount: transaction.amount.toString(),
+          status: newStatus.toUpperCase(),
+          timestamp: new Date().toISOString()
+        }
+        
+        const result = await sendWebhookWithRetry(extraData.merchant_callback, webhookPayload, 3)
+        if (result.success) {
+          console.log(`Forwarded payout callback to merchant on attempt ${result.attempt}`)
+        } else {
+          console.error(`Failed to forward payout callback after ${result.attempt} attempts: ${result.error}`)
         }
       }
 

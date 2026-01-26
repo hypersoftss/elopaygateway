@@ -82,6 +82,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const adminNavItems: NavItem[] = [
     { label: t('sidebar.dashboard'), icon: <LayoutDashboard className="h-5 w-5" />, href: '/admin' },
     { label: t('sidebar.merchants'), icon: <Users className="h-5 w-5" />, href: '/admin/merchants' },
+    { label: language === 'zh' ? '实时交易' : 'Live Transactions', icon: <BarChart3 className="h-5 w-5" />, href: '/admin/live-transactions' },
     { 
       label: language === 'zh' ? '订单管理' : 'Orders',
       icon: <ClipboardList className="h-5 w-5" />,
