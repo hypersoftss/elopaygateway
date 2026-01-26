@@ -17,7 +17,11 @@ import {
   Server,
   CheckCircle2,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  Wifi,
+  WifiOff,
+  Globe,
+  Timer
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -70,6 +74,13 @@ interface GatewayBalance {
   last_checked: string;
 }
 
+interface HealthCheckResult {
+  timestamp: Date;
+  status: 'online' | 'offline' | 'error';
+  responseTime: number | null;
+  message: string;
+}
+
 interface Transaction {
   id: string;
   order_no: string;
@@ -93,8 +104,13 @@ const AdminDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isLive, setIsLive] = useState(true);
-
-  // Real-time transaction notifications
+  
+  // Server health monitoring state
+  const [gatewayDomain, setGatewayDomain] = useState<string | null>(null);
+  const [healthHistory, setHealthHistory] = useState<HealthCheckResult[]>([]);
+  const [currentHealth, setCurrentHealth] = useState<HealthCheckResult | null>(null);
+  const [isCheckingHealth, setIsCheckingHealth] = useState(false);
+  const [uptimePercentage, setUptimePercentage] = useState(100);
   const handleNewTransaction = useCallback((tx: any) => {
     // Add to recent transactions list at the top
     setRecentTransactions(prev => [tx, ...prev.slice(0, 9)]);
@@ -137,6 +153,80 @@ const AdminDashboard = () => {
     onTransactionUpdate: handleTransactionUpdate,
     isAdmin: true,
   });
+
+  // Ping gateway domain for health check
+  const checkServerHealth = useCallback(async (domain: string) => {
+    if (!domain) return;
+    
+    setIsCheckingHealth(true);
+    const startTime = performance.now();
+    
+    try {
+      const cleanDomain = domain.replace(/\/$/, '');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
+      await fetch(cleanDomain, {
+        method: 'HEAD',
+        mode: 'no-cors',
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+      const responseTime = Math.round(performance.now() - startTime);
+      
+      const result: HealthCheckResult = {
+        timestamp: new Date(),
+        status: 'online',
+        responseTime,
+        message: `Response time: ${responseTime}ms`,
+      };
+      
+      setCurrentHealth(result);
+      setHealthHistory(prev => {
+        const updated = [result, ...prev].slice(0, 60); // Keep last 60 checks
+        // Calculate uptime percentage
+        const onlineCount = updated.filter(h => h.status === 'online').length;
+        setUptimePercentage(Math.round((onlineCount / updated.length) * 100));
+        return updated;
+      });
+    } catch (error: any) {
+      const result: HealthCheckResult = {
+        timestamp: new Date(),
+        status: error.name === 'AbortError' ? 'error' : 'offline',
+        responseTime: null,
+        message: error.name === 'AbortError' ? 'Connection timeout' : 'Server unreachable',
+      };
+      
+      setCurrentHealth(result);
+      setHealthHistory(prev => {
+        const updated = [result, ...prev].slice(0, 60);
+        const onlineCount = updated.filter(h => h.status === 'online').length;
+        setUptimePercentage(Math.round((onlineCount / updated.length) * 100));
+        return updated;
+      });
+    } finally {
+      setIsCheckingHealth(false);
+    }
+  }, []);
+
+  // Fetch gateway domain from settings
+  const fetchGatewayDomain = async () => {
+    try {
+      const { data } = await supabase
+        .from('admin_settings')
+        .select('gateway_domain')
+        .limit(1);
+      
+      if (data && data[0]?.gateway_domain) {
+        setGatewayDomain(data[0].gateway_domain);
+        // Initial health check
+        checkServerHealth(data[0].gateway_domain);
+      }
+    } catch (err) {
+      console.error('Failed to fetch gateway domain:', err);
+    }
+  };
 
   const fetchGatewayBalances = async () => {
     setIsLoadingBalances(true);
@@ -268,20 +358,29 @@ const AdminDashboard = () => {
   useEffect(() => {
     fetchData();
     fetchGatewayBalances();
+    fetchGatewayDomain();
     
     // Auto refresh every 30 seconds if live mode
     let interval: NodeJS.Timeout;
     let balanceInterval: NodeJS.Timeout;
+    let healthInterval: NodeJS.Timeout;
+    
     if (isLive) {
       interval = setInterval(fetchData, 30000);
       balanceInterval = setInterval(fetchGatewayBalances, 60000); // Check balance every minute
+      healthInterval = setInterval(() => {
+        if (gatewayDomain) {
+          checkServerHealth(gatewayDomain);
+        }
+      }, 30000); // Check health every 30 seconds
     }
+    
     return () => {
       clearInterval(interval);
       clearInterval(balanceInterval);
+      clearInterval(healthInterval);
     };
-    return () => clearInterval(interval);
-  }, [isLive]);
+  }, [isLive, gatewayDomain, checkServerHealth]);
 
   if (isLoading) {
     return (
@@ -493,6 +592,160 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Server Health Monitor */}
+        {gatewayDomain && (
+          <Card className="border-l-4 border-l-primary">
+            <CardHeader className="flex flex-row items-center justify-between px-4 md:px-6 py-4">
+              <CardTitle className="text-base md:text-lg flex items-center gap-2">
+                <Globe className="h-5 w-5" />
+                {language === 'zh' ? '服务器健康监控' : 'Server Health Monitor'}
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => checkServerHealth(gatewayDomain)}
+                  disabled={isCheckingHealth}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-1 ${isCheckingHealth ? 'animate-spin' : ''}`} />
+                  {language === 'zh' ? '检测' : 'Check'}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="px-4 md:px-6 pb-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {/* Current Status */}
+                <div className={`p-4 rounded-lg border-2 ${
+                  currentHealth?.status === 'online' 
+                    ? 'border-[hsl(var(--success))]/50 bg-[hsl(var(--success))]/5' 
+                    : currentHealth?.status === 'offline'
+                    ? 'border-destructive/50 bg-destructive/5'
+                    : 'border-muted bg-muted/30'
+                }`}>
+                  <div className="flex items-center gap-3">
+                    {currentHealth?.status === 'online' ? (
+                      <div className="p-2 rounded-full bg-[hsl(var(--success))]/20">
+                        <Wifi className="h-5 w-5 text-[hsl(var(--success))]" />
+                      </div>
+                    ) : currentHealth?.status === 'offline' ? (
+                      <div className="p-2 rounded-full bg-destructive/20">
+                        <WifiOff className="h-5 w-5 text-destructive" />
+                      </div>
+                    ) : (
+                      <div className="p-2 rounded-full bg-muted">
+                        <Activity className="h-5 w-5 text-muted-foreground animate-pulse" />
+                      </div>
+                    )}
+                    <div>
+                      <p className="font-semibold">
+                        {currentHealth?.status === 'online' 
+                          ? (language === 'zh' ? '在线' : 'Online')
+                          : currentHealth?.status === 'offline'
+                          ? (language === 'zh' ? '离线' : 'Offline')
+                          : (language === 'zh' ? '检测中...' : 'Checking...')
+                        }
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate max-w-[150px]">
+                        {gatewayDomain.replace(/^https?:\/\//, '')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Response Time */}
+                <div className="p-4 rounded-lg bg-muted/50 border">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Timer className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">{language === 'zh' ? '响应时间' : 'Response Time'}</span>
+                  </div>
+                  <p className="text-2xl font-bold">
+                    {currentHealth?.responseTime !== null ? `${currentHealth.responseTime}ms` : '--'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {currentHealth?.responseTime !== null && currentHealth.responseTime < 500 
+                      ? (language === 'zh' ? '良好' : 'Good')
+                      : currentHealth?.responseTime !== null && currentHealth.responseTime < 1000
+                      ? (language === 'zh' ? '中等' : 'Medium')
+                      : currentHealth?.responseTime !== null
+                      ? (language === 'zh' ? '缓慢' : 'Slow')
+                      : ''
+                    }
+                  </p>
+                </div>
+
+                {/* Uptime */}
+                <div className="p-4 rounded-lg bg-muted/50 border">
+                  <div className="flex items-center gap-2 mb-2">
+                    <TrendingUp className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">{language === 'zh' ? '在线率' : 'Uptime'}</span>
+                  </div>
+                  <p className={`text-2xl font-bold ${
+                    uptimePercentage >= 99 ? 'text-[hsl(var(--success))]' 
+                    : uptimePercentage >= 95 ? 'text-[hsl(var(--warning))]' 
+                    : 'text-destructive'
+                  }`}>
+                    {uptimePercentage}%
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {language === 'zh' ? `最近${healthHistory.length}次检测` : `Last ${healthHistory.length} checks`}
+                  </p>
+                </div>
+
+                {/* Last Check */}
+                <div className="p-4 rounded-lg bg-muted/50 border">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Clock className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">{language === 'zh' ? '最后检测' : 'Last Check'}</span>
+                  </div>
+                  <p className="text-sm font-medium">
+                    {currentHealth?.timestamp 
+                      ? format(currentHealth.timestamp, 'HH:mm:ss')
+                      : '--'
+                    }
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {isLive ? (language === 'zh' ? '每30秒自动检测' : 'Auto-check every 30s') : (language === 'zh' ? '手动模式' : 'Manual mode')}
+                  </p>
+                </div>
+              </div>
+
+              {/* Health History Timeline */}
+              {healthHistory.length > 0 && (
+                <div className="mt-4">
+                  <p className="text-sm font-medium mb-2">{language === 'zh' ? '健康历史 (最近60次)' : 'Health History (last 60)'}</p>
+                  <div className="flex gap-0.5 flex-wrap">
+                    {healthHistory.slice(0, 60).map((check, idx) => (
+                      <div
+                        key={idx}
+                        className={`w-2 h-6 rounded-sm transition-colors ${
+                          check.status === 'online' 
+                            ? 'bg-[hsl(var(--success))]' 
+                            : check.status === 'offline'
+                            ? 'bg-destructive'
+                            : 'bg-[hsl(var(--warning))]'
+                        }`}
+                        title={`${format(check.timestamp, 'HH:mm:ss')} - ${check.status} ${check.responseTime ? `(${check.responseTime}ms)` : ''}`}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                    <span>{language === 'zh' ? '最新' : 'Latest'}</span>
+                    <span>{language === 'zh' ? '最早' : 'Oldest'}</span>
+                  </div>
+                </div>
+              )}
+
+              {!currentHealth && (
+                <div className="mt-4 p-3 rounded-lg bg-primary/5 border border-primary/20 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    {language === 'zh' ? '点击"检测"开始监控服务器健康状态' : 'Click "Check" to start monitoring server health'}
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Gateway Status */}
         <Card>
