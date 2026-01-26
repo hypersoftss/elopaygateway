@@ -266,7 +266,7 @@ Deno.serve(async (req) => {
     let gatewayResponse = null
 
     // Route to appropriate gateway
-    if (gateway.gateway_type === 'hypersofts') {
+    if (gateway.gateway_type === 'hypersofts' || gateway.gateway_type === 'lgpay') {
       // HYPER SOFTS integration - trade_type logic varies by gateway_code:
       // - hypersofts_pkr: Use gateway's trade_type (PKRPH) for all merchants
       // - hypersofts_bdt: Use merchant's trade_type directly (Nagad, bKash)
@@ -315,8 +315,10 @@ Deno.serve(async (req) => {
       if (gatewayResponse.status === 1 && gatewayResponse.data?.pay_url) {
         paymentUrl = gatewayResponse.data.pay_url
       }
-    } else {
-      // HYPER PAY integration (default)
+    } else if (gateway.gateway_type === 'hyperpay' || gateway.gateway_type === 'bondpay') {
+      // HYPER PAY integration (explicitly handling hyperpay/bondpay gateway types)
+      console.log('Using HYPER PAY gateway:', gateway.gateway_code || 'default')
+      
       const hyperPaySignature = generateHyperPaySignature(
         gateway.app_id,
         amount.toString(),
@@ -325,7 +327,7 @@ Deno.serve(async (req) => {
         internalCallbackUrl
       )
 
-      console.log('Calling HYPER PAY API with credentials...')
+      console.log('Calling HYPER PAY API:', `${gateway.base_url}/v1/create`)
 
       const hyperPayResponse = await fetch(`${gateway.base_url}/v1/create`, {
         method: 'POST',
@@ -343,7 +345,54 @@ Deno.serve(async (req) => {
 
       gatewayResponse = await hyperPayResponse.json()
       console.log('HYPER PAY response:', gatewayResponse)
-      paymentUrl = gatewayResponse.payment_url
+      
+      if (gatewayResponse.payment_url) {
+        paymentUrl = gatewayResponse.payment_url
+      } else {
+        console.error('HYPER PAY error:', gatewayResponse)
+        return new Response(
+          JSON.stringify({ code: 400, message: gatewayResponse.message || 'Gateway error' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+    } else {
+      // Fallback for unknown gateway types - treat as HYPER PAY
+      console.log('Using fallback HYPER PAY logic for unknown gateway type:', gateway.gateway_type)
+      
+      const hyperPaySignature = generateHyperPaySignature(
+        gateway.app_id,
+        amount.toString(),
+        orderNo,
+        gateway.api_key,
+        internalCallbackUrl
+      )
+
+      const hyperPayResponse = await fetch(`${gateway.base_url}/v1/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          merchant_id: gateway.app_id,
+          api_key: gateway.api_key,
+          amount: amount.toString(),
+          merchant_order_no: orderNo,
+          callback_url: internalCallbackUrl,
+          extra: merchant.id,
+          signature: hyperPaySignature
+        })
+      })
+
+      gatewayResponse = await hyperPayResponse.json()
+      console.log('Fallback HYPER PAY response:', gatewayResponse)
+      
+      if (gatewayResponse.payment_url) {
+        paymentUrl = gatewayResponse.payment_url
+      } else {
+        console.error('Fallback gateway error:', gatewayResponse)
+        return new Response(
+          JSON.stringify({ code: 400, message: gatewayResponse.message || 'Gateway error' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
     }
 
     // Create transaction
