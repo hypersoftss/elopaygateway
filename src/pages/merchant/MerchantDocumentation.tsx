@@ -43,27 +43,28 @@ const MerchantDocumentation = () => {
       if (!user?.merchantId) return;
 
       try {
-        const { data } = await supabase
+        // Fetch merchant data
+        const { data: merchantData } = await supabase
           .from('merchants')
-          .select(`
-            account_number, api_key, payout_key, payin_fee, payout_fee, trade_type,
-            payment_gateways (gateway_name, gateway_type, currency)
-          `)
+          .select('account_number, api_key, payout_key, payin_fee, payout_fee, trade_type')
           .eq('id', user.merchantId)
           .single();
 
-        if (data) {
-          const gateway = data.payment_gateways as any;
+        // Use secure RPC function to get gateway info (bypasses RLS on payment_gateways)
+        const { data: gatewayData } = await supabase.rpc('get_my_gateway');
+
+        if (merchantData) {
+          const gateway = gatewayData && gatewayData.length > 0 ? gatewayData[0] : null;
           setCredentials({
-            accountNumber: data.account_number,
-            apiKey: data.api_key,
-            payoutKey: data.payout_key,
-            payinFee: data.payin_fee || 0,
-            payoutFee: data.payout_fee || 0,
+            accountNumber: merchantData.account_number,
+            apiKey: merchantData.api_key,
+            payoutKey: merchantData.payout_key,
+            payinFee: merchantData.payin_fee || 0,
+            payoutFee: merchantData.payout_fee || 0,
             gatewayName: gateway?.gateway_name || null,
             gatewayType: gateway?.gateway_type || null,
             currency: gateway?.currency || 'INR',
-            tradeType: data.trade_type || null,
+            tradeType: merchantData.trade_type || null,
           });
         }
       } catch (error) {
