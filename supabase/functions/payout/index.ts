@@ -91,6 +91,57 @@ Deno.serve(async (req) => {
       )
     }
 
+    // Validate amount format and value
+    const amountStr = String(amount)
+    const amountNum = parseFloat(amountStr)
+    
+    // Check for valid number
+    if (isNaN(amountNum)) {
+      console.error('Invalid amount format:', amount)
+      return new Response(
+        JSON.stringify({ code: 400, message: 'Invalid amount: must be a valid number' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    
+    // Check for positive amount
+    if (amountNum <= 0) {
+      console.error('Invalid amount value (not positive):', amountNum)
+      return new Response(
+        JSON.stringify({ code: 400, message: 'Invalid amount: must be greater than zero' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    
+    // Validate decimal precision (max 2 decimal places for currency)
+    if (!/^\d+(\.\d{1,2})?$/.test(amountStr) && !/^\d+$/.test(amountStr)) {
+      console.error('Invalid amount precision:', amount)
+      return new Response(
+        JSON.stringify({ code: 400, message: 'Invalid amount: maximum 2 decimal places allowed' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    
+    // Minimum payout amount (configurable, default 100)
+    const MIN_PAYOUT_AMOUNT = 100
+    if (amountNum < MIN_PAYOUT_AMOUNT) {
+      console.error('Amount below minimum threshold:', amountNum)
+      return new Response(
+        JSON.stringify({ code: 400, message: `Payout amount must be at least ${MIN_PAYOUT_AMOUNT}` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    
+    // Maximum payout amount (safety limit)
+    const MAX_PAYOUT_AMOUNT = 5000000 // 50 lakh
+    if (amountNum > MAX_PAYOUT_AMOUNT) {
+      console.error('Amount exceeds maximum threshold:', amountNum)
+      return new Response(
+        JSON.stringify({ code: 400, message: `Payout amount cannot exceed ${MAX_PAYOUT_AMOUNT}` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
@@ -145,7 +196,7 @@ Deno.serve(async (req) => {
       )
     }
 
-    const amountNum = parseFloat(amount)
+    // amountNum already validated above
     const fee = amountNum * (merchant.payout_fee / 100)
     const totalDeduction = amountNum + fee
 

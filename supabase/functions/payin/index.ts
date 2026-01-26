@@ -108,6 +108,57 @@ Deno.serve(async (req) => {
       )
     }
 
+    // Validate amount format and value
+    const amountStr = String(amount)
+    const amountNum = parseFloat(amountStr)
+    
+    // Check for valid number
+    if (isNaN(amountNum)) {
+      console.error('Invalid amount format:', amount)
+      return new Response(
+        JSON.stringify({ code: 400, message: 'Invalid amount: must be a valid number' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    
+    // Check for positive amount
+    if (amountNum <= 0) {
+      console.error('Invalid amount value (not positive):', amountNum)
+      return new Response(
+        JSON.stringify({ code: 400, message: 'Invalid amount: must be greater than zero' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    
+    // Validate decimal precision (max 2 decimal places for currency)
+    if (!/^\d+(\.\d{1,2})?$/.test(amountStr) && !/^\d+$/.test(amountStr)) {
+      console.error('Invalid amount precision:', amount)
+      return new Response(
+        JSON.stringify({ code: 400, message: 'Invalid amount: maximum 2 decimal places allowed' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    
+    // Minimum transaction amount (configurable, default 10)
+    const MIN_TRANSACTION_AMOUNT = 10
+    if (amountNum < MIN_TRANSACTION_AMOUNT) {
+      console.error('Amount below minimum threshold:', amountNum)
+      return new Response(
+        JSON.stringify({ code: 400, message: `Amount must be at least ${MIN_TRANSACTION_AMOUNT}` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    
+    // Maximum transaction amount (safety limit)
+    const MAX_TRANSACTION_AMOUNT = 10000000 // 1 crore
+    if (amountNum > MAX_TRANSACTION_AMOUNT) {
+      console.error('Amount exceeds maximum threshold:', amountNum)
+      return new Response(
+        JSON.stringify({ code: 400, message: `Amount cannot exceed ${MAX_TRANSACTION_AMOUNT}` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
@@ -203,7 +254,7 @@ Deno.serve(async (req) => {
       .select('large_payin_threshold')
       .limit(1)
 
-    const amountNum = parseFloat(amount)
+    // amountNum already validated above
     const fee = amountNum * (merchant.payin_fee / 100)
     const netAmount = amountNum - fee
     const orderNo = generateOrderNo()
