@@ -148,6 +148,11 @@ const MerchantPaymentLinks = () => {
     try {
       const linkCode = generateLinkCode();
       
+      // trade_type should be null if empty/default, otherwise some gateways may fail
+      const tradeTypeValue = newLink.trade_type && newLink.trade_type !== 'default' && newLink.trade_type !== '' 
+        ? newLink.trade_type 
+        : null;
+      
       const { error } = await supabase
         .from('payment_links')
         .insert({
@@ -156,7 +161,7 @@ const MerchantPaymentLinks = () => {
           amount: parseFloat(newLink.amount),
           description: newLink.description || null,
           expires_at: newLink.hasExpiry && newLink.expiryDate ? new Date(newLink.expiryDate).toISOString() : null,
-          trade_type: newLink.trade_type !== 'default' ? newLink.trade_type : null,
+          trade_type: tradeTypeValue,
         });
 
       if (error) throw error;
