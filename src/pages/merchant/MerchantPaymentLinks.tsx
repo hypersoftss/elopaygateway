@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { Plus, Copy, ExternalLink, Link as LinkIcon, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useMerchantCurrency } from '@/hooks/useMerchantCurrency';
 import {
   Dialog,
   DialogContent,
@@ -36,12 +37,6 @@ interface PaymentLink {
   trade_type: string | null;
 }
 
-interface MerchantGateway {
-  gateway_type: string;
-  currency: string;
-  trade_type: string | null;
-}
-
 interface TradeTypeOption {
   value: string;
   label: string;
@@ -51,12 +46,12 @@ const MerchantPaymentLinks = () => {
   const { t, language } = useTranslation();
   const { user } = useAuthStore();
   const { toast } = useToast();
+  const { currencySymbol, currency, gatewayType, isLoading: currencyLoading } = useMerchantCurrency();
   const [links, setLinks] = useState<PaymentLink[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [merchantGateway, setMerchantGateway] = useState<MerchantGateway | null>(null);
   const [tradeTypeOptions, setTradeTypeOptions] = useState<TradeTypeOption[]>([]);
   const [newLink, setNewLink] = useState({
     amount: '',
@@ -67,10 +62,8 @@ const MerchantPaymentLinks = () => {
   });
 
   // Get trade type options based on gateway
-  const getTradeTypeOptions = (gateway: MerchantGateway | null): TradeTypeOption[] => {
-    if (!gateway) return [];
-
-    const { gateway_type, currency } = gateway;
+  const getTradeTypeOptions = (gateway_type: string | null, curr: string): TradeTypeOption[] => {
+    if (!gateway_type) return [];
 
     // HYPER PAY - no selection needed (uses default)
     if (gateway_type === 'hyperpay') {
@@ -79,7 +72,7 @@ const MerchantPaymentLinks = () => {
 
     // HYPER SOFTS options based on currency (also check for legacy 'lgpay' type)
     if (gateway_type === 'hypersofts' || gateway_type === 'lgpay') {
-      switch (currency) {
+      switch (curr) {
         case 'INR':
           return [
             { value: 'INRUPI', label: '🇮🇳 UPI (INRUPI)' },
@@ -103,52 +96,16 @@ const MerchantPaymentLinks = () => {
     return [];
   };
 
-  const getCurrencySymbol = (currency: string): string => {
-    const symbols: Record<string, string> = { INR: '₹', PKR: 'Rs.', BDT: '৳' };
-    return symbols[currency] || '₹';
-  };
-
-  const fetchMerchantGateway = async () => {
-    if (!user?.merchantId) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('merchants')
-        .select(`
-          gateway_id,
-          trade_type,
-          payment_gateways (
-            gateway_type,
-            currency,
-            trade_type
-          )
-        `)
-        .eq('id', user.merchantId)
-        .single();
-
-      if (error) throw error;
-
-      if (data?.payment_gateways) {
-        const gateway = data.payment_gateways as unknown as { gateway_type: string; currency: string; trade_type: string | null };
-        const merchantData: MerchantGateway = {
-          gateway_type: gateway.gateway_type,
-          currency: gateway.currency,
-          trade_type: data.trade_type || gateway.trade_type,
-        };
-        setMerchantGateway(merchantData);
-        
-        const options = getTradeTypeOptions(merchantData);
-        setTradeTypeOptions(options);
-        
-        // Set default trade_type
-        if (options.length > 0) {
-          setNewLink(prev => ({ ...prev, trade_type: options[0].value }));
-        }
+  // Update trade type options when currency data loads
+  useEffect(() => {
+    if (!currencyLoading && gatewayType) {
+      const options = getTradeTypeOptions(gatewayType, currency);
+      setTradeTypeOptions(options);
+      if (options.length > 0 && !newLink.trade_type) {
+        setNewLink(prev => ({ ...prev, trade_type: options[0].value }));
       }
-    } catch (error) {
-      console.error('Error fetching merchant gateway:', error);
     }
-  };
+  }, [currencyLoading, gatewayType, currency]);
 
   const fetchLinks = async () => {
     if (!user?.merchantId) return;
@@ -172,7 +129,6 @@ const MerchantPaymentLinks = () => {
   };
 
   useEffect(() => {
-    fetchMerchantGateway();
     fetchLinks();
   }, [user?.merchantId]);
 
@@ -238,8 +194,6 @@ const MerchantPaymentLinks = () => {
     return labels[tradeType] || tradeType;
   };
 
-  const currencySymbol = merchantGateway ? getCurrencySymbol(merchantGateway.currency) : '₹';
-
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
@@ -287,7 +241,7 @@ const MerchantPaymentLinks = () => {
                         placeholder="1000"
                         value={newLink.amount}
                         onChange={(e) => setNewLink({ ...newLink, amount: e.target.value })}
-                        className="pl-8"
+                        className="pl-12"
                       />
                     </div>
                   </div>
@@ -429,17 +383,19 @@ const MerchantPaymentLinks = () => {
                       <TableCell>
                         <div className="flex justify-center gap-1">
                           <Button
-                            size="icon"
                             variant="ghost"
-                            className="h-8 w-8"
+                            size="icon"
                             onClick={() => copyToClipboard(link.link_code)}
                           >
-                            <Copy className={`h-4 w-4 ${copiedId === link.link_code ? 'text-[hsl(var(--success))]' : ''}`} />
+                            {copiedId === link.link_code ? (
+                              <span className="text-[hsl(var(--success))]">✓</span>
+                            ) : (
+                              <Copy className="h-4 w-4" />
+                            )}
                           </Button>
                           <Button
-                            size="icon"
                             variant="ghost"
-                            className="h-8 w-8"
+                            size="icon"
                             onClick={() => window.open(`/pay/${link.link_code}`, '_blank')}
                           >
                             <ExternalLink className="h-4 w-4" />
