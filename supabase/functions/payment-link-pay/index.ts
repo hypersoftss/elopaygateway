@@ -20,12 +20,22 @@ function generateBondPaySignature(merchantId: string, amount: string, orderNo: s
   return hash.toString()
 }
 
-// LG Pay signature: ASCII-sorted parameters + &key=secret
-function generateLGPaySignature(params: Record<string, string>, apiKey: string): string {
-  const sortedKeys = Object.keys(params).filter(k => params[k] !== '').sort()
-  const signStr = sortedKeys.map(k => `${k}=${params[k]}`).join('&') + `&key=${apiKey}`
+// HYPER SOFTS signature: ASCII-sorted parameters + &key=secret (uppercase)
+function generateHyperSoftsSignature(params: Record<string, any>, key: string): string {
+  // Filter out empty values and sign itself
+  const filteredParams = Object.entries(params)
+    .filter(([k, v]) => v !== '' && v !== null && v !== undefined && k !== 'sign')
+    .sort(([a], [b]) => a.localeCompare(b)) // ASCII sort
+  
+  const queryString = filteredParams
+    .map(([k, v]) => `${k}=${v}`)
+    .join('&')
+  
+  const signString = `${queryString}&key=${key}`
+  console.log('HYPER SOFTS sign string:', signString)
+  
   const hash = new Md5()
-  hash.update(signStr)
+  hash.update(signString)
   return hash.toString().toUpperCase()
 }
 
@@ -145,51 +155,58 @@ Deno.serve(async (req) => {
     // Determine trade_type: link-level > merchant-level > gateway-level
     const tradeType = link.trade_type || merchant?.trade_type || gateway?.trade_type
 
-    // Route based on gateway type
-    if (gateway && gateway.gateway_type === 'lgpay') {
-      // LG Pay Integration
-      console.log('Using LG Pay gateway:', gateway.gateway_code)
+    // Route based on gateway type (hypersofts = lgpay rebranded)
+    if (gateway && (gateway.gateway_type === 'hypersofts' || gateway.gateway_type === 'lgpay')) {
+      // HYPER SOFTS Integration
+      console.log('Using HYPER SOFTS gateway:', gateway.gateway_code)
       gatewayId = gateway.id
 
-      const lgPayParams: Record<string, string> = {
+      // Determine trade_type for HYPER SOFTS
+      let apiTradeType = tradeType
+      if (!apiTradeType) {
+        if (gateway.currency === 'INR') {
+          apiTradeType = 'INRUPI'
+        } else if (gateway.currency === 'BDT') {
+          apiTradeType = 'nagad'
+        } else if (gateway.currency === 'PKR') {
+          apiTradeType = 'PKRPH'
+        }
+      }
+
+      const hsParams: Record<string, any> = {
         app_id: gateway.app_id,
-        out_trade_no: orderNo,
-        amount: amount.toString(),
+        trade_type: apiTradeType,
+        order_sn: orderNo,
+        money: Math.round(amount * 100), // HYPER SOFTS uses cents
         notify_url: internalCallbackUrl,
-        extra: merchant?.id || link.merchant_id,
+        ip: '0.0.0.0',
+        remark: merchant?.id || link.merchant_id,
       }
 
-      // Add trade_type based on currency
-      if (tradeType) {
-        lgPayParams.trade_type = tradeType
-      } else if (gateway.currency === 'INR') {
-        lgPayParams.trade_type = 'INRUPI'
-      } else if (gateway.currency === 'BDT') {
-        lgPayParams.trade_type = 'nagad'
-      } else if (gateway.currency === 'PKR') {
-        lgPayParams.trade_type = 'PKRPH' // Gateway-level for PKR
-      }
+      hsParams.sign = generateHyperSoftsSignature(hsParams, gateway.api_key)
 
-      const signature = generateLGPaySignature(lgPayParams, gateway.api_key)
+      console.log('Calling HYPER SOFTS API:', `${gateway.base_url}/api/order/create`)
+      console.log('HYPER SOFTS params:', hsParams)
 
-      console.log('Calling LG Pay API:', `${gateway.base_url}/pay/create`)
+      const formBody = new URLSearchParams()
+      Object.entries(hsParams).forEach(([k, v]) => formBody.append(k, String(v)))
 
-      const lgPayResponse = await fetch(`${gateway.base_url}/pay/create`, {
+      const hsResponse = await fetch(`${gateway.base_url}/api/order/create`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...lgPayParams, sign: signature })
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: formBody.toString()
       })
 
-      const lgPayData = await lgPayResponse.json()
-      console.log('LG Pay response:', lgPayData)
+      const hsData = await hsResponse.json()
+      console.log('HYPER SOFTS response:', hsData)
 
-      if (lgPayData.code === 200 || lgPayData.code === '200') {
-        paymentUrl = lgPayData.data?.pay_url || lgPayData.data?.payment_url
-        gatewayOrderNo = lgPayData.data?.order_no
+      if (hsData.status === 1 && hsData.data?.pay_url) {
+        paymentUrl = hsData.data.pay_url
+        gatewayOrderNo = hsData.data?.order_no || hsData.data?.order_sn
       } else {
-        console.error('LG Pay error:', lgPayData)
+        console.error('HYPER SOFTS error:', hsData)
         return new Response(
-          JSON.stringify({ error: lgPayData.msg || 'Gateway error' }),
+          JSON.stringify({ error: hsData.msg || 'Gateway error' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
