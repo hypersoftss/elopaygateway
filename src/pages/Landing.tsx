@@ -41,7 +41,7 @@ const Landing = () => {
               <Zap className="h-5 w-5 text-primary-foreground" />
             </div>
           )}
-          <span className="font-bold text-xl">{settings.gatewayName}</span>
+          <span className="font-bold text-xl">{settings.gatewayName || 'ELOPAY'}</span>
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
@@ -55,13 +55,13 @@ const Landing = () => {
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
             {language === 'zh' ? (
               <>
-                <span className="gradient-text">{settings.gatewayName}</span>
+                <span className="gradient-text">ELOPAY</span>
                 <br />
                 支付网关解决方案
               </>
             ) : (
               <>
-                <span className="gradient-text">{settings.gatewayName}</span>
+                <span className="gradient-text">ELOPAY</span>
                 <br />
                 Payment Gateway Solution
               </>
@@ -110,7 +110,7 @@ const Landing = () => {
 
       {/* Footer */}
       <footer className="p-4 text-center text-sm text-muted-foreground border-t">
-        © {new Date().getFullYear()} {settings.gatewayName}. All rights reserved.
+        © {new Date().getFullYear()} ELOPAY. All rights reserved.
       </footer>
     </div>
   );
