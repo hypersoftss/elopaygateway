@@ -50,7 +50,7 @@ const AdminLogin = () => {
         });
         if (!error && data?.gateway_settings) {
           setSettings({
-            gatewayName: data.gateway_settings.gateway_name || 'PayGate',
+            gatewayName: data.gateway_settings.gateway_name || 'ELOPAY',
             logoUrl: data.gateway_settings.logo_url
           });
         }
@@ -161,7 +161,7 @@ const AdminLogin = () => {
     setIsSubmitting(true);
     try {
       const totp = new OTPAuth.TOTP({
-        issuer: settings.gatewayName || 'PayGate',
+        issuer: settings.gatewayName || 'ELOPAY',
         label: email,
         algorithm: 'SHA1',
         digits: 6,
