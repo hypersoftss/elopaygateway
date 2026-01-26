@@ -584,6 +584,16 @@ export type Database = {
           support_email: string
         }[]
       }
+      get_my_gateway: {
+        Args: never
+        Returns: {
+          currency: string
+          gateway_code: string
+          gateway_id: string
+          gateway_name: string
+          gateway_type: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
