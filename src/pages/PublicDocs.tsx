@@ -23,7 +23,7 @@ const PublicDocs = () => {
   const isEnglish = language === 'en';
 
   // Use gateway name from settings
-  const gatewayName = settings.gatewayName;
+  const gatewayName = settings.gatewayName || 'ELOPAY';
   const logoUrl = settings.logoUrl;
 
   const copyToClipboard = (text: string) => {

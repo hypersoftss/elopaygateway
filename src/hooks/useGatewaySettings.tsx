@@ -58,7 +58,7 @@ export const useGatewaySettings = () => {
         if (settingsData) {
           const row = settingsData as GatewayBrandingRow;
           const newSettings = {
-            gatewayName: row.gateway_name || 'Payment Gateway',
+            gatewayName: row.gateway_name || 'ELOPAY',
             logoUrl: row.logo_url,
             faviconUrl: row.favicon_url || null,
             supportEmail: row.support_email,

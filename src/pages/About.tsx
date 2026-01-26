@@ -64,7 +64,7 @@ const About = () => {
   ];
 
   // Use gateway name from settings, fallback to default only while loading
-  const gatewayName = settings.gatewayName;
+  const gatewayName = settings.gatewayName || 'ELOPAY';
   const logoUrl = settings.logoUrl;
 
   return (
