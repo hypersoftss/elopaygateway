@@ -136,7 +136,7 @@ const MerchantDocumentation = () => {
 }`;
     }
 
-    if (credentials?.currency === 'INR' && credentials?.gatewayType === 'hypersofts') {
+    if (credentials?.currency === 'INR' && (credentials?.gatewayType === 'hypersofts' || credentials?.gatewayType === 'lgpay')) {
       return `{
   "merchant_id": "${baseExample.merchant_id}",
   "amount": "${baseExample.amount}",
@@ -582,7 +582,7 @@ function generateHyperSoftsSign(params, apiKey) {
                         <tr><td className="p-3 border-b font-mono">merchant_order_no</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">{language === 'zh' ? '商户订单号' : 'Merchant Order No'}</td></tr>
                         <tr><td className="p-3 border-b font-mono">callback_url</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">{language === 'zh' ? '回调地址' : 'Callback URL'}</td></tr>
                         {/* trade_type - Required for PKR/BDT, Optional for INR */}
-                        {(credentials?.currency === 'PKR' || credentials?.currency === 'BDT' || (credentials?.currency === 'INR' && credentials?.gatewayType === 'hypersofts')) && (
+                        {(credentials?.currency === 'PKR' || credentials?.currency === 'BDT' || (credentials?.currency === 'INR' && (credentials?.gatewayType === 'hypersofts' || credentials?.gatewayType === 'lgpay'))) && (
                           <tr className="bg-primary/5">
                             <td className="p-3 border-b font-mono text-primary">trade_type</td>
                             <td className="p-3 border-b">string</td>
@@ -600,7 +600,7 @@ function generateHyperSoftsSign(params, apiKey) {
                                   <Badge variant="outline" className="bg-pink-500/10 text-pink-600">bkash</Badge>
                                 </span>
                               )}
-                              {credentials?.currency === 'INR' && credentials?.gatewayType === 'hypersofts' && (
+                              {credentials?.currency === 'INR' && (credentials?.gatewayType === 'hypersofts' || credentials?.gatewayType === 'lgpay') && (
                                 <span className="flex items-center gap-2">
                                   <Badge variant="outline" className="bg-blue-500/10 text-blue-600">INRUPI</Badge>
                                   <Badge variant="outline" className="bg-green-500/10 text-green-600">usdt</Badge>
