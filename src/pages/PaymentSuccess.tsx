@@ -148,8 +148,8 @@ ${gateway.gateway_name}
             </div>
           )}
           <div>
-            <h1 className="font-bold text-lg text-foreground">{gateway.gateway_name}</h1>
-            <p className="text-xs text-muted-foreground">{language === 'zh' ? '支付网关' : 'Payment Gateway'}</p>
+            <h1 className="font-bold text-lg text-foreground">{gateway.gateway_name || 'ELOPAY'}</h1>
+            <p className="text-xs text-muted-foreground">{language === 'zh' ? 'ELOPAY 支付网关' : 'ELOPAY Payment Gateway'}</p>
           </div>
         </div>
         
@@ -262,7 +262,7 @@ ${gateway.gateway_name}
 
           {/* Footer */}
           <p className="text-center text-xs text-muted-foreground">
-            {language === 'zh' ? '由' : 'Powered by'} {gateway.gateway_name}
+            {language === 'zh' ? '由 ELOPAY 提供支持' : 'Powered by ELOPAY'}
           </p>
         </div>
       </main>

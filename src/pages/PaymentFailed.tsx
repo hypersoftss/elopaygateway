@@ -134,11 +134,11 @@ const PaymentFailed = () => {
           {gateway?.logo_url ? (
             <img 
               src={gateway.logo_url} 
-              alt={gateway.gateway_name || 'Payment Gateway'} 
+              alt="ELOPAY" 
               className="h-10 mx-auto object-contain"
             />
           ) : (
-            <p className="text-sm font-medium text-muted-foreground">{gateway?.gateway_name || 'Payment Gateway'}</p>
+            <p className="text-sm font-medium text-muted-foreground">ELOPAY</p>
           )}
         </CardHeader>
         
