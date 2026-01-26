@@ -11,7 +11,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { Search, Download, RefreshCw, Wallet, Filter, Calendar, CheckCircle, XCircle, Send, Volume2, VolumeX, Loader2, Eye } from 'lucide-react';
+import { Search, Download, RefreshCw, Wallet, Filter, Calendar, CheckCircle, XCircle, Send, Volume2, VolumeX, Loader2, Eye, Smartphone, Building2, Bitcoin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -55,6 +55,43 @@ interface PayoutTransaction {
     callback_url: string | null;
   } | null;
 }
+
+// Withdrawal method icons and labels
+const WITHDRAWAL_METHODS: Record<string, { icon: string; label: string; color: string }> = {
+  nagad: { icon: '📱', label: 'Nagad', color: 'bg-orange-500/10 text-orange-600 border-orange-500/30' },
+  bkash: { icon: '📲', label: 'bKash', color: 'bg-pink-500/10 text-pink-600 border-pink-500/30' },
+  easypaisa: { icon: '📱', label: 'Easypaisa', color: 'bg-green-500/10 text-green-600 border-green-500/30' },
+  jazzcash: { icon: '📲', label: 'JazzCash', color: 'bg-red-500/10 text-red-600 border-red-500/30' },
+  bank: { icon: '🏦', label: 'Bank Transfer', color: 'bg-blue-500/10 text-blue-600 border-blue-500/30' },
+  usdt: { icon: '💰', label: 'USDT (TRC20)', color: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/30' },
+};
+
+// Parse extra field to get withdrawal method info
+const parseWithdrawalMethod = (extra: string | null, bankName: string | null, usdtAddress: string | null): { method: string; currency: string | null } => {
+  if (extra) {
+    try {
+      const parsed = JSON.parse(extra);
+      if (parsed.withdrawal && parsed.method) {
+        return { method: parsed.method, currency: parsed.currency || null };
+      }
+    } catch {
+      // Not JSON or invalid
+    }
+  }
+  
+  // Fallback detection from other fields
+  if (usdtAddress) return { method: 'usdt', currency: null };
+  if (bankName) {
+    const lowerBank = bankName.toLowerCase();
+    if (lowerBank === 'nagad') return { method: 'nagad', currency: 'BDT' };
+    if (lowerBank === 'bkash') return { method: 'bkash', currency: 'BDT' };
+    if (lowerBank === 'easypaisa') return { method: 'easypaisa', currency: 'PKR' };
+    if (lowerBank === 'jazzcash') return { method: 'jazzcash', currency: 'PKR' };
+    return { method: 'bank', currency: 'INR' };
+  }
+  
+  return { method: 'bank', currency: null };
+};
 
 const AdminWithdrawals = () => {
   const { t, language } = useTranslation();
@@ -393,8 +430,9 @@ const AdminWithdrawals = () => {
                   <TableRow className="bg-muted/50">
                     <TableHead className="whitespace-nowrap">{t('transactions.orderNo')}</TableHead>
                     <TableHead className="whitespace-nowrap">{t('common.merchant')}</TableHead>
+                    <TableHead className="whitespace-nowrap">{language === 'zh' ? '提现方式' : 'Method'}</TableHead>
                     <TableHead className="text-right whitespace-nowrap">{t('transactions.amount')}</TableHead>
-                    <TableHead className="whitespace-nowrap hidden md:table-cell">{language === 'zh' ? '收款银行' : 'Bank Details'}</TableHead>
+                    <TableHead className="whitespace-nowrap hidden md:table-cell">{language === 'zh' ? '收款信息' : 'Account'}</TableHead>
                     <TableHead className="whitespace-nowrap">{t('common.status')}</TableHead>
                     <TableHead className="whitespace-nowrap hidden sm:table-cell">{t('common.createdAt')}</TableHead>
                     <TableHead className="text-center whitespace-nowrap">{t('common.actions')}</TableHead>
@@ -418,7 +456,11 @@ const AdminWithdrawals = () => {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredData.map((w) => (
+                    filteredData.map((w) => {
+                      const { method, currency } = parseWithdrawalMethod(w.extra, w.bank_name, w.usdt_address);
+                      const methodInfo = WITHDRAWAL_METHODS[method] || WITHDRAWAL_METHODS.bank;
+                      
+                      return (
                       <TableRow key={w.id} className={`hover:bg-muted/50 transition-colors ${w.status === 'pending' ? 'bg-yellow-500/5' : ''}`}>
                         <TableCell>
                           <div>
@@ -434,6 +476,15 @@ const AdminWithdrawals = () => {
                             <p className="text-xs text-muted-foreground">{w.merchants?.account_number}</p>
                           </div>
                         </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={`${methodInfo.color} font-medium text-xs`}>
+                            <span className="mr-1">{methodInfo.icon}</span>
+                            {methodInfo.label}
+                          </Badge>
+                          {currency && (
+                            <p className="text-[10px] text-muted-foreground mt-0.5">{currency}</p>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right">
                           <div>
                             <p className="font-semibold text-sm">₹{w.amount.toLocaleString()}</p>
@@ -442,9 +493,8 @@ const AdminWithdrawals = () => {
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
                           <div className="max-w-[150px]">
-                            <p className="text-sm font-medium truncate">{w.bank_name || '-'}</p>
-                            <p className="text-xs text-muted-foreground font-mono">{w.account_number}</p>
-                            <p className="text-xs text-muted-foreground">{w.account_holder_name}</p>
+                            <p className="text-xs text-muted-foreground font-mono">{w.account_number || w.usdt_address || '-'}</p>
+                            <p className="text-xs text-muted-foreground">{w.account_holder_name || '-'}</p>
                           </div>
                         </TableCell>
                         <TableCell>
@@ -495,7 +545,7 @@ const AdminWithdrawals = () => {
                           </div>
                         </TableCell>
                       </TableRow>
-                    ))
+                    );})
                   )}
                 </TableBody>
               </Table>
@@ -512,8 +562,21 @@ const AdminWithdrawals = () => {
                 {language === 'zh' ? '代付详情' : 'Payout Details'}
               </DialogTitle>
             </DialogHeader>
-            {viewPayout && (
+            {viewPayout && (() => {
+              const { method, currency } = parseWithdrawalMethod(viewPayout.extra, viewPayout.bank_name, viewPayout.usdt_address);
+              const methodInfo = WITHDRAWAL_METHODS[method] || WITHDRAWAL_METHODS.bank;
+              
+              return (
               <div className="space-y-4">
+                {/* Withdrawal Method Highlight */}
+                <div className={`p-4 rounded-lg border-2 ${methodInfo.color} flex items-center gap-3`}>
+                  <span className="text-2xl">{methodInfo.icon}</span>
+                  <div>
+                    <p className="font-bold">{methodInfo.label}</p>
+                    {currency && <p className="text-xs opacity-80">{currency} Withdrawal</p>}
+                  </div>
+                </div>
+
                 <div className="p-4 rounded-lg bg-muted/50 space-y-3">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground text-sm">{language === 'zh' ? '订单号' : 'Order No'}</span>
@@ -552,23 +615,45 @@ const AdminWithdrawals = () => {
                 </div>
 
                 <div className="p-4 rounded-lg border space-y-3">
-                  <h4 className="font-medium text-sm">{language === 'zh' ? '收款银行信息' : 'Bank Details'}</h4>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground text-sm">{language === 'zh' ? '银行' : 'Bank'}</span>
-                    <span>{viewPayout.bank_name || '-'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground text-sm">{language === 'zh' ? '账号' : 'Account'}</span>
-                    <span className="font-mono text-sm">{viewPayout.account_number || '-'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground text-sm">{language === 'zh' ? '持有人' : 'Holder'}</span>
-                    <span>{viewPayout.account_holder_name || '-'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground text-sm">IFSC</span>
-                    <span className="font-mono text-sm">{viewPayout.ifsc_code || '-'}</span>
-                  </div>
+                  <h4 className="font-medium text-sm flex items-center gap-2">
+                    {method === 'usdt' ? <Bitcoin className="h-4 w-4" /> : method === 'bank' ? <Building2 className="h-4 w-4" /> : <Smartphone className="h-4 w-4" />}
+                    {language === 'zh' ? '收款信息' : 'Payment Details'}
+                  </h4>
+                  {method === 'usdt' ? (
+                    <div className="flex flex-col gap-1">
+                      <span className="text-muted-foreground text-sm">USDT Address (TRC20)</span>
+                      <span className="font-mono text-xs break-all bg-muted p-2 rounded">{viewPayout.usdt_address || '-'}</span>
+                    </div>
+                  ) : (
+                    <>
+                      {method !== 'bank' && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground text-sm">{language === 'zh' ? '钱包' : 'Wallet'}</span>
+                          <span className="font-medium">{methodInfo.label}</span>
+                        </div>
+                      )}
+                      {method === 'bank' && viewPayout.bank_name && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground text-sm">{language === 'zh' ? '银行' : 'Bank'}</span>
+                          <span>{viewPayout.bank_name}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground text-sm">{language === 'zh' ? '账号' : 'Account No'}</span>
+                        <span className="font-mono text-sm">{viewPayout.account_number || '-'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground text-sm">{language === 'zh' ? '持有人' : 'Account Name'}</span>
+                        <span>{viewPayout.account_holder_name || '-'}</span>
+                      </div>
+                      {method === 'bank' && viewPayout.ifsc_code && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground text-sm">IFSC</span>
+                          <span className="font-mono text-sm">{viewPayout.ifsc_code}</span>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
 
                 <div className="flex justify-between text-xs text-muted-foreground">
@@ -576,7 +661,7 @@ const AdminWithdrawals = () => {
                   <span>{format(new Date(viewPayout.created_at), 'yyyy-MM-dd HH:mm:ss')}</span>
                 </div>
               </div>
-            )}
+            );})()}
           </DialogContent>
         </Dialog>
 
