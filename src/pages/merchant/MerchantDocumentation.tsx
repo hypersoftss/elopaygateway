@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Copy, Eye, EyeOff, Check, Terminal, FileCode, Download, Package, Zap, Shield } from 'lucide-react';
+import { Copy, Eye, EyeOff, Check, Terminal, FileCode, Download, Zap, Shield, Globe, Wallet, CreditCard, Smartphone, Building } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -35,7 +35,6 @@ const MerchantDocumentation = () => {
   const [showPayoutKey, setShowPayoutKey] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
-  // Use gateway name from settings for branding
   const gatewayName = settings.gatewayName || 'Payment Gateway';
   const apiBaseUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
 
@@ -102,7 +101,7 @@ const MerchantDocumentation = () => {
     return key.slice(0, 4) + '****' + key.slice(-4);
   };
 
-  // Currency-specific helpers
+  // Currency & Gateway helpers
   const getCurrencySymbol = () => {
     if (credentials?.currency === 'PKR') return 'Rs.';
     if (credentials?.currency === 'BDT') return '৳';
@@ -115,97 +114,794 @@ const MerchantDocumentation = () => {
     return '🇮🇳';
   };
 
+  const getRegionName = () => {
+    if (credentials?.currency === 'PKR') return 'Pakistan';
+    if (credentials?.currency === 'BDT') return 'Bangladesh';
+    return 'India';
+  };
+
+  const isHyperPay = credentials?.gatewayType === 'hyperpay' || credentials?.gatewayType === 'bondpay';
+  const isHyperSofts = credentials?.gatewayType === 'hypersofts' || credentials?.gatewayType === 'lgpay';
+
   const getPaymentMethods = () => {
     if (credentials?.currency === 'PKR') {
       return [
-        { name: 'Easypaisa', code: 'easypaisa', color: 'bg-green-500', description: 'Mobile Wallet' },
-        { name: 'JazzCash', code: 'jazzcash', color: 'bg-red-500', description: 'Mobile Wallet' }
+        { name: 'Easypaisa', code: 'easypaisa', icon: Smartphone, color: 'bg-green-500', description: 'Mobile Wallet' },
+        { name: 'JazzCash', code: 'jazzcash', icon: Smartphone, color: 'bg-red-500', description: 'Mobile Wallet' },
+        { name: 'USDT', code: 'usdt', icon: Wallet, color: 'bg-teal-500', description: 'Crypto Payment' }
       ];
     }
     if (credentials?.currency === 'BDT') {
       return [
-        { name: 'Nagad', code: 'nagad', color: 'bg-orange-500', description: 'Mobile Wallet' },
-        { name: 'bKash', code: 'bkash', color: 'bg-pink-500', description: 'Mobile Wallet' }
+        { name: 'Nagad', code: 'nagad', icon: Smartphone, color: 'bg-orange-500', description: 'Mobile Wallet' },
+        { name: 'bKash', code: 'bkash', icon: Smartphone, color: 'bg-pink-500', description: 'Mobile Wallet' },
+        { name: 'USDT', code: 'usdt', icon: Wallet, color: 'bg-teal-500', description: 'Crypto Payment' }
+      ];
+    }
+    // INR
+    if (isHyperPay) {
+      return [
+        { name: 'UPI', code: 'UPI', icon: CreditCard, color: 'bg-blue-500', description: 'Instant Payment' },
+        { name: 'Bank Transfer', code: 'IMPS', icon: Building, color: 'bg-purple-500', description: 'IMPS/NEFT' }
       ];
     }
     return [
-      { name: 'UPI', code: 'INRUPI', color: 'bg-blue-500', description: 'UPI Payment' },
-      { name: 'Bank Transfer', code: 'bank', color: 'bg-purple-500', description: 'IMPS/NEFT' }
+      { name: 'UPI', code: 'INRUPI', icon: CreditCard, color: 'bg-blue-500', description: 'UPI Payment' },
+      { name: 'USDT', code: 'usdt', icon: Wallet, color: 'bg-teal-500', description: 'Crypto Payment' }
     ];
   };
 
-  // Dynamic examples based on currency
-  const getPayinExample = () => {
-    const baseParams = {
-      merchant_id: credentials?.accountNumber || 'YOUR_MERCHANT_ID',
-      amount: credentials?.currency === 'PKR' ? '2000.00' : credentials?.currency === 'BDT' ? '1000.00' : '500.00',
-      merchant_order_no: `ORDER_${Date.now()}`,
-      callback_url: 'https://your-domain.com/callback',
-    };
+  // PKR Documentation
+  const renderPKRDocs = () => (
+    <div className="space-y-6">
+      {/* Region Header */}
+      <div className="p-6 bg-gradient-to-r from-green-500/10 to-green-600/5 border border-green-500/20 rounded-xl">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 bg-green-500 rounded-xl flex items-center justify-center text-3xl">
+            🇵🇰
+          </div>
+          <div>
+            <h2 className="text-xl font-bold">Pakistan (PKR) Integration</h2>
+            <p className="text-muted-foreground">Easypaisa, JazzCash & USDT Payments</p>
+            <div className="flex gap-2 mt-2">
+              <Badge variant="outline" className="bg-green-500/10">Easypaisa</Badge>
+              <Badge variant="outline" className="bg-red-500/10">JazzCash</Badge>
+              <Badge variant="outline" className="bg-teal-500/10">USDT</Badge>
+            </div>
+          </div>
+        </div>
+      </div>
 
-    if (credentials?.currency === 'PKR') {
-      return JSON.stringify({
-        ...baseParams,
-        trade_type: 'easypaisa',
-        sign: 'YOUR_MD5_SIGNATURE'
-      }, null, 2);
-    }
-    if (credentials?.currency === 'BDT') {
-      return JSON.stringify({
-        ...baseParams,
-        trade_type: 'nagad',
-        sign: 'YOUR_MD5_SIGNATURE'
-      }, null, 2);
-    }
-    return JSON.stringify({
-      ...baseParams,
-      sign: 'YOUR_MD5_SIGNATURE'
-    }, null, 2);
+      {/* Pay-in Parameters */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Badge className="bg-green-500">POST</Badge>
+            Pay-in API (Deposit)
+          </CardTitle>
+          <CardDescription>Collect payments from customers via Easypaisa or JazzCash</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="relative">
+            <code className="block p-4 bg-muted rounded-lg text-sm font-mono">{apiBaseUrl}/payin</code>
+            <Button variant="ghost" size="sm" className="absolute right-2 top-2" onClick={() => copyToClipboard(`${apiBaseUrl}/payin`, 'pkr-payin')}>
+              {copiedField === 'pkr-payin' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            </Button>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border rounded-lg">
+              <thead className="bg-muted">
+                <tr>
+                  <th className="text-left p-3 border-b">Parameter</th>
+                  <th className="text-left p-3 border-b">Type</th>
+                  <th className="text-left p-3 border-b">Required</th>
+                  <th className="text-left p-3 border-b">Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td className="p-3 border-b font-mono">merchant_id</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">Your Merchant ID</td></tr>
+                <tr><td className="p-3 border-b font-mono">amount</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">Amount in PKR (Rs.)</td></tr>
+                <tr><td className="p-3 border-b font-mono">merchant_order_no</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">Your unique order ID</td></tr>
+                <tr><td className="p-3 border-b font-mono">callback_url</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">Callback URL for notifications</td></tr>
+                <tr className="bg-green-500/10">
+                  <td className="p-3 border-b font-mono font-bold text-green-700">trade_type</td>
+                  <td className="p-3 border-b">string</td>
+                  <td className="p-3 border-b font-bold text-green-700">✓</td>
+                  <td className="p-3 border-b">
+                    <Badge variant="outline" className="bg-green-500/10 mr-2">easypaisa</Badge>
+                    <Badge variant="outline" className="bg-red-500/10">jazzcash</Badge>
+                  </td>
+                </tr>
+                <tr><td className="p-3 border-b font-mono">sign</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">MD5 Signature (uppercase)</td></tr>
+                <tr><td className="p-3 font-mono">extra</td><td className="p-3">string</td><td className="p-3">-</td><td className="p-3">Extra data (returned in callback)</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+            <p className="font-semibold text-yellow-700 mb-1">⚠️ Important</p>
+            <p className="text-sm text-yellow-600">PKR transactions require <code className="bg-yellow-200/50 px-1 rounded">trade_type</code> parameter. Use "easypaisa" or "jazzcash".</p>
+          </div>
+
+          <div>
+            <h4 className="font-semibold mb-2">Request Example</h4>
+            <pre className="p-4 bg-muted rounded-lg text-sm overflow-x-auto font-mono">
+{JSON.stringify({
+  merchant_id: credentials?.accountNumber || 'YOUR_MERCHANT_ID',
+  amount: '5000.00',
+  merchant_order_no: 'ORDER_123456',
+  callback_url: 'https://your-site.com/callback',
+  trade_type: 'easypaisa',
+  sign: 'YOUR_MD5_SIGNATURE'
+}, null, 2)}
+            </pre>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Pay-out Parameters */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Badge className="bg-blue-500">POST</Badge>
+            Pay-out API (Withdrawal)
+          </CardTitle>
+          <CardDescription>Send payments to Easypaisa or JazzCash accounts</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="relative">
+            <code className="block p-4 bg-muted rounded-lg text-sm font-mono">{apiBaseUrl}/payout</code>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border rounded-lg">
+              <thead className="bg-muted">
+                <tr>
+                  <th className="text-left p-3 border-b">Parameter</th>
+                  <th className="text-left p-3 border-b">Type</th>
+                  <th className="text-left p-3 border-b">Required</th>
+                  <th className="text-left p-3 border-b">Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td className="p-3 border-b font-mono">merchant_id</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">Your Merchant ID</td></tr>
+                <tr><td className="p-3 border-b font-mono">amount</td><td className="p-3 border-b">number</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">Amount in PKR</td></tr>
+                <tr><td className="p-3 border-b font-mono">transaction_id</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">Your unique transaction ID</td></tr>
+                <tr className="bg-blue-500/10">
+                  <td className="p-3 border-b font-mono font-bold">account_number</td>
+                  <td className="p-3 border-b">string</td>
+                  <td className="p-3 border-b">✓</td>
+                  <td className="p-3 border-b">Mobile number (03xxxxxxxxx)</td>
+                </tr>
+                <tr className="bg-blue-500/10">
+                  <td className="p-3 border-b font-mono font-bold">name</td>
+                  <td className="p-3 border-b">string</td>
+                  <td className="p-3 border-b">✓</td>
+                  <td className="p-3 border-b">Account holder name</td>
+                </tr>
+                <tr className="bg-green-500/10">
+                  <td className="p-3 border-b font-mono font-bold text-green-700">withdrawal_method</td>
+                  <td className="p-3 border-b">string</td>
+                  <td className="p-3 border-b font-bold text-green-700">✓</td>
+                  <td className="p-3 border-b">
+                    <Badge variant="outline" className="bg-green-500/10 mr-2">easypaisa</Badge>
+                    <Badge variant="outline" className="bg-red-500/10">jazzcash</Badge>
+                  </td>
+                </tr>
+                <tr><td className="p-3 border-b font-mono">callback_url</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">Callback URL</td></tr>
+                <tr><td className="p-3 font-mono">sign</td><td className="p-3">string</td><td className="p-3">✓</td><td className="p-3">MD5 Signature (uppercase)</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div>
+            <h4 className="font-semibold mb-2">Request Example</h4>
+            <pre className="p-4 bg-muted rounded-lg text-sm overflow-x-auto font-mono">
+{JSON.stringify({
+  merchant_id: credentials?.accountNumber || 'YOUR_MERCHANT_ID',
+  amount: 5000,
+  transaction_id: 'WD_123456',
+  account_number: '03001234567',
+  name: 'Muhammad Ali',
+  withdrawal_method: 'easypaisa',
+  callback_url: 'https://your-site.com/payout-callback',
+  sign: 'YOUR_MD5_SIGNATURE'
+}, null, 2)}
+            </pre>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  // BDT Documentation
+  const renderBDTDocs = () => (
+    <div className="space-y-6">
+      {/* Region Header */}
+      <div className="p-6 bg-gradient-to-r from-orange-500/10 to-pink-500/5 border border-orange-500/20 rounded-xl">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-pink-500 rounded-xl flex items-center justify-center text-3xl">
+            🇧🇩
+          </div>
+          <div>
+            <h2 className="text-xl font-bold">Bangladesh (BDT) Integration</h2>
+            <p className="text-muted-foreground">Nagad, bKash & USDT Payments</p>
+            <div className="flex gap-2 mt-2">
+              <Badge variant="outline" className="bg-orange-500/10">Nagad</Badge>
+              <Badge variant="outline" className="bg-pink-500/10">bKash</Badge>
+              <Badge variant="outline" className="bg-teal-500/10">USDT</Badge>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Pay-in Parameters */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Badge className="bg-green-500">POST</Badge>
+            Pay-in API (Deposit)
+          </CardTitle>
+          <CardDescription>Collect payments from customers via Nagad or bKash</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="relative">
+            <code className="block p-4 bg-muted rounded-lg text-sm font-mono">{apiBaseUrl}/payin</code>
+            <Button variant="ghost" size="sm" className="absolute right-2 top-2" onClick={() => copyToClipboard(`${apiBaseUrl}/payin`, 'bdt-payin')}>
+              {copiedField === 'bdt-payin' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            </Button>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border rounded-lg">
+              <thead className="bg-muted">
+                <tr>
+                  <th className="text-left p-3 border-b">Parameter</th>
+                  <th className="text-left p-3 border-b">Type</th>
+                  <th className="text-left p-3 border-b">Required</th>
+                  <th className="text-left p-3 border-b">Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td className="p-3 border-b font-mono">merchant_id</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">Your Merchant ID</td></tr>
+                <tr><td className="p-3 border-b font-mono">amount</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">Amount in BDT (৳)</td></tr>
+                <tr><td className="p-3 border-b font-mono">merchant_order_no</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">Your unique order ID</td></tr>
+                <tr><td className="p-3 border-b font-mono">callback_url</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">Callback URL for notifications</td></tr>
+                <tr className="bg-orange-500/10">
+                  <td className="p-3 border-b font-mono font-bold text-orange-700">trade_type</td>
+                  <td className="p-3 border-b">string</td>
+                  <td className="p-3 border-b font-bold text-orange-700">✓</td>
+                  <td className="p-3 border-b">
+                    <Badge variant="outline" className="bg-orange-500/10 mr-2">nagad</Badge>
+                    <Badge variant="outline" className="bg-pink-500/10">bkash</Badge>
+                  </td>
+                </tr>
+                <tr><td className="p-3 border-b font-mono">sign</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">MD5 Signature (uppercase)</td></tr>
+                <tr><td className="p-3 font-mono">extra</td><td className="p-3">string</td><td className="p-3">-</td><td className="p-3">Extra data (returned in callback)</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+            <p className="font-semibold text-yellow-700 mb-1">⚠️ Important</p>
+            <p className="text-sm text-yellow-600">BDT transactions require <code className="bg-yellow-200/50 px-1 rounded">trade_type</code> parameter. Use "nagad" or "bkash".</p>
+          </div>
+
+          <div>
+            <h4 className="font-semibold mb-2">Request Example</h4>
+            <pre className="p-4 bg-muted rounded-lg text-sm overflow-x-auto font-mono">
+{JSON.stringify({
+  merchant_id: credentials?.accountNumber || 'YOUR_MERCHANT_ID',
+  amount: '2000.00',
+  merchant_order_no: 'ORDER_123456',
+  callback_url: 'https://your-site.com/callback',
+  trade_type: 'nagad',
+  sign: 'YOUR_MD5_SIGNATURE'
+}, null, 2)}
+            </pre>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Pay-out Parameters */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Badge className="bg-blue-500">POST</Badge>
+            Pay-out API (Withdrawal)
+          </CardTitle>
+          <CardDescription>Send payments to Nagad or bKash accounts</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="relative">
+            <code className="block p-4 bg-muted rounded-lg text-sm font-mono">{apiBaseUrl}/payout</code>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border rounded-lg">
+              <thead className="bg-muted">
+                <tr>
+                  <th className="text-left p-3 border-b">Parameter</th>
+                  <th className="text-left p-3 border-b">Type</th>
+                  <th className="text-left p-3 border-b">Required</th>
+                  <th className="text-left p-3 border-b">Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td className="p-3 border-b font-mono">merchant_id</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">Your Merchant ID</td></tr>
+                <tr><td className="p-3 border-b font-mono">amount</td><td className="p-3 border-b">number</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">Amount in BDT</td></tr>
+                <tr><td className="p-3 border-b font-mono">transaction_id</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">Your unique transaction ID</td></tr>
+                <tr className="bg-orange-500/10">
+                  <td className="p-3 border-b font-mono font-bold">account_number</td>
+                  <td className="p-3 border-b">string</td>
+                  <td className="p-3 border-b">✓</td>
+                  <td className="p-3 border-b">Mobile number (01xxxxxxxxx)</td>
+                </tr>
+                <tr className="bg-orange-500/10">
+                  <td className="p-3 border-b font-mono font-bold">name</td>
+                  <td className="p-3 border-b">string</td>
+                  <td className="p-3 border-b">✓</td>
+                  <td className="p-3 border-b">Account holder name</td>
+                </tr>
+                <tr><td className="p-3 border-b font-mono">callback_url</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">Callback URL</td></tr>
+                <tr><td className="p-3 font-mono">sign</td><td className="p-3">string</td><td className="p-3">✓</td><td className="p-3">MD5 Signature (uppercase)</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div>
+            <h4 className="font-semibold mb-2">Request Example</h4>
+            <pre className="p-4 bg-muted rounded-lg text-sm overflow-x-auto font-mono">
+{JSON.stringify({
+  merchant_id: credentials?.accountNumber || 'YOUR_MERCHANT_ID',
+  amount: 2000,
+  transaction_id: 'WD_123456',
+  account_number: '01712345678',
+  name: 'Rahim Ahmed',
+  callback_url: 'https://your-site.com/payout-callback',
+  sign: 'YOUR_MD5_SIGNATURE'
+}, null, 2)}
+            </pre>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  // INR Documentation (HyperSofts or HyperPay)
+  const renderINRDocs = () => (
+    <div className="space-y-6">
+      {/* Region Header */}
+      <div className="p-6 bg-gradient-to-r from-blue-500/10 to-purple-500/5 border border-blue-500/20 rounded-xl">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 bg-gradient-to-br from-orange-500 via-white to-green-500 rounded-xl flex items-center justify-center text-3xl">
+            🇮🇳
+          </div>
+          <div>
+            <h2 className="text-xl font-bold">India (INR) Integration</h2>
+            <p className="text-muted-foreground">
+              {isHyperPay ? 'UPI & Bank Transfer Payments' : 'UPI, Bank Transfer & USDT Payments'}
+            </p>
+            <div className="flex gap-2 mt-2">
+              <Badge variant="outline" className="bg-blue-500/10">UPI</Badge>
+              {isHyperPay ? (
+                <Badge variant="outline" className="bg-purple-500/10">Bank Transfer</Badge>
+              ) : (
+                <Badge variant="outline" className="bg-teal-500/10">USDT</Badge>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Pay-in Parameters */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Badge className="bg-green-500">POST</Badge>
+            Pay-in API (Deposit)
+          </CardTitle>
+          <CardDescription>
+            Collect payments from customers via {isHyperPay ? 'UPI' : 'UPI or USDT'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="relative">
+            <code className="block p-4 bg-muted rounded-lg text-sm font-mono">{apiBaseUrl}/payin</code>
+            <Button variant="ghost" size="sm" className="absolute right-2 top-2" onClick={() => copyToClipboard(`${apiBaseUrl}/payin`, 'inr-payin')}>
+              {copiedField === 'inr-payin' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            </Button>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border rounded-lg">
+              <thead className="bg-muted">
+                <tr>
+                  <th className="text-left p-3 border-b">Parameter</th>
+                  <th className="text-left p-3 border-b">Type</th>
+                  <th className="text-left p-3 border-b">Required</th>
+                  <th className="text-left p-3 border-b">Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td className="p-3 border-b font-mono">merchant_id</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">Your Merchant ID</td></tr>
+                <tr><td className="p-3 border-b font-mono">amount</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">Amount in INR (₹)</td></tr>
+                <tr><td className="p-3 border-b font-mono">merchant_order_no</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">Your unique order ID</td></tr>
+                <tr><td className="p-3 border-b font-mono">callback_url</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">Callback URL for notifications</td></tr>
+                {isHyperSofts && (
+                  <tr className="bg-blue-500/10">
+                    <td className="p-3 border-b font-mono">trade_type</td>
+                    <td className="p-3 border-b">string</td>
+                    <td className="p-3 border-b">-</td>
+                    <td className="p-3 border-b">
+                      <Badge variant="outline" className="bg-blue-500/10 mr-2">INRUPI</Badge>
+                      <Badge variant="outline" className="bg-teal-500/10">usdt</Badge>
+                      <span className="text-xs ml-2 text-muted-foreground">(default: INRUPI)</span>
+                    </td>
+                  </tr>
+                )}
+                <tr><td className="p-3 border-b font-mono">sign</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">MD5 Signature {isHyperSofts ? '(uppercase)' : ''}</td></tr>
+                <tr><td className="p-3 font-mono">extra</td><td className="p-3">string</td><td className="p-3">-</td><td className="p-3">Extra data (returned in callback)</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div>
+            <h4 className="font-semibold mb-2">Request Example</h4>
+            <pre className="p-4 bg-muted rounded-lg text-sm overflow-x-auto font-mono">
+{JSON.stringify({
+  merchant_id: credentials?.accountNumber || 'YOUR_MERCHANT_ID',
+  amount: '500.00',
+  merchant_order_no: 'ORDER_123456',
+  callback_url: 'https://your-site.com/callback',
+  ...(isHyperSofts ? { trade_type: 'INRUPI' } : {}),
+  sign: 'YOUR_MD5_SIGNATURE'
+}, null, 2)}
+            </pre>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Pay-out Parameters */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Badge className="bg-blue-500">POST</Badge>
+            Pay-out API (Withdrawal)
+          </CardTitle>
+          <CardDescription>Send payments to bank accounts via IMPS/NEFT</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="relative">
+            <code className="block p-4 bg-muted rounded-lg text-sm font-mono">{apiBaseUrl}/payout</code>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border rounded-lg">
+              <thead className="bg-muted">
+                <tr>
+                  <th className="text-left p-3 border-b">Parameter</th>
+                  <th className="text-left p-3 border-b">Type</th>
+                  <th className="text-left p-3 border-b">Required</th>
+                  <th className="text-left p-3 border-b">Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td className="p-3 border-b font-mono">merchant_id</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">Your Merchant ID</td></tr>
+                <tr><td className="p-3 border-b font-mono">amount</td><td className="p-3 border-b">number</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">Amount in INR</td></tr>
+                <tr><td className="p-3 border-b font-mono">transaction_id</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">Your unique transaction ID</td></tr>
+                <tr className="bg-purple-500/10">
+                  <td className="p-3 border-b font-mono font-bold">account_number</td>
+                  <td className="p-3 border-b">string</td>
+                  <td className="p-3 border-b">✓</td>
+                  <td className="p-3 border-b">Bank account number</td>
+                </tr>
+                <tr className="bg-purple-500/10">
+                  <td className="p-3 border-b font-mono font-bold">ifsc</td>
+                  <td className="p-3 border-b">string</td>
+                  <td className="p-3 border-b">✓</td>
+                  <td className="p-3 border-b">IFSC Code (e.g., HDFC0001234)</td>
+                </tr>
+                <tr className="bg-purple-500/10">
+                  <td className="p-3 border-b font-mono font-bold">name</td>
+                  <td className="p-3 border-b">string</td>
+                  <td className="p-3 border-b">✓</td>
+                  <td className="p-3 border-b">Account holder name</td>
+                </tr>
+                <tr className="bg-purple-500/10">
+                  <td className="p-3 border-b font-mono font-bold">bank_name</td>
+                  <td className="p-3 border-b">string</td>
+                  <td className="p-3 border-b">✓</td>
+                  <td className="p-3 border-b">Bank name (e.g., HDFC Bank)</td>
+                </tr>
+                <tr><td className="p-3 border-b font-mono">callback_url</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">Callback URL</td></tr>
+                <tr><td className="p-3 font-mono">sign</td><td className="p-3">string</td><td className="p-3">✓</td><td className="p-3">MD5 Signature</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div>
+            <h4 className="font-semibold mb-2">Request Example</h4>
+            <pre className="p-4 bg-muted rounded-lg text-sm overflow-x-auto font-mono">
+{JSON.stringify({
+  merchant_id: credentials?.accountNumber || 'YOUR_MERCHANT_ID',
+  amount: 500,
+  transaction_id: 'WD_123456',
+  account_number: '1234567890123',
+  ifsc: 'HDFC0001234',
+  name: 'Rahul Sharma',
+  bank_name: 'HDFC Bank',
+  callback_url: 'https://your-site.com/payout-callback',
+  sign: 'YOUR_MD5_SIGNATURE'
+}, null, 2)}
+            </pre>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  // Signature Documentation (common)
+  const renderSignatureDocs = () => {
+    const isAsciiSort = credentials?.currency === 'PKR' || credentials?.currency === 'BDT' || isHyperSofts;
+
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            Signature Algorithm
+          </CardTitle>
+          <CardDescription>All API requests must be signed using MD5</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {isAsciiSort ? (
+            <>
+              <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                <code className="text-sm font-mono">MD5(sorted_params + "&key=" + api_key).toUpperCase()</code>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="font-semibold">Signature Steps</h4>
+                <div className="flex items-start gap-3 p-3 bg-muted rounded-lg">
+                  <Badge>1</Badge>
+                  <div>
+                    <p className="font-medium">Filter Empty Values</p>
+                    <p className="text-sm text-muted-foreground">Remove all empty parameters and the sign parameter</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 p-3 bg-muted rounded-lg">
+                  <Badge>2</Badge>
+                  <div>
+                    <p className="font-medium">ASCII Sort</p>
+                    <p className="text-sm text-muted-foreground">Sort parameters by key name in ASCII order</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 p-3 bg-muted rounded-lg">
+                  <Badge>3</Badge>
+                  <div>
+                    <p className="font-medium">Concatenate</p>
+                    <p className="text-sm text-muted-foreground">key1=value1&key2=value2&key=YOUR_API_KEY</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 p-3 bg-muted rounded-lg">
+                  <Badge>4</Badge>
+                  <div>
+                    <p className="font-medium">MD5 Hash & Uppercase</p>
+                    <p className="text-sm text-muted-foreground">MD5(string).toUpperCase()</p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-semibold mb-2">Code Example</h4>
+                <pre className="p-4 bg-muted rounded-lg text-sm overflow-x-auto font-mono">
+{`// JavaScript
+function generateSign(params, apiKey) {
+  // Filter empty values and sort by key
+  const filtered = Object.entries(params)
+    .filter(([k, v]) => v !== '' && v != null && k !== 'sign')
+    .sort(([a], [b]) => a.localeCompare(b));
+  
+  // Create query string
+  const str = filtered.map(([k, v]) => \`\${k}=\${v}\`).join('&');
+  
+  // Append key and hash
+  return md5(str + '&key=' + apiKey).toUpperCase();
+}
+
+// PHP
+function generateSign($params, $apiKey) {
+    unset($params['sign']);
+    $params = array_filter($params, fn($v) => $v !== '' && $v !== null);
+    ksort($params);
+    $str = http_build_query($params) . '&key=' . $apiKey;
+    return strtoupper(md5($str));
+}`}
+                </pre>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="space-y-4">
+                <div>
+                  <h4 className="font-semibold mb-2">Pay-in Signature</h4>
+                  <code className="block p-4 bg-muted rounded-lg text-sm font-mono">
+                    sign = md5(merchant_id + amount + merchant_order_no + api_key + callback_url)
+                  </code>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold mb-2">Pay-out Signature</h4>
+                  <code className="block p-4 bg-muted rounded-lg text-sm font-mono break-all">
+                    sign = md5(account_number + amount + bank_name + callback_url + ifsc + merchant_id + name + transaction_id + payout_key)
+                  </code>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    ⚠️ Parameters concatenated in alphabetical order
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-semibold mb-2">Code Example</h4>
+                <pre className="p-4 bg-muted rounded-lg text-sm overflow-x-auto font-mono">
+{`// JavaScript - Pay-in
+const payinSign = md5(
+  merchant_id + amount + merchant_order_no + api_key + callback_url
+);
+
+// JavaScript - Pay-out
+const payoutSign = md5(
+  account_number + amount + bank_name + callback_url + 
+  ifsc + merchant_id + name + transaction_id + payout_key
+);`}
+                </pre>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+    );
   };
 
-  const getPayoutExample = () => {
-    if (credentials?.currency === 'PKR') {
-      return JSON.stringify({
-        merchant_id: credentials?.accountNumber || 'YOUR_MERCHANT_ID',
-        amount: 2000,
-        transaction_id: `WD_${Date.now()}`,
-        account_number: '03001234567',
-        name: 'Account Holder Name',
-        callback_url: 'https://your-domain.com/payout-callback',
-        withdrawal_method: 'easypaisa',
-        sign: 'YOUR_MD5_SIGNATURE'
-      }, null, 2);
-    }
-    if (credentials?.currency === 'BDT') {
-      return JSON.stringify({
-        merchant_id: credentials?.accountNumber || 'YOUR_MERCHANT_ID',
-        amount: 1000,
-        transaction_id: `WD_${Date.now()}`,
-        account_number: '01712345678',
-        name: 'Account Holder Name',
-        callback_url: 'https://your-domain.com/payout-callback',
-        sign: 'YOUR_MD5_SIGNATURE'
-      }, null, 2);
-    }
-    return JSON.stringify({
-      merchant_id: credentials?.accountNumber || 'YOUR_MERCHANT_ID',
-      amount: 150,
-      transaction_id: `WD_${Date.now()}`,
-      account_number: '1234567890',
-      ifsc: 'HDFC0001234',
-      name: 'Account Holder Name',
-      bank_name: 'HDFC Bank',
-      callback_url: 'https://your-domain.com/payout-callback',
-      sign: 'YOUR_MD5_SIGNATURE'
-    }, null, 2);
-  };
+  // Callback Documentation
+  const renderCallbackDocs = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle>Callback Handling</CardTitle>
+        <CardDescription>Process payment notifications from the gateway</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+          <h4 className="font-semibold text-yellow-700 mb-2">⚠️ Important Guidelines</h4>
+          <ul className="text-sm space-y-1 text-muted-foreground">
+            <li>• Use HTTPS endpoints</li>
+            <li>• Respond within 3 seconds</li>
+            <li>• Return "ok" to acknowledge receipt</li>
+            <li>• Implement idempotent handling (same callback may be sent multiple times)</li>
+            <li>• Always verify the signature before processing</li>
+          </ul>
+        </div>
 
-  const getSignatureFormula = () => {
-    if (credentials?.currency === 'PKR' || credentials?.currency === 'BDT') {
-      return 'MD5(sorted_params + "&key=" + api_key).toUpperCase()';
-    }
-    return 'md5(merchant_id + amount + merchant_order_no + api_key + callback_url)';
-  };
+        <div>
+          <h4 className="font-semibold mb-2">Callback Example</h4>
+          <pre className="p-4 bg-muted rounded-lg text-sm overflow-x-auto font-mono">
+{`POST https://your-domain.com/callback
+Content-Type: application/json
+
+{
+  "orderNo": "PI${Date.now()}",
+  "merchantOrder": "YOUR_ORDER_NO",
+  "status": "success",
+  "amount": ${credentials?.currency === 'PKR' ? '5000.00' : credentials?.currency === 'BDT' ? '2000.00' : '500.00'},
+  "timestamp": "${new Date().toISOString()}",
+  "sign": "CALLBACK_SIGNATURE"
+}
+
+// Your Response
+HTTP/1.1 200 OK
+ok`}
+          </pre>
+        </div>
+
+        <div>
+          <h4 className="font-semibold mb-2">Status Values</h4>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="p-3 bg-green-500/10 rounded-lg border border-green-500/20 text-center">
+              <Badge className="bg-green-500">success</Badge>
+              <p className="text-sm mt-2">Payment Successful</p>
+            </div>
+            <div className="p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20 text-center">
+              <Badge className="bg-yellow-500">pending</Badge>
+              <p className="text-sm mt-2">Processing</p>
+            </div>
+            <div className="p-3 bg-red-500/10 rounded-lg border border-red-500/20 text-center">
+              <Badge className="bg-red-500">failed</Badge>
+              <p className="text-sm mt-2">Payment Failed</p>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  // SDK Download Section
+  const renderSDKDocs = () => (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="hover:border-primary/50 transition-colors cursor-pointer" onClick={() => downloadFile('paygate-sdk.js')}>
+          <CardContent className="p-6 text-center">
+            <div className="w-16 h-16 bg-yellow-500 rounded-xl mx-auto mb-4 flex items-center justify-center">
+              <span className="text-2xl font-bold text-white">JS</span>
+            </div>
+            <h3 className="font-semibold">JavaScript SDK</h3>
+            <p className="text-sm text-muted-foreground mb-3">Node.js / Browser</p>
+            <Button size="sm" variant="outline" className="w-full">
+              <Download className="h-4 w-4 mr-2" />
+              Download
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:border-primary/50 transition-colors cursor-pointer" onClick={() => downloadFile('paygate-sdk.ts')}>
+          <CardContent className="p-6 text-center">
+            <div className="w-16 h-16 bg-blue-500 rounded-xl mx-auto mb-4 flex items-center justify-center">
+              <span className="text-2xl font-bold text-white">TS</span>
+            </div>
+            <h3 className="font-semibold">TypeScript SDK</h3>
+            <p className="text-sm text-muted-foreground mb-3">Type-safe Integration</p>
+            <Button size="sm" variant="outline" className="w-full">
+              <Download className="h-4 w-4 mr-2" />
+              Download
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:border-primary/50 transition-colors cursor-pointer" onClick={() => downloadFile('PayGateSDK.php')}>
+          <CardContent className="p-6 text-center">
+            <div className="w-16 h-16 bg-purple-500 rounded-xl mx-auto mb-4 flex items-center justify-center">
+              <span className="text-2xl font-bold text-white">PHP</span>
+            </div>
+            <h3 className="font-semibold">PHP SDK</h3>
+            <p className="text-sm text-muted-foreground mb-3">Laravel / WordPress</p>
+            <Button size="sm" variant="outline" className="w-full">
+              <Download className="h-4 w-4 mr-2" />
+              Download
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Start</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <pre className="p-4 bg-muted rounded-lg text-sm overflow-x-auto font-mono">
+{`// JavaScript Example
+const PayGate = require('./paygate-sdk');
+
+const client = new PayGate({
+  merchantId: '${credentials?.accountNumber || 'YOUR_MERCHANT_ID'}',
+  apiKey: 'YOUR_API_KEY',
+  payoutKey: 'YOUR_PAYOUT_KEY'
+});
+
+// Create Pay-in Order
+const order = await client.createPayin({
+  amount: ${credentials?.currency === 'PKR' ? '5000' : credentials?.currency === 'BDT' ? '2000' : '500'},
+  orderNo: 'ORDER_123',
+  callbackUrl: 'https://your-site.com/callback'${(credentials?.currency === 'PKR' || credentials?.currency === 'BDT') ? `,
+  tradeType: '${credentials?.currency === 'PKR' ? 'easypaisa' : 'nagad'}'` : ''}
+});
+
+console.log(order.payment_url);`}
+          </pre>
+        </CardContent>
+      </Card>
+    </div>
+  );
 
   return (
     <DashboardLayout>
@@ -214,13 +910,12 @@ const MerchantDocumentation = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">{gatewayName} API</h1>
-            <p className="text-muted-foreground">
-              {language === 'zh' ? '完整API集成文档' : 'Complete API Integration Documentation'}
-            </p>
+            <p className="text-muted-foreground">Complete API Integration Documentation</p>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-sm">
-              {getCurrencyFlag()} {credentials?.currency || 'INR'}
+            <Badge variant="outline" className="text-sm py-1 px-3">
+              <Globe className="h-3 w-3 mr-1" />
+              {getCurrencyFlag()} {getRegionName()} ({credentials?.currency || 'INR'})
             </Badge>
             <Badge className="bg-primary">{gatewayName} API v1.0</Badge>
           </div>
@@ -232,28 +927,28 @@ const MerchantDocumentation = () => {
             <CardContent className="p-4 text-center">
               <Zap className="h-8 w-8 mx-auto text-primary mb-2" />
               <p className="text-2xl font-bold">{credentials?.payinFee || 0}%</p>
-              <p className="text-sm text-muted-foreground">{language === 'zh' ? '代收费率' : 'Pay-in Fee'}</p>
+              <p className="text-sm text-muted-foreground">Pay-in Fee</p>
             </CardContent>
           </Card>
           <Card className="border-primary/20">
             <CardContent className="p-4 text-center">
               <Shield className="h-8 w-8 mx-auto text-primary mb-2" />
               <p className="text-2xl font-bold">{credentials?.payoutFee || 0}%</p>
-              <p className="text-sm text-muted-foreground">{language === 'zh' ? '代付费率' : 'Pay-out Fee'}</p>
+              <p className="text-sm text-muted-foreground">Pay-out Fee</p>
             </CardContent>
           </Card>
           <Card className="border-primary/20">
             <CardContent className="p-4 text-center">
               <Terminal className="h-8 w-8 mx-auto text-primary mb-2" />
               <p className="text-2xl font-bold">REST</p>
-              <p className="text-sm text-muted-foreground">{language === 'zh' ? 'API类型' : 'API Type'}</p>
+              <p className="text-sm text-muted-foreground">API Type</p>
             </CardContent>
           </Card>
           <Card className="border-primary/20">
             <CardContent className="p-4 text-center">
               <FileCode className="h-8 w-8 mx-auto text-primary mb-2" />
               <p className="text-2xl font-bold">JSON</p>
-              <p className="text-sm text-muted-foreground">{language === 'zh' ? '数据格式' : 'Format'}</p>
+              <p className="text-sm text-muted-foreground">Format</p>
             </CardContent>
           </Card>
         </div>
@@ -263,12 +958,10 @@ const MerchantDocumentation = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Terminal className="h-5 w-5" />
-              {language === 'zh' ? '您的API凭证' : 'Your API Credentials'}
+              Your API Credentials
             </CardTitle>
             <CardDescription>
-              {language === 'zh' 
-                ? '请妥善保管您的密钥，切勿泄露给第三方' 
-                : 'Keep your credentials secure. Never share with third parties.'}
+              Keep your credentials secure. Never share with third parties.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -349,465 +1042,64 @@ const MerchantDocumentation = () => {
         {/* Payment Methods */}
         <Card>
           <CardHeader>
-            <CardTitle>{language === 'zh' ? '支持的支付方式' : 'Supported Payment Methods'}</CardTitle>
+            <CardTitle>Supported Payment Methods</CardTitle>
             <CardDescription>
-              {language === 'zh' 
-                ? `${getCurrencyFlag()} ${credentials?.currency} 区域可用的支付渠道`
-                : `Available payment channels for ${getCurrencyFlag()} ${credentials?.currency} region`}
+              Available payment channels for {getCurrencyFlag()} {getRegionName()}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {getPaymentMethods().map((method) => (
-                <div key={method.code} className="p-4 border rounded-lg text-center hover:border-primary/50 transition-colors">
-                  <div className={`w-12 h-12 ${method.color} rounded-full mx-auto mb-3 flex items-center justify-center text-white font-bold`}>
-                    {method.name.charAt(0)}
-                  </div>
-                  <p className="font-semibold">{method.name}</p>
-                  <p className="text-xs text-muted-foreground">{method.description}</p>
-                  {(credentials?.currency === 'PKR' || credentials?.currency === 'BDT') && (
+              {getPaymentMethods().map((method) => {
+                const IconComponent = method.icon;
+                return (
+                  <div key={method.code} className="p-4 border rounded-lg text-center hover:border-primary/50 transition-colors">
+                    <div className={`w-12 h-12 ${method.color} rounded-full mx-auto mb-3 flex items-center justify-center text-white`}>
+                      <IconComponent className="h-6 w-6" />
+                    </div>
+                    <p className="font-semibold">{method.name}</p>
+                    <p className="text-xs text-muted-foreground">{method.description}</p>
                     <code className="text-xs bg-muted px-2 py-1 rounded mt-2 inline-block">{method.code}</code>
-                  )}
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
 
-        {/* API Documentation Tabs */}
+        {/* Main Documentation Tabs */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileCode className="h-5 w-5" />
-              {language === 'zh' ? 'API接口文档' : 'API Reference'}
+              API Reference
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="payin">
-              <TabsList className="grid w-full grid-cols-5">
-                <TabsTrigger value="payin">{language === 'zh' ? '代收' : 'Pay-in'}</TabsTrigger>
-                <TabsTrigger value="payout">{language === 'zh' ? '代付' : 'Pay-out'}</TabsTrigger>
-                <TabsTrigger value="signature">{language === 'zh' ? '签名' : 'Signature'}</TabsTrigger>
-                <TabsTrigger value="callback">{language === 'zh' ? '回调' : 'Callback'}</TabsTrigger>
+            <Tabs defaultValue="api">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="api">API Endpoints</TabsTrigger>
+                <TabsTrigger value="signature">Signature</TabsTrigger>
+                <TabsTrigger value="callback">Callback</TabsTrigger>
                 <TabsTrigger value="sdk">SDK</TabsTrigger>
               </TabsList>
 
-              {/* Pay-in Tab */}
-              <TabsContent value="payin" className="space-y-6 mt-6">
-                <div>
-                  <h3 className="font-semibold mb-2 flex items-center gap-2">
-                    <Badge className="bg-green-500">POST</Badge>
-                    {language === 'zh' ? '创建代收订单' : 'Create Pay-in Order'}
-                  </h3>
-                  <div className="relative">
-                    <code className="block p-4 bg-muted rounded-lg text-sm font-mono">
-                      {apiBaseUrl}/payin
-                    </code>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-2 top-2"
-                      onClick={() => copyToClipboard(`${apiBaseUrl}/payin`, 'payinEndpoint')}
-                    >
-                      {copiedField === 'payinEndpoint' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="font-semibold mb-2">{language === 'zh' ? '请求参数' : 'Request Parameters'}</h3>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm border rounded-lg">
-                      <thead className="bg-muted">
-                        <tr>
-                          <th className="text-left p-3 border-b">{language === 'zh' ? '参数' : 'Parameter'}</th>
-                          <th className="text-left p-3 border-b">{language === 'zh' ? '类型' : 'Type'}</th>
-                          <th className="text-left p-3 border-b">{language === 'zh' ? '必填' : 'Required'}</th>
-                          <th className="text-left p-3 border-b">{language === 'zh' ? '说明' : 'Description'}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr><td className="p-3 border-b font-mono">merchant_id</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">{language === 'zh' ? '商户ID' : 'Your Merchant ID'}</td></tr>
-                        <tr><td className="p-3 border-b font-mono">amount</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">{language === 'zh' ? '金额' : 'Amount'} ({getCurrencySymbol()})</td></tr>
-                        <tr><td className="p-3 border-b font-mono">merchant_order_no</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">{language === 'zh' ? '商户订单号' : 'Your Order ID'}</td></tr>
-                        <tr><td className="p-3 border-b font-mono">callback_url</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">{language === 'zh' ? '回调地址' : 'Callback URL'}</td></tr>
-                        {(credentials?.currency === 'PKR' || credentials?.currency === 'BDT') && (
-                          <tr className="bg-yellow-500/10">
-                            <td className="p-3 border-b font-mono text-yellow-700">trade_type</td>
-                            <td className="p-3 border-b">string</td>
-                            <td className="p-3 border-b font-bold text-yellow-700">✓</td>
-                            <td className="p-3 border-b">
-                              {credentials?.currency === 'PKR' && (
-                                <span className="flex items-center gap-2 flex-wrap">
-                                  <Badge variant="outline" className="bg-green-500/10">easypaisa</Badge>
-                                  <Badge variant="outline" className="bg-red-500/10">jazzcash</Badge>
-                                </span>
-                              )}
-                              {credentials?.currency === 'BDT' && (
-                                <span className="flex items-center gap-2 flex-wrap">
-                                  <Badge variant="outline" className="bg-orange-500/10">nagad</Badge>
-                                  <Badge variant="outline" className="bg-pink-500/10">bkash</Badge>
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                        )}
-                        <tr><td className="p-3 border-b font-mono">sign</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">{language === 'zh' ? 'MD5签名' : 'MD5 Signature'}</td></tr>
-                        <tr><td className="p-3 font-mono">extra</td><td className="p-3">string</td><td className="p-3">-</td><td className="p-3">{language === 'zh' ? '扩展数据' : 'Extra data (optional)'}</td></tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {(credentials?.currency === 'PKR' || credentials?.currency === 'BDT') && (
-                  <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-                    <p className="font-semibold text-yellow-700 mb-2">
-                      ⚠️ {language === 'zh' ? '重要提示' : 'Important'}
-                    </p>
-                    <p className="text-sm text-yellow-600">
-                      {credentials?.currency === 'PKR' 
-                        ? (language === 'zh' 
-                            ? 'PKR交易必须指定 trade_type 为 "easypaisa" 或 "jazzcash"'
-                            : 'PKR transactions require trade_type: "easypaisa" or "jazzcash"')
-                        : (language === 'zh'
-                            ? 'BDT交易必须指定 trade_type 为 "nagad" 或 "bkash"'
-                            : 'BDT transactions require trade_type: "nagad" or "bkash"')}
-                    </p>
-                  </div>
-                )}
-
-                <div>
-                  <h3 className="font-semibold mb-2">{language === 'zh' ? '请求示例' : 'Request Example'}</h3>
-                  <div className="relative">
-                    <pre className="p-4 bg-muted rounded-lg text-sm overflow-x-auto font-mono">
-                      {getPayinExample()}
-                    </pre>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-2 top-2"
-                      onClick={() => copyToClipboard(getPayinExample(), 'payinExample')}
-                    >
-                      {copiedField === 'payinExample' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="font-semibold mb-2">{language === 'zh' ? '响应示例' : 'Response Example'}</h3>
-                  <pre className="p-4 bg-muted rounded-lg text-sm overflow-x-auto font-mono">
-{`{
-  "code": 200,
-  "message": "Success",
-  "success": true,
-  "data": {
-    "order_no": "PI${Date.now()}ABC",
-    "merchant_order_no": "YOUR_ORDER_NO",
-    "amount": ${credentials?.currency === 'PKR' ? '2000.00' : credentials?.currency === 'BDT' ? '1000.00' : '500.00'},
-    "payment_url": "https://pay.${settings.gatewayDomain || 'example.com'}/..."
-  }
-}`}
-                  </pre>
-                </div>
+              <TabsContent value="api" className="mt-6">
+                {credentials?.currency === 'PKR' && renderPKRDocs()}
+                {credentials?.currency === 'BDT' && renderBDTDocs()}
+                {credentials?.currency === 'INR' && renderINRDocs()}
+                {!credentials?.currency && renderINRDocs()}
               </TabsContent>
 
-              {/* Pay-out Tab */}
-              <TabsContent value="payout" className="space-y-6 mt-6">
-                <div>
-                  <h3 className="font-semibold mb-2 flex items-center gap-2">
-                    <Badge className="bg-blue-500">POST</Badge>
-                    {language === 'zh' ? '创建代付订单' : 'Create Pay-out Order'}
-                  </h3>
-                  <div className="relative">
-                    <code className="block p-4 bg-muted rounded-lg text-sm font-mono">
-                      {apiBaseUrl}/payout
-                    </code>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-2 top-2"
-                      onClick={() => copyToClipboard(`${apiBaseUrl}/payout`, 'payoutEndpoint')}
-                    >
-                      {copiedField === 'payoutEndpoint' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="font-semibold mb-2">{language === 'zh' ? '请求参数' : 'Request Parameters'}</h3>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm border rounded-lg">
-                      <thead className="bg-muted">
-                        <tr>
-                          <th className="text-left p-3 border-b">{language === 'zh' ? '参数' : 'Parameter'}</th>
-                          <th className="text-left p-3 border-b">{language === 'zh' ? '类型' : 'Type'}</th>
-                          <th className="text-left p-3 border-b">{language === 'zh' ? '必填' : 'Required'}</th>
-                          <th className="text-left p-3 border-b">{language === 'zh' ? '说明' : 'Description'}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr><td className="p-3 border-b font-mono">merchant_id</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">{language === 'zh' ? '商户ID' : 'Your Merchant ID'}</td></tr>
-                        <tr><td className="p-3 border-b font-mono">amount</td><td className="p-3 border-b">number</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">{language === 'zh' ? '金额' : 'Amount'} ({getCurrencySymbol()})</td></tr>
-                        <tr><td className="p-3 border-b font-mono">transaction_id</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">{language === 'zh' ? '交易ID' : 'Transaction ID'}</td></tr>
-                        <tr><td className="p-3 border-b font-mono">account_number</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">
-                          {credentials?.currency === 'PKR' && (language === 'zh' ? '手机号码 (03xxxxxxxxx)' : 'Mobile Number (03xxxxxxxxx)')}
-                          {credentials?.currency === 'BDT' && (language === 'zh' ? '手机号码 (01xxxxxxxxx)' : 'Mobile Number (01xxxxxxxxx)')}
-                          {credentials?.currency === 'INR' && (language === 'zh' ? '银行账号' : 'Bank Account Number')}
-                        </td></tr>
-                        <tr><td className="p-3 border-b font-mono">name</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">{language === 'zh' ? '收款人姓名' : 'Beneficiary Name'}</td></tr>
-                        {credentials?.currency === 'INR' && (
-                          <>
-                            <tr><td className="p-3 border-b font-mono">ifsc</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">IFSC Code</td></tr>
-                            <tr><td className="p-3 border-b font-mono">bank_name</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">{language === 'zh' ? '银行名称' : 'Bank Name'}</td></tr>
-                          </>
-                        )}
-                        {credentials?.currency === 'PKR' && (
-                          <tr className="bg-blue-500/10">
-                            <td className="p-3 border-b font-mono">withdrawal_method</td>
-                            <td className="p-3 border-b">string</td>
-                            <td className="p-3 border-b">✓</td>
-                            <td className="p-3 border-b">
-                              <Badge variant="outline" className="bg-green-500/10 mr-2">easypaisa</Badge>
-                              <Badge variant="outline" className="bg-red-500/10">jazzcash</Badge>
-                            </td>
-                          </tr>
-                        )}
-                        <tr><td className="p-3 border-b font-mono">callback_url</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">{language === 'zh' ? '回调地址' : 'Callback URL'}</td></tr>
-                        <tr><td className="p-3 font-mono">sign</td><td className="p-3">string</td><td className="p-3">✓</td><td className="p-3">{language === 'zh' ? 'MD5签名' : 'MD5 Signature'}</td></tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="font-semibold mb-2">{language === 'zh' ? '请求示例' : 'Request Example'}</h3>
-                  <div className="relative">
-                    <pre className="p-4 bg-muted rounded-lg text-sm overflow-x-auto font-mono">
-                      {getPayoutExample()}
-                    </pre>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-2 top-2"
-                      onClick={() => copyToClipboard(getPayoutExample(), 'payoutExample')}
-                    >
-                      {copiedField === 'payoutExample' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                </div>
+              <TabsContent value="signature" className="mt-6">
+                {renderSignatureDocs()}
               </TabsContent>
 
-              {/* Signature Tab */}
-              <TabsContent value="signature" className="space-y-6 mt-6">
-                <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
-                  <h3 className="font-semibold mb-2">{language === 'zh' ? '签名算法' : 'Signature Algorithm'}</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    {language === 'zh' 
-                      ? '所有API请求都需要使用MD5签名进行验证'
-                      : 'All API requests must be verified using MD5 signature'}
-                  </p>
-                  <code className="block p-4 bg-muted rounded-lg text-sm font-mono">
-                    {getSignatureFormula()}
-                  </code>
-                </div>
-
-                {(credentials?.currency === 'PKR' || credentials?.currency === 'BDT') ? (
-                  <div className="space-y-4">
-                    <h3 className="font-semibold">{language === 'zh' ? '签名步骤' : 'Signature Steps'}</h3>
-                    <div className="space-y-3">
-                      <div className="flex items-start gap-3 p-3 bg-muted rounded-lg">
-                        <Badge>1</Badge>
-                        <div>
-                          <p className="font-medium">{language === 'zh' ? '过滤空值' : 'Filter Empty Values'}</p>
-                          <p className="text-sm text-muted-foreground">{language === 'zh' ? '移除所有空值参数和sign参数' : 'Remove all empty parameters and the sign parameter'}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3 p-3 bg-muted rounded-lg">
-                        <Badge>2</Badge>
-                        <div>
-                          <p className="font-medium">{language === 'zh' ? 'ASCII排序' : 'ASCII Sort'}</p>
-                          <p className="text-sm text-muted-foreground">{language === 'zh' ? '按参数名ASCII顺序排序' : 'Sort parameters by ASCII order'}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3 p-3 bg-muted rounded-lg">
-                        <Badge>3</Badge>
-                        <div>
-                          <p className="font-medium">{language === 'zh' ? '拼接字符串' : 'Concatenate String'}</p>
-                          <p className="text-sm text-muted-foreground">key1=value1&key2=value2&key=YOUR_API_KEY</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3 p-3 bg-muted rounded-lg">
-                        <Badge>4</Badge>
-                        <div>
-                          <p className="font-medium">{language === 'zh' ? 'MD5哈希并转大写' : 'MD5 Hash & Uppercase'}</p>
-                          <p className="text-sm text-muted-foreground">MD5(string).toUpperCase()</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h3 className="font-semibold mb-2">{language === 'zh' ? '代码示例' : 'Code Example'}</h3>
-                      <pre className="p-4 bg-muted rounded-lg text-sm overflow-x-auto font-mono">
-{`// JavaScript
-function generateSign(params, apiKey) {
-  // Filter empty values and sort
-  const filtered = Object.entries(params)
-    .filter(([k, v]) => v !== '' && v != null && k !== 'sign')
-    .sort(([a], [b]) => a.localeCompare(b));
-  
-  // Create query string
-  const str = filtered.map(([k, v]) => \`\${k}=\${v}\`).join('&');
-  
-  // Append key and hash
-  return md5(str + '&key=' + apiKey).toUpperCase();
-}`}
-                      </pre>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <h3 className="font-semibold">{language === 'zh' ? 'Pay-in签名' : 'Pay-in Signature'}</h3>
-                    <code className="block p-4 bg-muted rounded-lg text-sm font-mono">
-                      sign = md5(merchant_id + amount + merchant_order_no + api_key + callback_url)
-                    </code>
-                    
-                    <h3 className="font-semibold">{language === 'zh' ? 'Pay-out签名' : 'Pay-out Signature'}</h3>
-                    <code className="block p-4 bg-muted rounded-lg text-sm font-mono break-all">
-                      sign = md5(account_number + amount + bank_name + callback_url + ifsc + merchant_id + name + transaction_id + payout_key)
-                    </code>
-                    <p className="text-sm text-muted-foreground">
-                      ⚠️ {language === 'zh' ? '参数按字母顺序拼接' : 'Parameters concatenated in alphabetical order'}
-                    </p>
-                  </div>
-                )}
+              <TabsContent value="callback" className="mt-6">
+                {renderCallbackDocs()}
               </TabsContent>
 
-              {/* Callback Tab */}
-              <TabsContent value="callback" className="space-y-6 mt-6">
-                <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-                  <h3 className="font-semibold mb-2 text-yellow-700">
-                    ⚠️ {language === 'zh' ? '回调注意事项' : 'Callback Guidelines'}
-                  </h3>
-                  <ul className="text-sm space-y-1 text-muted-foreground">
-                    <li>• {language === 'zh' ? '使用HTTPS端点' : 'Use HTTPS endpoints'}</li>
-                    <li>• {language === 'zh' ? '3秒内响应' : 'Respond within 3 seconds'}</li>
-                    <li>• {language === 'zh' ? '返回 "ok" 确认收到' : 'Return "ok" to acknowledge'}</li>
-                    <li>• {language === 'zh' ? '实现幂等性处理' : 'Implement idempotent handling'}</li>
-                  </ul>
-                </div>
-
-                <div>
-                  <h3 className="font-semibold mb-2">{language === 'zh' ? '回调示例' : 'Callback Example'}</h3>
-                  <pre className="p-4 bg-muted rounded-lg text-sm overflow-x-auto font-mono">
-{`POST https://your-domain.com/callback
-Content-Type: application/json
-
-{
-  "orderNo": "PI${Date.now()}",
-  "merchantOrder": "YOUR_ORDER_NO",
-  "status": "success",
-  "amount": ${credentials?.currency === 'PKR' ? '2000.00' : credentials?.currency === 'BDT' ? '1000.00' : '500.00'},
-  "timestamp": "${new Date().toISOString()}"
-}
-
-// Your Response
-HTTP/1.1 200 OK
-ok`}
-                  </pre>
-                </div>
-
-                <div>
-                  <h3 className="font-semibold mb-2">{language === 'zh' ? '状态说明' : 'Status Values'}</h3>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="p-3 bg-green-500/10 rounded-lg border border-green-500/20 text-center">
-                      <Badge className="bg-green-500">success</Badge>
-                      <p className="text-sm mt-2">{language === 'zh' ? '成功' : 'Success'}</p>
-                    </div>
-                    <div className="p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20 text-center">
-                      <Badge className="bg-yellow-500">pending</Badge>
-                      <p className="text-sm mt-2">{language === 'zh' ? '处理中' : 'Processing'}</p>
-                    </div>
-                    <div className="p-3 bg-red-500/10 rounded-lg border border-red-500/20 text-center">
-                      <Badge className="bg-red-500">failed</Badge>
-                      <p className="text-sm mt-2">{language === 'zh' ? '失败' : 'Failed'}</p>
-                    </div>
-                  </div>
-                </div>
-              </TabsContent>
-
-              {/* SDK Tab */}
-              <TabsContent value="sdk" className="space-y-6 mt-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Card className="hover:border-primary/50 transition-colors cursor-pointer" onClick={() => downloadFile('paygate-sdk.js')}>
-                    <CardContent className="p-6 text-center">
-                      <div className="w-16 h-16 bg-yellow-500 rounded-xl mx-auto mb-4 flex items-center justify-center">
-                        <span className="text-2xl font-bold text-white">JS</span>
-                      </div>
-                      <h3 className="font-semibold">JavaScript SDK</h3>
-                      <p className="text-sm text-muted-foreground mb-3">Node.js / Browser</p>
-                      <Button size="sm" variant="outline" className="w-full">
-                        <Download className="h-4 w-4 mr-2" />
-                        Download
-                      </Button>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="hover:border-primary/50 transition-colors cursor-pointer" onClick={() => downloadFile('paygate-sdk.ts')}>
-                    <CardContent className="p-6 text-center">
-                      <div className="w-16 h-16 bg-blue-500 rounded-xl mx-auto mb-4 flex items-center justify-center">
-                        <span className="text-2xl font-bold text-white">TS</span>
-                      </div>
-                      <h3 className="font-semibold">TypeScript SDK</h3>
-                      <p className="text-sm text-muted-foreground mb-3">Type-safe Integration</p>
-                      <Button size="sm" variant="outline" className="w-full">
-                        <Download className="h-4 w-4 mr-2" />
-                        Download
-                      </Button>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="hover:border-primary/50 transition-colors cursor-pointer" onClick={() => downloadFile('PayGateSDK.php')}>
-                    <CardContent className="p-6 text-center">
-                      <div className="w-16 h-16 bg-purple-500 rounded-xl mx-auto mb-4 flex items-center justify-center">
-                        <span className="text-2xl font-bold text-white">PHP</span>
-                      </div>
-                      <h3 className="font-semibold">PHP SDK</h3>
-                      <p className="text-sm text-muted-foreground mb-3">Laravel / WordPress</p>
-                      <Button size="sm" variant="outline" className="w-full">
-                        <Download className="h-4 w-4 mr-2" />
-                        Download
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>{language === 'zh' ? '快速开始' : 'Quick Start'}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <pre className="p-4 bg-muted rounded-lg text-sm overflow-x-auto font-mono">
-{`// JavaScript Example
-const PayGate = require('./paygate-sdk');
-
-const client = new PayGate({
-  merchantId: '${credentials?.accountNumber || 'YOUR_MERCHANT_ID'}',
-  apiKey: 'YOUR_API_KEY',
-  payoutKey: 'YOUR_PAYOUT_KEY'
-});
-
-// Create Pay-in
-const order = await client.createPayin({
-  amount: ${credentials?.currency === 'PKR' ? '2000' : credentials?.currency === 'BDT' ? '1000' : '500'},
-  orderNo: 'ORDER_123',
-  callbackUrl: 'https://your-site.com/callback'${(credentials?.currency === 'PKR' || credentials?.currency === 'BDT') ? `,
-  tradeType: '${credentials?.currency === 'PKR' ? 'easypaisa' : 'nagad'}'` : ''}
-});
-
-console.log(order.payment_url);`}
-                    </pre>
-                  </CardContent>
-                </Card>
+              <TabsContent value="sdk" className="mt-6">
+                {renderSDKDocs()}
               </TabsContent>
             </Tabs>
           </CardContent>
