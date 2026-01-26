@@ -338,7 +338,7 @@ const PaymentPage = () => {
               <span>{t.secured}</span>
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              {language === 'zh' ? '由' : 'Powered by'} {gateway.gateway_name}
+              {language === 'zh' ? '由 ELOPAY 提供支持' : 'Powered by ELOPAY'}
             </p>
           </div>
         </div>
