@@ -161,16 +161,19 @@ Deno.serve(async (req) => {
       console.log('Using HYPER SOFTS gateway:', gateway.gateway_code)
       gatewayId = gateway.id
 
-      // Determine trade_type for HYPER SOFTS
-      let apiTradeType = tradeType
-      if (!apiTradeType) {
-        if (gateway.currency === 'INR') {
-          apiTradeType = 'INRUPI'
-        } else if (gateway.currency === 'BDT') {
-          apiTradeType = 'nagad'
-        } else if (gateway.currency === 'PKR') {
-          apiTradeType = 'PKRPH'
-        }
+      // Determine trade_type for HYPER SOFTS API
+      // PKR always uses 'PKRPH' for deposits (jazzcash/easypaisa are just UI selections)
+      // BDT uses the selected trade_type (nagad/bkash)
+      // INR uses the selected trade_type (INRUPI/usdt)
+      let apiTradeType: string
+      if (gateway.currency === 'PKR') {
+        apiTradeType = 'PKRPH' // PKR deposits ALWAYS use PKRPH
+      } else if (gateway.currency === 'BDT') {
+        apiTradeType = tradeType || 'nagad' // BDT uses selected method or default nagad
+      } else if (gateway.currency === 'INR') {
+        apiTradeType = tradeType || 'INRUPI' // INR uses selected method or default INRUPI
+      } else {
+        apiTradeType = tradeType || 'INRUPI'
       }
 
       const hsParams: Record<string, any> = {
