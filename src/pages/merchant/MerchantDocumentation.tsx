@@ -101,14 +101,65 @@ const MerchantDocumentation = () => {
     return key.slice(0, 4) + '****' + key.slice(-4);
   };
 
-  const payinExample = `{
-  "merchant_id": "${credentials?.accountNumber || 'YOUR_MERCHANT_ID'}",
-  "amount": "500.00",
-  "merchant_order_no": "ORDER_${Date.now()}",
-  "callback_url": "https://your-domain.com/callback",
+  // Dynamic payin example based on currency
+  const getPayinExample = () => {
+    const baseExample = {
+      merchant_id: credentials?.accountNumber || 'YOUR_MERCHANT_ID',
+      amount: '500.00',
+      merchant_order_no: `ORDER_${Date.now()}`,
+      callback_url: 'https://your-domain.com/callback',
+      extra: 'optional_reference',
+    };
+
+    // Add trade_type for PKR/BDT
+    if (credentials?.currency === 'PKR') {
+      return `{
+  "merchant_id": "${baseExample.merchant_id}",
+  "amount": "${baseExample.amount}",
+  "merchant_order_no": "${baseExample.merchant_order_no}",
+  "callback_url": "${baseExample.callback_url}",
+  "trade_type": "easypaisa",  // or "jazzcash"
+  "extra": "optional_reference",
+  "sign": "MD5(ASCII sorted params + &key=api_key).toUpperCase()"
+}`;
+    }
+    
+    if (credentials?.currency === 'BDT') {
+      return `{
+  "merchant_id": "${baseExample.merchant_id}",
+  "amount": "${baseExample.amount}",
+  "merchant_order_no": "${baseExample.merchant_order_no}",
+  "callback_url": "${baseExample.callback_url}",
+  "trade_type": "nagad",  // or "bkash"
+  "extra": "optional_reference",
+  "sign": "MD5(ASCII sorted params + &key=api_key).toUpperCase()"
+}`;
+    }
+
+    if (credentials?.currency === 'INR' && credentials?.gatewayType === 'hypersofts') {
+      return `{
+  "merchant_id": "${baseExample.merchant_id}",
+  "amount": "${baseExample.amount}",
+  "merchant_order_no": "${baseExample.merchant_order_no}",
+  "callback_url": "${baseExample.callback_url}",
+  "trade_type": "INRUPI",  // or "usdt"
+  "extra": "optional_reference",
+  "sign": "MD5(ASCII sorted params + &key=api_key).toUpperCase()"
+}`;
+    }
+
+    // HYPER PAY (BondPay) - no trade_type needed
+    return `{
+  "merchant_id": "${baseExample.merchant_id}",
+  "amount": "${baseExample.amount}",
+  "merchant_order_no": "${baseExample.merchant_order_no}",
+  "callback_url": "${baseExample.callback_url}",
   "extra": "optional_reference",
   "sign": "md5(merchant_id + amount + merchant_order_no + api_key + callback_url)"
 }`;
+  };
+
+  const payinExample = getPayinExample();
 
   const payoutExample = `{
   "merchant_id": "${credentials?.accountNumber || 'YOUR_MERCHANT_ID'}",
@@ -379,16 +430,23 @@ function generateHyperSoftsSign(params, apiKey) {
                           <div>
                             <h4 className="font-semibold mb-2">{language === 'zh' ? '支持的支付方式' : 'Supported Payment Methods'}</h4>
                             <div className="grid grid-cols-2 gap-3">
-                              <div className="p-3 border rounded-lg">
-                                <p className="font-medium text-green-600">Easypaisa</p>
-                                <p className="text-xs text-muted-foreground">Pakistan Mobile Wallet</p>
+                              <div className="p-3 border rounded-lg border-green-500/20 bg-green-500/5">
+                                <p className="font-medium text-green-600">🇵🇰 Easypaisa</p>
+                                <p className="text-xs text-muted-foreground">trade_type: <code className="bg-muted px-1 rounded">easypaisa</code></p>
                               </div>
-                              <div className="p-3 border rounded-lg">
-                                <p className="font-medium text-red-600">JazzCash</p>
-                                <p className="text-xs text-muted-foreground">Pakistan Mobile Wallet</p>
+                              <div className="p-3 border rounded-lg border-red-500/20 bg-red-500/5">
+                                <p className="font-medium text-red-600">🇵🇰 JazzCash</p>
+                                <p className="text-xs text-muted-foreground">trade_type: <code className="bg-muted px-1 rounded">jazzcash</code></p>
                               </div>
                             </div>
-                            <p className="text-xs text-muted-foreground mt-2">Trade Type: PKRPH | Withdrawal Code: PKR</p>
+                            <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                              <p className="text-sm text-blue-700">
+                                💡 {language === 'zh' 
+                                  ? '您可以在每笔交易中选择使用 Easypaisa 或 JazzCash'
+                                  : 'You can choose Easypaisa or JazzCash for each transaction'}
+                              </p>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-2">Deposit Trade Type: PKRPH | Withdrawal Code: PKR</p>
                           </div>
                         )}
 
@@ -396,18 +454,23 @@ function generateHyperSoftsSign(params, apiKey) {
                           <div>
                             <h4 className="font-semibold mb-2">{language === 'zh' ? '支持的支付方式' : 'Supported Payment Methods'}</h4>
                             <div className="grid grid-cols-2 gap-3">
-                              <div className="p-3 border rounded-lg">
-                                <p className="font-medium text-orange-600">Nagad</p>
-                                <p className="text-xs text-muted-foreground">Bangladesh Mobile Wallet</p>
+                              <div className="p-3 border rounded-lg border-orange-500/20 bg-orange-500/5">
+                                <p className="font-medium text-orange-600">🇧🇩 Nagad</p>
+                                <p className="text-xs text-muted-foreground">trade_type: <code className="bg-muted px-1 rounded">nagad</code></p>
                               </div>
-                              <div className="p-3 border rounded-lg">
-                                <p className="font-medium text-pink-600">bKash</p>
-                                <p className="text-xs text-muted-foreground">Bangladesh Mobile Wallet</p>
+                              <div className="p-3 border rounded-lg border-pink-500/20 bg-pink-500/5">
+                                <p className="font-medium text-pink-600">🇧🇩 bKash</p>
+                                <p className="text-xs text-muted-foreground">trade_type: <code className="bg-muted px-1 rounded">bkash</code></p>
                               </div>
                             </div>
-                            <p className="text-xs text-muted-foreground mt-2">
-                              {language === 'zh' ? '您的支付方式' : 'Your payment method'}: <Badge>{credentials.tradeType || 'Not set'}</Badge> | Withdrawal Code: BDT
-                            </p>
+                            <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                              <p className="text-sm text-blue-700">
+                                💡 {language === 'zh' 
+                                  ? '您可以在每笔交易中选择使用 Nagad 或 bKash'
+                                  : 'You can choose Nagad or bKash for each transaction'}
+                              </p>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-2">Withdrawal Code: BDT</p>
                           </div>
                         )}
 
@@ -515,13 +578,61 @@ function generateHyperSoftsSign(params, apiKey) {
                       </thead>
                       <tbody>
                         <tr><td className="p-3 border-b font-mono">merchant_id</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">{language === 'zh' ? '商户ID' : 'Merchant ID'}</td></tr>
-                        <tr><td className="p-3 border-b font-mono">amount</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">{language === 'zh' ? '金额 (INR)' : 'Amount (INR)'}</td></tr>
+                        <tr><td className="p-3 border-b font-mono">amount</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">{language === 'zh' ? '金额' : 'Amount'} ({credentials?.currency || 'INR'})</td></tr>
                         <tr><td className="p-3 border-b font-mono">merchant_order_no</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">{language === 'zh' ? '商户订单号' : 'Merchant Order No'}</td></tr>
                         <tr><td className="p-3 border-b font-mono">callback_url</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">{language === 'zh' ? '回调地址' : 'Callback URL'}</td></tr>
+                        {/* trade_type - Required for PKR/BDT, Optional for INR */}
+                        {(credentials?.currency === 'PKR' || credentials?.currency === 'BDT' || (credentials?.currency === 'INR' && credentials?.gatewayType === 'hypersofts')) && (
+                          <tr className="bg-primary/5">
+                            <td className="p-3 border-b font-mono text-primary">trade_type</td>
+                            <td className="p-3 border-b">string</td>
+                            <td className="p-3 border-b">{credentials?.currency === 'PKR' || credentials?.currency === 'BDT' ? '✓' : '-'}</td>
+                            <td className="p-3 border-b">
+                              {credentials?.currency === 'PKR' && (
+                                <span className="flex items-center gap-2">
+                                  <Badge variant="outline" className="bg-green-500/10 text-green-600">easypaisa</Badge>
+                                  <Badge variant="outline" className="bg-red-500/10 text-red-600">jazzcash</Badge>
+                                </span>
+                              )}
+                              {credentials?.currency === 'BDT' && (
+                                <span className="flex items-center gap-2">
+                                  <Badge variant="outline" className="bg-orange-500/10 text-orange-600">nagad</Badge>
+                                  <Badge variant="outline" className="bg-pink-500/10 text-pink-600">bkash</Badge>
+                                </span>
+                              )}
+                              {credentials?.currency === 'INR' && credentials?.gatewayType === 'hypersofts' && (
+                                <span className="flex items-center gap-2">
+                                  <Badge variant="outline" className="bg-blue-500/10 text-blue-600">INRUPI</Badge>
+                                  <Badge variant="outline" className="bg-green-500/10 text-green-600">usdt</Badge>
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        )}
                         <tr><td className="p-3 border-b font-mono">sign</td><td className="p-3 border-b">string</td><td className="p-3 border-b">✓</td><td className="p-3 border-b">{language === 'zh' ? 'MD5签名' : 'MD5 Signature'}</td></tr>
                         <tr><td className="p-3 font-mono">extra</td><td className="p-3">string</td><td className="p-3">-</td><td className="p-3">{language === 'zh' ? '扩展字段' : 'Extra data'}</td></tr>
                       </tbody>
                     </table>
+
+                    {/* Trade Type Warning for PKR/BDT */}
+                    {(credentials?.currency === 'PKR' || credentials?.currency === 'BDT') && (
+                      <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                        <p className="text-sm text-yellow-700 flex items-center gap-2">
+                          ⚠️ <strong>{language === 'zh' ? '重要:' : 'Important:'}</strong> 
+                          {language === 'zh' 
+                            ? `${credentials.currency} 交易必须指定 trade_type 参数`
+                            : `trade_type is REQUIRED for ${credentials.currency} transactions`}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {credentials.currency === 'PKR' && (language === 'zh' 
+                            ? '可选值: "easypaisa" 或 "jazzcash"'
+                            : 'Valid values: "easypaisa" or "jazzcash"')}
+                          {credentials.currency === 'BDT' && (language === 'zh' 
+                            ? '可选值: "nagad" 或 "bkash"'
+                            : 'Valid values: "nagad" or "bkash"')}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
