@@ -35,7 +35,7 @@ const MerchantDocumentation = () => {
   const [showPayoutKey, setShowPayoutKey] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
-  const gatewayName = settings.gatewayName || 'Payment Gateway';
+  const gatewayName = 'ELOPAY';
   const apiBaseUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
 
   useEffect(() => {
@@ -162,7 +162,7 @@ const MerchantDocumentation = () => {
             🇵🇰
           </div>
           <div>
-            <h2 className="text-xl font-bold">Pakistan (PKR) Integration</h2>
+            <h2 className="text-xl font-bold">ELOPAY_PKR Integration</h2>
             <p className="text-muted-foreground">Easypaisa, JazzCash & USDT Payments</p>
             <div className="flex gap-2 mt-2">
               <Badge variant="outline" className="bg-green-500/10">Easypaisa</Badge>
@@ -326,7 +326,7 @@ const MerchantDocumentation = () => {
             🇧🇩
           </div>
           <div>
-            <h2 className="text-xl font-bold">Bangladesh (BDT) Integration</h2>
+            <h2 className="text-xl font-bold">ELOPAY_BDT Integration</h2>
             <p className="text-muted-foreground">Nagad, bKash & USDT Payments</p>
             <div className="flex gap-2 mt-2">
               <Badge variant="outline" className="bg-orange-500/10">Nagad</Badge>
@@ -480,7 +480,7 @@ const MerchantDocumentation = () => {
             🇮🇳
           </div>
           <div>
-            <h2 className="text-xl font-bold">India (INR) Integration</h2>
+            <h2 className="text-xl font-bold">{isHyperPay ? 'ELOPAYGATEWAY_INR' : 'ELOPAY_INR'} Integration</h2>
             <p className="text-muted-foreground">
               {isHyperPay ? 'UPI & Bank Transfer Payments' : 'UPI, Bank Transfer & USDT Payments'}
             </p>
