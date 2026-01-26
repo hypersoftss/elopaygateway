@@ -200,7 +200,9 @@ Deno.serve(async (req) => {
 
     const adminChatId = adminSettings?.admin_telegram_chat_id
     const gatewayName = adminSettings?.gateway_name || 'HYPER SOFTS'
-    const gatewayDomain = adminSettings?.gateway_domain || 'https://gateway.hyperdeveloper.store'
+    // Remove trailing slash to prevent double slashes in URLs
+    const rawDomain = adminSettings?.gateway_domain || 'https://gateway.hyperdeveloper.store'
+    const gatewayDomain = rawDomain.replace(/\/+$/, '')
 
     // ============ Handle Callback Query (Button clicks) ============
     if (body.callback_query) {
