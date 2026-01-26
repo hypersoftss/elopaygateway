@@ -199,6 +199,50 @@ export type Database = {
           },
         ]
       }
+      merchant_activity_logs: {
+        Row: {
+          action_details: Json | null
+          action_type: string
+          admin_user_id: string | null
+          created_at: string
+          id: string
+          ip_address: string | null
+          merchant_id: string | null
+          new_values: Json | null
+          old_values: Json | null
+        }
+        Insert: {
+          action_details?: Json | null
+          action_type: string
+          admin_user_id?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          merchant_id?: string | null
+          new_values?: Json | null
+          old_values?: Json | null
+        }
+        Update: {
+          action_details?: Json | null
+          action_type?: string
+          admin_user_id?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          merchant_id?: string | null
+          new_values?: Json | null
+          old_values?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merchant_activity_logs_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       merchants: {
         Row: {
           account_number: string

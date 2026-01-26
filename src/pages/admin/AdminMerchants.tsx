@@ -259,15 +259,18 @@ const AdminMerchants = () => {
     if (!editingMerchant) return;
     setIsUpdating(true);
     try {
+      const oldValues = { payin_fee: editingMerchant.payin_fee, payout_fee: editingMerchant.payout_fee };
+      const newValues = { payin_fee: parseFloat(editPayinFee), payout_fee: parseFloat(editPayoutFee) };
+      
       const { error } = await supabase
         .from('merchants')
-        .update({ 
-          payin_fee: parseFloat(editPayinFee),
-          payout_fee: parseFloat(editPayoutFee)
-        })
+        .update(newValues)
         .eq('id', editingMerchant.id);
 
       if (error) throw error;
+
+      // Log activity
+      await logMerchantActivity(editingMerchant.id, 'fee_update', { updated_by: 'admin' }, oldValues, newValues);
 
       toast({
         title: t('common.success'),
@@ -298,12 +301,23 @@ const AdminMerchants = () => {
         updateData.trade_type = editTradeType;
       }
       
+      const selectedGateway = gateways.find(g => g.id === editGatewayId);
+      
       const { error } = await supabase
         .from('merchants')
         .update(updateData)
         .eq('id', editingMerchant.id);
 
       if (error) throw error;
+
+      // Log activity
+      await logMerchantActivity(
+        editingMerchant.id, 
+        'gateway_update', 
+        { gateway_id: editGatewayId, gateway_name: selectedGateway?.gateway_name, trade_type: editTradeType || null },
+        { gateway_id: editingMerchant.gateway_id },
+        updateData
+      );
 
       toast({
         title: t('common.success'),
@@ -579,6 +593,72 @@ const AdminMerchants = () => {
     }
   };
 
+  // Bulk gateway assignment state
+  const [isBulkGatewayOpen, setIsBulkGatewayOpen] = useState(false);
+  const [bulkGatewayId, setBulkGatewayId] = useState('');
+  const [bulkTradeType, setBulkTradeType] = useState('');
+  const [isAssigningGateway, setIsAssigningGateway] = useState(false);
+
+  const handleBulkGatewayAssign = async () => {
+    if (selectedMerchants.size === 0 || !bulkGatewayId) return;
+    setIsAssigningGateway(true);
+    try {
+      const updateData: any = { gateway_id: bulkGatewayId };
+      if (bulkTradeType) {
+        updateData.trade_type = bulkTradeType;
+      }
+      
+      const { error } = await supabase
+        .from('merchants')
+        .update(updateData)
+        .in('id', Array.from(selectedMerchants));
+      
+      if (error) throw error;
+      
+      // Log the bulk action
+      const { data: session } = await supabase.auth.getSession();
+      const selectedGateway = gateways.find(g => g.id === bulkGatewayId);
+      
+      for (const merchantId of Array.from(selectedMerchants)) {
+        await supabase.from('merchant_activity_logs').insert({
+          merchant_id: merchantId,
+          admin_user_id: session?.session?.user?.id,
+          action_type: 'bulk_gateway_assign',
+          action_details: { gateway_id: bulkGatewayId, gateway_name: selectedGateway?.gateway_name, trade_type: bulkTradeType || null },
+          new_values: updateData,
+        });
+      }
+      
+      toast({ title: t('common.success'), description: `Gateway assigned to ${selectedMerchants.size} merchants` });
+      setSelectedMerchants(new Set());
+      setBulkGatewayId('');
+      setBulkTradeType('');
+      setIsBulkGatewayOpen(false);
+      fetchMerchants();
+    } catch (err: any) {
+      toast({ title: t('common.error'), description: err.message, variant: 'destructive' });
+    } finally {
+      setIsAssigningGateway(false);
+    }
+  };
+
+  // Activity log helper
+  const logMerchantActivity = async (merchantId: string, actionType: string, actionDetails: any, oldValues?: any, newValues?: any) => {
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      await supabase.from('merchant_activity_logs').insert({
+        merchant_id: merchantId,
+        admin_user_id: session?.session?.user?.id,
+        action_type: actionType,
+        action_details: actionDetails,
+        old_values: oldValues,
+        new_values: newValues,
+      });
+    } catch (err) {
+      console.error('Failed to log activity:', err);
+    }
+  };
+
   const exportSelectedToCSV = () => {
     const selectedList = filteredMerchants.filter(m => selectedMerchants.has(m.id));
     if (selectedList.length === 0) return;
@@ -831,6 +911,9 @@ const AdminMerchants = () => {
                 </Button>
                 <Button size="sm" variant="outline" onClick={handleBulkDisable} className="h-7">
                   <Power className="h-3 w-3 mr-1" /> Disable
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setIsBulkGatewayOpen(true)} className="h-7">
+                  <TrendingUp className="h-3 w-3 mr-1" /> Assign Gateway
                 </Button>
                 <Button size="sm" variant="outline" onClick={exportSelectedToCSV} className="h-7">
                   <Download className="h-3 w-3 mr-1" /> Export
@@ -1199,6 +1282,80 @@ const AdminMerchants = () => {
                 >
                   <RotateCcw className="h-4 w-4 mr-2" />
                   {language === 'zh' ? '重置2FA' : 'Reset 2FA'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Bulk Gateway Assignment Dialog */}
+        <Dialog open={isBulkGatewayOpen} onOpenChange={setIsBulkGatewayOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                {language === 'zh' ? '批量分配网关' : 'Bulk Gateway Assignment'}
+              </DialogTitle>
+              <DialogDescription>
+                {language === 'zh' 
+                  ? `为 ${selectedMerchants.size} 个选中的商户分配网关` 
+                  : `Assign gateway to ${selectedMerchants.size} selected merchants`}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>{language === 'zh' ? '选择网关' : 'Select Gateway'}</Label>
+                <select
+                  className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                  value={bulkGatewayId}
+                  onChange={(e) => {
+                    setBulkGatewayId(e.target.value);
+                    setBulkTradeType('');
+                  }}
+                >
+                  <option value="">{language === 'zh' ? '选择网关...' : 'Select gateway...'}</option>
+                  {gateways.map((gw) => (
+                    <option key={gw.id} value={gw.id}>
+                      {gw.gateway_name} ({gw.currency})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              {/* Trade Type */}
+              {(() => {
+                const selectedGateway = gateways.find(g => g.id === bulkGatewayId);
+                const tradeTypes = selectedGateway ? TRADE_TYPE_OPTIONS[selectedGateway.currency] || [] : [];
+                if (tradeTypes.length === 0) return null;
+                return (
+                  <div className="space-y-2">
+                    <Label>{language === 'zh' ? '支付方式' : 'Trade Type'}</Label>
+                    <select
+                      className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                      value={bulkTradeType}
+                      onChange={(e) => setBulkTradeType(e.target.value)}
+                    >
+                      <option value="">{language === 'zh' ? '选择支付方式...' : 'Select trade type...'}</option>
+                      {tradeTypes.map((tt) => (
+                        <option key={tt.value} value={tt.value}>
+                          {tt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              })()}
+
+              <div className="flex gap-2">
+                <Button
+                  className="flex-1 btn-gradient-primary"
+                  onClick={handleBulkGatewayAssign}
+                  disabled={isAssigningGateway || !bulkGatewayId}
+                >
+                  {isAssigningGateway ? t('common.loading') : (language === 'zh' ? '分配网关' : 'Assign Gateway')}
+                </Button>
+                <Button variant="outline" onClick={() => setIsBulkGatewayOpen(false)}>
+                  {t('common.cancel')}
                 </Button>
               </div>
             </div>

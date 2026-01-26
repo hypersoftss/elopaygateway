@@ -104,6 +104,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         { label: 'HYPER SOFTS BDT', icon: <FileText className="h-4 w-4" />, href: '/admin/sdk/hypersofts-bdt' },
       ]
     },
+    { label: language === 'zh' ? '活动日志' : 'Activity Logs', icon: <History className="h-5 w-5" />, href: '/admin/activity-logs' },
     { label: t('sidebar.settings'), icon: <Settings className="h-5 w-5" />, href: '/admin/settings' },
   ];
 
