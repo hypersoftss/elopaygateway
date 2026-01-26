@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, Settings, Percent, Eye, EyeOff, Upload, AlertTriangle, Globe, Mail, Image, Bell, Shield, Smartphone, Check, X, QrCode, Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { Save, Settings, Percent, Eye, EyeOff, Upload, AlertTriangle, Globe, Mail, Image, Bell, Shield, Smartphone, Check, X, QrCode, Loader2, CheckCircle2, XCircle, Database, Download } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -68,6 +68,9 @@ const AdminSettingsPage = () => {
   // Domain test state
   const [isTestingDomain, setIsTestingDomain] = useState(false);
   const [domainTestResult, setDomainTestResult] = useState<'success' | 'error' | null>(null);
+  
+  // Database export state
+  const [isExporting, setIsExporting] = useState(false);
 
   // Test gateway domain connectivity
   const testDomainConnection = async () => {
@@ -970,6 +973,108 @@ const AdminSettingsPage = () => {
               </CardContent>
             </Card>
 
+            {/* Database Backup */}
+            <Card className="border-2 border-primary/20 overflow-hidden mt-6">
+              <CardHeader className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/20">
+                    <Database className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle>
+                      {language === 'zh' ? '数据库备份' : 'Database Backup'}
+                    </CardTitle>
+                    <CardDescription>
+                      {language === 'zh' 
+                        ? '下载完整数据库SQL备份文件' 
+                        : 'Download complete database SQL backup file'}
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center">
+                      <Download className="h-6 w-6 text-blue-500" />
+                    </div>
+                    <div>
+                      <p className="font-medium">{language === 'zh' ? '导出SQL备份' : 'Export SQL Backup'}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {language === 'zh' ? '包含所有表数据的INSERT语句' : 'Contains INSERT statements for all table data'}
+                      </p>
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={async () => {
+                      setIsExporting(true);
+                      try {
+                        const { data: sessionData } = await supabase.auth.getSession();
+                        if (!sessionData.session) {
+                          throw new Error('Not authenticated');
+                        }
+                        
+                        const response = await supabase.functions.invoke('export-database', {
+                          headers: {
+                            Authorization: `Bearer ${sessionData.session.access_token}`,
+                          },
+                        });
+                        
+                        if (response.error) throw response.error;
+                        
+                        // Create download
+                        const blob = new Blob([response.data], { type: 'application/sql' });
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `hyper_softs_backup_${new Date().toISOString().split('T')[0]}.sql`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);
+                        
+                        toast({
+                          title: language === 'zh' ? '导出成功' : 'Export Successful',
+                          description: language === 'zh' ? 'SQL备份已下载' : 'SQL backup downloaded',
+                        });
+                      } catch (err: any) {
+                        toast({
+                          title: language === 'zh' ? '导出失败' : 'Export Failed',
+                          description: err.message,
+                          variant: 'destructive',
+                        });
+                      } finally {
+                        setIsExporting(false);
+                      }
+                    }}
+                    disabled={isExporting}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {isExporting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        {language === 'zh' ? '导出中...' : 'Exporting...'}
+                      </>
+                    ) : (
+                      <>
+                        <Download className="h-4 w-4 mr-2" />
+                        {language === 'zh' ? '下载SQL备份' : 'Download SQL'}
+                      </>
+                    )}
+                  </Button>
+                </div>
+                
+                <Alert className="mt-4 border-yellow-500/30 bg-yellow-500/5">
+                  <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                  <AlertDescription className="text-sm">
+                    {language === 'zh' 
+                      ? '此备份仅包含数据。要完整迁移，请先运行数据库迁移创建表结构。' 
+                      : 'This backup contains data only. For full migration, run database migrations first to create table structure.'}
+                  </AlertDescription>
+                </Alert>
+              </CardContent>
+            </Card>
+
             {/* Security Tips */}
             <Card className="bg-card border-border mt-6">
               <CardContent className="p-6">
@@ -984,6 +1089,7 @@ const AdminSettingsPage = () => {
                       <li>{language === 'zh' ? '启用2FA以获得额外安全' : 'Enable 2FA for additional security'}</li>
                       <li>{language === 'zh' ? '切勿与任何人分享您的密码' : 'Never share your passwords with anyone'}</li>
                       <li>{language === 'zh' ? '定期更改密码' : 'Change passwords regularly'}</li>
+                      <li>{language === 'zh' ? '定期备份数据库' : 'Backup database regularly'}</li>
                     </ul>
                   </div>
                 </div>
