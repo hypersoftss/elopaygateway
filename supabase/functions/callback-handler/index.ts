@@ -6,8 +6,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Verify LG Pay callback signature
-function verifyLGPaySignature(params: Record<string, any>, key: string, receivedSign: string): boolean {
+// Verify HYPER SOFTS callback signature
+function verifyHyperSoftsSignature(params: Record<string, any>, key: string, receivedSign: string): boolean {
   const filteredParams = Object.entries(params)
     .filter(([k, v]) => v !== '' && v !== null && v !== undefined && k !== 'sign')
     .sort(([a], [b]) => a.localeCompare(b))
@@ -21,7 +21,7 @@ function verifyLGPaySignature(params: Record<string, any>, key: string, received
   hash.update(signString)
   const expectedSign = hash.toString().toUpperCase()
   
-  console.log('LG Pay callback signature verification:', { signString, expectedSign, receivedSign })
+  console.log('HYPER SOFTS callback signature verification:', { signString, expectedSign, receivedSign })
   return expectedSign === receivedSign
 }
 
@@ -86,16 +86,16 @@ Deno.serve(async (req) => {
     let redirectUrl: string | null = null
 
     // Detect callback type
-    const isLGPayCallback = body.order_sn !== undefined
-    const isBondPayPayin = body.orderNo && body.merchantOrder
-    const isBondPayPayout = body.transaction_id && body.merchant_id && !body.orderNo
+    const isHyperSoftsCallback = body.order_sn !== undefined
+    const isHyperPayPayin = body.orderNo && body.merchantOrder
+    const isHyperPayPayout = body.transaction_id && body.merchant_id && !body.orderNo
 
-    if (isLGPayCallback) {
-      // LG Pay callback handler
+    if (isHyperSoftsCallback) {
+      // HYPER SOFTS callback handler
       const { order_sn, money, status, pay_time, msg, remark, sign } = body
       const isPayoutCallback = body.hasOwnProperty('status') && !body.hasOwnProperty('pay_time') === false
 
-      console.log('Processing LG Pay callback for order:', order_sn)
+      console.log('Processing HYPER SOFTS callback for order:', order_sn)
 
       // Find our transaction by order_no
       const { data: transactions, error: txFindError } = await supabaseAdmin
@@ -116,14 +116,14 @@ Deno.serve(async (req) => {
       if (gateway && sign) {
         const signParams = { ...body }
         delete signParams.sign
-        const isValidSign = verifyLGPaySignature(signParams, gateway.api_key, sign)
+        const isValidSign = verifyHyperSoftsSignature(signParams, gateway.api_key, sign)
         if (!isValidSign) {
-          console.error('Invalid LG Pay callback signature')
-          // Continue processing anyway as LG Pay might retry
+          console.error('Invalid HYPER SOFTS callback signature')
+          // Continue processing anyway as HYPER SOFTS might retry
         }
       }
 
-      // LG Pay: status 1 = success, 0 = failed (for payout), payin only sends success
+      // HYPER SOFTS: status 1 = success, 0 = failed (for payout), payin only sends success
       const newStatus = status === 1 || status === '1' ? 'success' : 'failed'
 
       // Update transaction status
@@ -206,7 +206,7 @@ Deno.serve(async (req) => {
               timestamp: new Date().toISOString()
             })
           })
-          console.log('Forwarded LG Pay callback to merchant')
+          console.log('Forwarded HYPER SOFTS callback to merchant')
         } catch (callbackError) {
           console.error('Failed to forward callback to merchant:', callbackError)
         }
@@ -228,14 +228,14 @@ Deno.serve(async (req) => {
         redirectUrl = `${extraData.failure_url}?${params.toString()}`
       }
 
-      console.log('LG Pay callback processed successfully for order:', order_sn)
+      console.log('HYPER SOFTS callback processed successfully for order:', order_sn)
       
-      // LG Pay expects "ok" response
+      // HYPER SOFTS expects "ok" response
       return new Response('ok', { headers: corsHeaders })
     }
 
-    // Handle BondPay payin callback
-    if (isBondPayPayin) {
+    // Handle HYPER PAY payin callback
+    if (isHyperPayPayin) {
       const { orderNo, merchantOrder, status, amount } = body
 
       const { data: transactions, error: txFindError } = await supabaseAdmin
@@ -360,11 +360,11 @@ Deno.serve(async (req) => {
         redirectUrl = `${extraData.failure_url}?${params.toString()}`
       }
 
-      console.log('BondPay callback processed successfully for order:', merchantOrder)
+      console.log('HYPER PAY callback processed successfully for order:', merchantOrder)
     }
 
-    // Handle BondPay payout callback
-    if (isBondPayPayout) {
+    // Handle HYPER PAY payout callback
+    if (isHyperPayPayout) {
       const { transaction_id, status } = body
 
       const { data: transactions, error: txFindError } = await supabaseAdmin
@@ -444,7 +444,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      console.log('BondPay payout callback processed successfully for order:', transaction_id)
+      console.log('HYPER PAY payout callback processed successfully for order:', transaction_id)
     }
 
     // Return redirect URL if available
