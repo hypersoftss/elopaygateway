@@ -154,7 +154,7 @@ const AdminDashboard = () => {
     isAdmin: true,
   });
 
-  // Ping gateway domain for health check
+  // Ping gateway domain for health check (with Telegram alerts via edge function)
   const checkServerHealth = useCallback(async (domain: string) => {
     if (!domain) return;
     
@@ -190,6 +190,12 @@ const AdminDashboard = () => {
         setUptimePercentage(Math.round((onlineCount / updated.length) * 100));
         return updated;
       });
+
+      // Call edge function to handle Telegram alerts (runs in background)
+      supabase.functions.invoke('server-health-monitor').catch(err => {
+        console.error('Failed to invoke server health monitor:', err);
+      });
+
     } catch (error: any) {
       const result: HealthCheckResult = {
         timestamp: new Date(),
@@ -205,6 +211,12 @@ const AdminDashboard = () => {
         setUptimePercentage(Math.round((onlineCount / updated.length) * 100));
         return updated;
       });
+
+      // Call edge function to send offline alert
+      supabase.functions.invoke('server-health-monitor').catch(err => {
+        console.error('Failed to invoke server health monitor:', err);
+      });
+
     } finally {
       setIsCheckingHealth(false);
     }
@@ -215,7 +227,7 @@ const AdminDashboard = () => {
     try {
       const { data } = await supabase
         .from('admin_settings')
-        .select('gateway_domain')
+        .select('gateway_domain, response_time_threshold')
         .limit(1);
       
       if (data && data[0]?.gateway_domain) {
