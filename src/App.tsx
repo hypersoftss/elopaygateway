@@ -48,6 +48,7 @@ import HyperSoftsBDTDocs from "./pages/admin/sdk/HyperSoftsBDTDocs";
 import AdminGateways from "./pages/admin/AdminGateways";
 import AdminGatewayHealth from "./pages/admin/AdminGatewayHealth";
 import AdminTelegram from "./pages/admin/AdminTelegram";
+import AdminActivityLogs from "./pages/admin/AdminActivityLogs";
 
 const queryClient = new QueryClient();
 
@@ -107,6 +108,7 @@ const AppRoutes = () => {
       <Route path="/admin/gateways" element={<ProtectedRoute requiredRole="admin"><AdminGateways /></ProtectedRoute>} />
       <Route path="/admin/gateway-health" element={<ProtectedRoute requiredRole="admin"><AdminGatewayHealth /></ProtectedRoute>} />
       <Route path="/admin/telegram" element={<ProtectedRoute requiredRole="admin"><AdminTelegram /></ProtectedRoute>} />
+      <Route path="/admin/activity-logs" element={<ProtectedRoute requiredRole="admin"><AdminActivityLogs /></ProtectedRoute>} />
       <Route path="/admin/settings" element={<ProtectedRoute requiredRole="admin"><AdminSettings /></ProtectedRoute>} />
       
       {/* SDK Documentation Routes */}

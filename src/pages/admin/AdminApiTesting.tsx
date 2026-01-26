@@ -53,6 +53,7 @@ const AdminApiTesting = () => {
   const [payoutBankName, setPayoutBankName] = useState('HDFC Bank');
   const [payoutCallbackUrl, setPayoutCallbackUrl] = useState('https://example.com/payout-callback');
   const [payoutSignature, setPayoutSignature] = useState('');
+  const [payoutTradeType, setPayoutTradeType] = useState('');
   const [isSubmittingPayout, setIsSubmittingPayout] = useState(false);
 
   const fetchMerchants = async () => {
@@ -131,10 +132,50 @@ const AdminApiTesting = () => {
     return [{ value: 'default', label: 'Default' }];
   };
 
+  // Get payout trade type options based on currency
+  const getPayoutTradeTypeOptions = (merchant: Merchant | null) => {
+    if (!merchant) return [];
+    
+    const { gateway_type, gateway_code, currency } = merchant;
+    
+    // HYPER PAY - INR bank transfer
+    if (gateway_type === 'hyperpay') {
+      return [{ value: 'bank', label: '🏦 Bank Transfer' }];
+    }
+    
+    // HYPER SOFTS payout options based on currency
+    if (gateway_type === 'hypersofts' || gateway_code?.startsWith('hypersofts')) {
+      if (currency === 'INR' || gateway_code === 'hypersofts_inr') {
+        return [
+          { value: 'bank', label: '🏦 Bank Transfer (INR)' },
+          { value: 'usdt', label: '💰 USDT' },
+        ];
+      }
+      if (currency === 'BDT' || gateway_code === 'hypersofts_bdt') {
+        return [
+          { value: 'nagad', label: '🇧🇩 Nagad' },
+          { value: 'bkash', label: '🇧🇩 bKash' },
+        ];
+      }
+      if (currency === 'PKR' || gateway_code === 'hypersofts_pkr') {
+        return [
+          { value: 'easypaisa', label: '🇵🇰 Easypaisa' },
+          { value: 'jazzcash', label: '🇵🇰 JazzCash' },
+        ];
+      }
+    }
+    
+    return [{ value: 'bank', label: '🏦 Bank Transfer' }];
+  };
+
   const updateTradeTypeOptions = (merchant: Merchant | null) => {
-    const options = getTradeTypeOptions(merchant);
-    if (options.length > 0) {
-      setPayinTradeType(merchant?.trade_type || options[0].value);
+    const payinOptions = getTradeTypeOptions(merchant);
+    if (payinOptions.length > 0) {
+      setPayinTradeType(merchant?.trade_type || payinOptions[0].value);
+    }
+    const payoutOptions = getPayoutTradeTypeOptions(merchant);
+    if (payoutOptions.length > 0) {
+      setPayoutTradeType(payoutOptions[0].value);
     }
   };
 
@@ -563,6 +604,28 @@ const AdminApiTesting = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Payout Method Selection */}
+                {getPayoutTradeTypeOptions(selectedMerchant).length > 0 && (
+                  <div className="space-y-2">
+                    <Label>{language === 'zh' ? '提款方式' : 'Withdrawal Method'}</Label>
+                    <Select value={payoutTradeType} onValueChange={setPayoutTradeType}>
+                      <SelectTrigger className="bg-orange-500/10 border-orange-500/20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getPayoutTradeTypeOptions(selectedMerchant).map(opt => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {selectedMerchant?.currency === 'PKR' && '🇵🇰 PKR supports Easypaisa and JazzCash withdrawals'}
+                      {selectedMerchant?.currency === 'BDT' && '🇧🇩 BDT supports Nagad and bKash withdrawals'}
+                      {selectedMerchant?.currency === 'INR' && '🇮🇳 INR supports Bank Transfer and USDT withdrawals'}
+                    </p>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label>{language === 'zh' ? '金额' : 'Amount'}</Label>
@@ -582,21 +645,22 @@ const AdminApiTesting = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>{language === 'zh' ? '账号' : 'Account Number'}</Label>
+                    <Label>{selectedMerchant?.currency === 'PKR' || selectedMerchant?.currency === 'BDT' ? (language === 'zh' ? '手机号' : 'Mobile Number') : (language === 'zh' ? '账号' : 'Account Number')}</Label>
                     <Input
                       value={payoutAccountNumber}
                       onChange={(e) => setPayoutAccountNumber(e.target.value)}
-                      placeholder="1234567890"
+                      placeholder={selectedMerchant?.currency === 'PKR' ? '03001234567' : selectedMerchant?.currency === 'BDT' ? '01712345678' : '1234567890'}
                     />
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label>{language === 'zh' ? 'IFSC代码' : 'IFSC Code'}</Label>
+                    <Label>{selectedMerchant?.currency === 'PKR' || selectedMerchant?.currency === 'BDT' ? 'N/A' : (language === 'zh' ? 'IFSC代码' : 'IFSC Code')}</Label>
                     <Input
                       value={payoutIfsc}
                       onChange={(e) => setPayoutIfsc(e.target.value)}
-                      placeholder="HDFC0001234"
+                      placeholder={selectedMerchant?.currency === 'PKR' || selectedMerchant?.currency === 'BDT' ? 'N/A' : 'HDFC0001234'}
+                      disabled={selectedMerchant?.currency === 'PKR' || selectedMerchant?.currency === 'BDT'}
                     />
                   </div>
                   <div className="space-y-2">
@@ -608,11 +672,15 @@ const AdminApiTesting = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>{language === 'zh' ? '银行名称' : 'Bank Name'}</Label>
+                    <Label>{selectedMerchant?.currency === 'PKR' || selectedMerchant?.currency === 'BDT' ? (language === 'zh' ? '钱包类型' : 'Wallet Type') : (language === 'zh' ? '银行名称' : 'Bank Name')}</Label>
                     <Input
                       value={payoutBankName}
                       onChange={(e) => setPayoutBankName(e.target.value)}
-                      placeholder="HDFC Bank"
+                      placeholder={
+                        selectedMerchant?.currency === 'PKR' ? (payoutTradeType === 'easypaisa' ? 'Easypaisa' : 'JazzCash') :
+                        selectedMerchant?.currency === 'BDT' ? (payoutTradeType === 'nagad' ? 'Nagad' : 'bKash') :
+                        'HDFC Bank'
+                      }
                     />
                   </div>
                 </div>
