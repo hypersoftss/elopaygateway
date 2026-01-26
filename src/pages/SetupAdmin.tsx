@@ -70,7 +70,7 @@ const SetupAdmin = () => {
       <header className="flex items-center justify-between p-4">
         <div className="flex items-center gap-2">
           <ShieldCheck className="h-8 w-8 text-primary" />
-          <span className="font-bold text-xl">PayGate</span>
+          <span className="font-bold text-xl">ELOPAY</span>
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
@@ -83,7 +83,7 @@ const SetupAdmin = () => {
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">{t('auth.setupAdmin')}</CardTitle>
             <CardDescription>
-              Create the first admin account for PayGate
+              Create the first admin account for ELOPAY
             </CardDescription>
           </CardHeader>
           <CardContent>

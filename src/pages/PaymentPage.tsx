@@ -139,7 +139,7 @@ const PaymentPage = () => {
 
         if (response?.gateway_settings) {
           setGateway({
-            gateway_name: response.gateway_settings.gateway_name || 'Payment Gateway',
+            gateway_name: response.gateway_settings.gateway_name || 'ELOPAY',
             logo_url: response.gateway_settings.logo_url
           });
         }
