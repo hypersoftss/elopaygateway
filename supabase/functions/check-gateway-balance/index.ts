@@ -1,5 +1,4 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { md5 } from 'https://esm.sh/js-md5@0.8.3'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -23,15 +22,23 @@ interface BalanceThresholds {
   bdt: number
 }
 
+// Simple MD5 implementation for Deno
+async function md5(message: string): Promise<string> {
+  const msgUint8 = new TextEncoder().encode(message)
+  const hashBuffer = await crypto.subtle.digest('MD5', msgUint8)
+  const hashArray = Array.from(new Uint8Array(hashBuffer))
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
 // LG Pay signature generation (ASCII sorted MD5)
-function generateLGPaySign(params: Record<string, string>, apiKey: string): string {
+async function generateLGPaySign(params: Record<string, string>, apiKey: string): Promise<string> {
   const sortedKeys = Object.keys(params).sort()
   const signStr = sortedKeys
     .filter(key => params[key] !== '' && params[key] !== undefined && params[key] !== null)
     .map(key => `${key}=${params[key]}`)
     .join('&')
   const finalStr = signStr + '&key=' + apiKey
-  return md5(finalStr).toUpperCase()
+  return (await md5(finalStr)).toUpperCase()
 }
 
 async function checkLGPayBalance(gateway: any): Promise<GatewayBalance> {
@@ -43,7 +50,7 @@ async function checkLGPayBalance(gateway: any): Promise<GatewayBalance> {
     timestamp,
   }
   
-  const sign = generateLGPaySign(params, gateway.api_key)
+  const sign = await generateLGPaySign(params, gateway.api_key)
   params.sign = sign
 
   try {
@@ -102,7 +109,7 @@ async function checkBondPayBalance(gateway: any): Promise<GatewayBalance> {
     // BondPay balance check (using their balance API)
     const timestamp = Math.floor(Date.now() / 1000).toString()
     const signStr = gateway.app_id + timestamp + gateway.api_key
-    const sign = md5(signStr)
+    const sign = await md5(signStr)
 
     const response = await fetch(`${baseUrl}/api/balance`, {
       method: 'POST',

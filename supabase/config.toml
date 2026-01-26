@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.export-database]
 verify_jwt = false
+
+[functions.server-health-monitor]
+verify_jwt = false
