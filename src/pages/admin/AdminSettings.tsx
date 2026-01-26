@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, Settings, Percent, Eye, EyeOff, Upload, AlertTriangle, Globe, Mail, Image, Bell, Shield, Smartphone, Check, X, QrCode, Loader2, CheckCircle2, XCircle, Database, Download } from 'lucide-react';
+import { Save, Settings, Percent, Eye, EyeOff, Upload, AlertTriangle, Globe, Mail, Image, Bell, Shield, Smartphone, Check, X, QrCode, Loader2, CheckCircle2, XCircle, Database, Download, Server, Copy, Terminal, FileCode, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -1075,7 +1075,521 @@ const AdminSettingsPage = () => {
               </CardContent>
             </Card>
 
-            {/* Security Tips */}
+            {/* VPS Deployment Guide */}
+            <Card className="border-2 border-primary/20 overflow-hidden mt-6">
+              <CardHeader className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/20">
+                    <Server className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle>
+                      {language === 'zh' ? 'VPS部署指南 (Nginx)' : 'VPS Deployment Guide (Nginx)'}
+                    </CardTitle>
+                    <CardDescription>
+                      {language === 'zh' 
+                        ? '完整的自托管部署步骤' 
+                        : 'Complete self-hosting deployment steps'}
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6 space-y-6">
+                {/* Step 1: Prerequisites */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">1</div>
+                    <h4 className="font-semibold">{language === 'zh' ? '准备工作' : 'Prerequisites'}</h4>
+                  </div>
+                  <div className="ml-10 p-4 bg-muted rounded-lg font-mono text-sm space-y-2">
+                    <p className="text-muted-foreground mb-2"># {language === 'zh' ? '确保VPS安装以下软件' : 'Make sure VPS has these installed'}</p>
+                    <div className="flex items-center justify-between">
+                      <code>sudo apt update && sudo apt upgrade -y</code>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText('sudo apt update && sudo apt upgrade -y');
+                          toast({ title: 'Copied!' });
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <code>sudo apt install nginx nodejs npm git -y</code>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText('sudo apt install nginx nodejs npm git -y');
+                          toast({ title: 'Copied!' });
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <code>npm install -g pm2</code>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText('npm install -g pm2');
+                          toast({ title: 'Copied!' });
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Step 2: Download Code */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">2</div>
+                    <h4 className="font-semibold">{language === 'zh' ? '下载代码' : 'Download Code'}</h4>
+                  </div>
+                  <div className="ml-10 p-4 bg-muted rounded-lg font-mono text-sm space-y-2">
+                    <p className="text-muted-foreground mb-2"># {language === 'zh' ? '从GitHub克隆代码' : 'Clone from GitHub'}</p>
+                    <div className="flex items-center justify-between">
+                      <code>git clone YOUR_GITHUB_REPO_URL</code>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText('git clone YOUR_GITHUB_REPO_URL');
+                          toast({ title: 'Copied!' });
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <code>cd YOUR_PROJECT_FOLDER</code>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText('cd YOUR_PROJECT_FOLDER');
+                          toast({ title: 'Copied!' });
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <Alert className="ml-10 border-primary/30 bg-primary/5">
+                    <FileCode className="h-4 w-4" />
+                    <AlertDescription className="text-sm">
+                      {language === 'zh' 
+                        ? '在Lovable编辑器中点击 GitHub → Connect to GitHub 连接并创建仓库' 
+                        : 'In Lovable editor, click GitHub → Connect to GitHub to connect and create repository'}
+                    </AlertDescription>
+                  </Alert>
+                </div>
+
+                {/* Step 3: Create Supabase Project */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">3</div>
+                    <h4 className="font-semibold">{language === 'zh' ? '创建Supabase项目' : 'Create Supabase Project'}</h4>
+                  </div>
+                  <div className="ml-10 space-y-3">
+                    <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
+                      <li>{language === 'zh' ? '访问 supabase.com 创建免费账户' : 'Go to supabase.com and create free account'}</li>
+                      <li>{language === 'zh' ? '创建新项目，记住数据库密码' : 'Create new project, remember database password'}</li>
+                      <li>{language === 'zh' ? '进入 SQL Editor' : 'Go to SQL Editor'}</li>
+                      <li>{language === 'zh' ? '点击上方 "Download Complete SQL" 下载SQL文件' : 'Click "Download Complete SQL" above to get SQL file'}</li>
+                      <li>{language === 'zh' ? '粘贴并运行整个SQL' : 'Paste and run the entire SQL'}</li>
+                    </ol>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => window.open('https://supabase.com/dashboard', '_blank')}
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      {language === 'zh' ? '打开Supabase' : 'Open Supabase'}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Step 4: Environment Setup */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">4</div>
+                    <h4 className="font-semibold">{language === 'zh' ? '配置环境变量' : 'Setup Environment Variables'}</h4>
+                  </div>
+                  <div className="ml-10 p-4 bg-muted rounded-lg font-mono text-sm space-y-2">
+                    <p className="text-muted-foreground mb-2"># {language === 'zh' ? '创建 .env 文件' : 'Create .env file'}</p>
+                    <div className="flex items-center justify-between">
+                      <code>nano .env</code>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText('nano .env');
+                          toast({ title: 'Copied!' });
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="ml-10 p-4 bg-muted rounded-lg font-mono text-xs space-y-1">
+                    <p className="text-muted-foreground mb-2"># .env {language === 'zh' ? '文件内容' : 'file contents'}</p>
+                    <pre className="whitespace-pre-wrap break-all">{`VITE_SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=YOUR_ANON_KEY
+VITE_SUPABASE_PROJECT_ID=YOUR_PROJECT_ID`}</pre>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`VITE_SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=YOUR_ANON_KEY
+VITE_SUPABASE_PROJECT_ID=YOUR_PROJECT_ID`);
+                        toast({ title: 'Copied!' });
+                      }}
+                    >
+                      <Copy className="h-4 w-4 mr-2" />
+                      {language === 'zh' ? '复制模板' : 'Copy Template'}
+                    </Button>
+                  </div>
+                  <Alert className="ml-10 border-[hsl(var(--warning))]/30 bg-[hsl(var(--warning))]/5">
+                    <AlertTriangle className="h-4 w-4 text-[hsl(var(--warning))]" />
+                    <AlertDescription className="text-sm">
+                      {language === 'zh' 
+                        ? '从Supabase项目设置 → API 获取URL和anon key' 
+                        : 'Get URL and anon key from Supabase Project Settings → API'}
+                    </AlertDescription>
+                  </Alert>
+                </div>
+
+                {/* Step 5: Build & Deploy */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">5</div>
+                    <h4 className="font-semibold">{language === 'zh' ? '构建项目' : 'Build Project'}</h4>
+                  </div>
+                  <div className="ml-10 p-4 bg-muted rounded-lg font-mono text-sm space-y-2">
+                    <div className="flex items-center justify-between">
+                      <code>npm install</code>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText('npm install');
+                          toast({ title: 'Copied!' });
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <code>npm run build</code>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText('npm run build');
+                          toast({ title: 'Copied!' });
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <p className="ml-10 text-sm text-muted-foreground">
+                    {language === 'zh' 
+                      ? '构建完成后会生成 dist/ 文件夹，这就是要部署的静态文件' 
+                      : 'After build, dist/ folder will be created - these are the static files to deploy'}
+                  </p>
+                </div>
+
+                {/* Step 6: Nginx Config */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">6</div>
+                    <h4 className="font-semibold">{language === 'zh' ? '配置Nginx' : 'Configure Nginx'}</h4>
+                  </div>
+                  <div className="ml-10 p-4 bg-muted rounded-lg font-mono text-sm space-y-2">
+                    <div className="flex items-center justify-between">
+                      <code>sudo nano /etc/nginx/sites-available/gateway</code>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText('sudo nano /etc/nginx/sites-available/gateway');
+                          toast({ title: 'Copied!' });
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="ml-10 p-4 bg-muted rounded-lg font-mono text-xs overflow-x-auto">
+                    <pre className="whitespace-pre">{`server {
+    listen 80;
+    server_name your-domain.com;
+    root /var/www/gateway/dist;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location ~* \\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
+}`}</pre>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`server {
+    listen 80;
+    server_name your-domain.com;
+    root /var/www/gateway/dist;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location ~* \\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
+}`);
+                        toast({ title: 'Copied!' });
+                      }}
+                    >
+                      <Copy className="h-4 w-4 mr-2" />
+                      {language === 'zh' ? '复制配置' : 'Copy Config'}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Step 7: Enable Site & SSL */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">7</div>
+                    <h4 className="font-semibold">{language === 'zh' ? '启用站点 & SSL' : 'Enable Site & SSL'}</h4>
+                  </div>
+                  <div className="ml-10 p-4 bg-muted rounded-lg font-mono text-sm space-y-2">
+                    <p className="text-muted-foreground mb-2"># {language === 'zh' ? '复制构建文件到网站目录' : 'Copy build files to web directory'}</p>
+                    <div className="flex items-center justify-between">
+                      <code>sudo mkdir -p /var/www/gateway</code>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText('sudo mkdir -p /var/www/gateway');
+                          toast({ title: 'Copied!' });
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <code>sudo cp -r dist/* /var/www/gateway/</code>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText('sudo cp -r dist/* /var/www/gateway/');
+                          toast({ title: 'Copied!' });
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <p className="text-muted-foreground mt-4 mb-2"># {language === 'zh' ? '启用站点' : 'Enable site'}</p>
+                    <div className="flex items-center justify-between">
+                      <code>sudo ln -s /etc/nginx/sites-available/gateway /etc/nginx/sites-enabled/</code>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText('sudo ln -s /etc/nginx/sites-available/gateway /etc/nginx/sites-enabled/');
+                          toast({ title: 'Copied!' });
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <code>sudo nginx -t && sudo systemctl reload nginx</code>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText('sudo nginx -t && sudo systemctl reload nginx');
+                          toast({ title: 'Copied!' });
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <p className="text-muted-foreground mt-4 mb-2"># {language === 'zh' ? '安装SSL证书 (免费)' : 'Install SSL Certificate (free)'}</p>
+                    <div className="flex items-center justify-between">
+                      <code>sudo apt install certbot python3-certbot-nginx -y</code>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText('sudo apt install certbot python3-certbot-nginx -y');
+                          toast({ title: 'Copied!' });
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <code>sudo certbot --nginx -d your-domain.com</code>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText('sudo certbot --nginx -d your-domain.com');
+                          toast({ title: 'Copied!' });
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Step 8: Deploy Edge Functions */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">8</div>
+                    <h4 className="font-semibold">{language === 'zh' ? '部署Edge Functions' : 'Deploy Edge Functions'}</h4>
+                  </div>
+                  <div className="ml-10 p-4 bg-muted rounded-lg font-mono text-sm space-y-2">
+                    <p className="text-muted-foreground mb-2"># {language === 'zh' ? '安装Supabase CLI' : 'Install Supabase CLI'}</p>
+                    <div className="flex items-center justify-between">
+                      <code>npm install -g supabase</code>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText('npm install -g supabase');
+                          toast({ title: 'Copied!' });
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <p className="text-muted-foreground mt-4 mb-2"># {language === 'zh' ? '登录并部署' : 'Login and deploy'}</p>
+                    <div className="flex items-center justify-between">
+                      <code>supabase login</code>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText('supabase login');
+                          toast({ title: 'Copied!' });
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <code>supabase link --project-ref YOUR_PROJECT_ID</code>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText('supabase link --project-ref YOUR_PROJECT_ID');
+                          toast({ title: 'Copied!' });
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <code>supabase functions deploy</code>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText('supabase functions deploy');
+                          toast({ title: 'Copied!' });
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Success */}
+                <Alert className="border-[hsl(var(--success))]/30 bg-[hsl(var(--success))]/5">
+                  <CheckCircle2 className="h-4 w-4 text-[hsl(var(--success))]" />
+                  <AlertDescription className="text-sm font-medium">
+                    {language === 'zh' 
+                      ? '🎉 完成！访问 https://your-domain.com 查看您的网关' 
+                      : '🎉 Done! Visit https://your-domain.com to see your gateway'}
+                  </AlertDescription>
+                </Alert>
+
+                {/* Quick Copy All Commands */}
+                <div className="pt-4 border-t">
+                  <Button 
+                    className="w-full"
+                    variant="outline"
+                    onClick={() => {
+                      const allCommands = `# Prerequisites
+sudo apt update && sudo apt upgrade -y
+sudo apt install nginx nodejs npm git -y
+npm install -g pm2
+
+# Clone and Build
+git clone YOUR_GITHUB_REPO_URL
+cd YOUR_PROJECT_FOLDER
+npm install
+npm run build
+
+# Deploy
+sudo mkdir -p /var/www/gateway
+sudo cp -r dist/* /var/www/gateway/
+sudo ln -s /etc/nginx/sites-available/gateway /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+
+# SSL
+sudo apt install certbot python3-certbot-nginx -y
+sudo certbot --nginx -d your-domain.com
+
+# Edge Functions
+npm install -g supabase
+supabase login
+supabase link --project-ref YOUR_PROJECT_ID
+supabase functions deploy`;
+                      navigator.clipboard.writeText(allCommands);
+                      toast({ 
+                        title: language === 'zh' ? '已复制所有命令' : 'All Commands Copied',
+                        description: language === 'zh' ? '粘贴到终端执行' : 'Paste to terminal to execute'
+                      });
+                    }}
+                  >
+                    <Terminal className="h-4 w-4 mr-2" />
+                    {language === 'zh' ? '复制所有命令' : 'Copy All Commands'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
             <Card className="bg-card border-border mt-6">
               <CardContent className="p-6">
                 <div className="flex items-start gap-3">
