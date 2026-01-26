@@ -216,21 +216,24 @@ Deno.serve(async (req) => {
 
     // Route to appropriate gateway
     if (gateway.gateway_type === 'hypersofts') {
-      // HYPER SOFTS integration - trade_type logic varies by currency:
-      // - PKR: Use gateway's trade_type (PKRPH) for all merchants
-      // - BDT: Use merchant's trade_type directly (Nagad, bKash)
-      // - INR: Use gateway's trade_type (INRUPI) or merchant's trade_type (usdt)
+      // HYPER SOFTS integration - trade_type logic varies by gateway_code:
+      // - hypersofts_pkr: Use gateway's trade_type (PKRPH) for all merchants
+      // - hypersofts_bdt: Use merchant's trade_type directly (Nagad, bKash)
+      // - hypersofts_inr: Use gateway's trade_type (INRUPI) or merchant's trade_type (usdt)
       let tradeType = gateway.trade_type || 'INRUPI'
       
-      if (gateway.currency === 'BDT' && merchant.trade_type) {
+      if (gateway.gateway_code === 'hypersofts_bdt' && merchant.trade_type) {
         // For BDT, deposit codes ARE the merchant's trade_type (Nagad/bKash)
         tradeType = merchant.trade_type
-      } else if (gateway.currency === 'INR' && merchant.trade_type) {
+      } else if (gateway.gateway_code === 'hypersofts_inr' && merchant.trade_type) {
         // For INR, use merchant's trade_type if set (usdt/INRUPI)
         tradeType = merchant.trade_type
+      } else if (gateway.gateway_code === 'hypersofts_pkr') {
+        // For PKR, use gateway's trade_type (PKRPH)
+        tradeType = gateway.trade_type || 'PKRPH'
       }
       
-      console.log('HYPER SOFTS payin v2 - Currency:', gateway.currency, 'Trade type:', tradeType, 'Merchant trade_type:', merchant.trade_type)
+      console.log('HYPER SOFTS payin v2 - Gateway code:', gateway.gateway_code, 'Currency:', gateway.currency, 'Trade type:', tradeType, 'Merchant trade_type:', merchant.trade_type)
       
       const hsParams: Record<string, any> = {
         app_id: gateway.app_id,
