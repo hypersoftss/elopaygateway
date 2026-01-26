@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, Settings, Percent, Eye, EyeOff, Upload, AlertTriangle, Globe, Mail, Image, Bell, Shield, Smartphone, Check, X, QrCode } from 'lucide-react';
+import { Save, Settings, Percent, Eye, EyeOff, Upload, AlertTriangle, Globe, Mail, Image, Bell, Shield, Smartphone, Check, X, QrCode, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -65,6 +65,76 @@ const AdminSettingsPage = () => {
   const [verificationCode, setVerificationCode] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   
+  // Domain test state
+  const [isTestingDomain, setIsTestingDomain] = useState(false);
+  const [domainTestResult, setDomainTestResult] = useState<'success' | 'error' | null>(null);
+
+  // Test gateway domain connectivity
+  const testDomainConnection = async () => {
+    const domain = settings?.gateway_domain?.replace(/\/+$/, '');
+    if (!domain) {
+      toast({
+        title: language === 'zh' ? '错误' : 'Error',
+        description: language === 'zh' ? '请先输入域名' : 'Please enter a domain first',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Basic URL validation
+    try {
+      new URL(domain);
+    } catch {
+      toast({
+        title: language === 'zh' ? '无效URL' : 'Invalid URL',
+        description: language === 'zh' ? '请输入有效的URL格式' : 'Please enter a valid URL format',
+        variant: 'destructive',
+      });
+      setDomainTestResult('error');
+      return;
+    }
+
+    setIsTestingDomain(true);
+    setDomainTestResult(null);
+
+    try {
+      // Try to fetch the domain with a timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+      const response = await fetch(domain, {
+        method: 'HEAD',
+        mode: 'no-cors', // Allow cross-origin requests without CORS
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      // no-cors mode always returns opaque response, but if it doesn't throw, the domain is reachable
+      setDomainTestResult('success');
+      toast({
+        title: language === 'zh' ? '连接成功' : 'Connection Successful',
+        description: language === 'zh' ? `${domain} 可访问` : `${domain} is reachable`,
+      });
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        toast({
+          title: language === 'zh' ? '连接超时' : 'Connection Timeout',
+          description: language === 'zh' ? '域名响应时间过长' : 'Domain took too long to respond',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: language === 'zh' ? '连接失败' : 'Connection Failed',
+          description: language === 'zh' ? '无法访问该域名' : 'Could not reach the domain',
+          variant: 'destructive',
+        });
+      }
+      setDomainTestResult('error');
+    } finally {
+      setIsTestingDomain(false);
+    }
+  };
 
 
   const fetchSettings = async () => {
@@ -483,15 +553,42 @@ const AdminSettingsPage = () => {
                       <Globe className="h-4 w-4" />
                       {language === 'zh' ? '网关域名' : 'Gateway Domain'}
                     </Label>
-                    <Input
-                      value={settings?.gateway_domain || ''}
-                      onChange={(e) => {
-                        // Auto-remove trailing slashes on input
-                        const value = e.target.value.replace(/\/+$/, '');
-                        setSettings(s => s ? { ...s, gateway_domain: value } : null);
-                      }}
-                      placeholder="https://your-gateway.com"
-                    />
+                    <div className="flex gap-2">
+                      <div className="flex-1 relative">
+                        <Input
+                          value={settings?.gateway_domain || ''}
+                          onChange={(e) => {
+                            // Auto-remove trailing slashes on input and reset test result
+                            const value = e.target.value.replace(/\/+$/, '');
+                            setSettings(s => s ? { ...s, gateway_domain: value } : null);
+                            setDomainTestResult(null);
+                          }}
+                          placeholder="https://your-gateway.com"
+                          className={domainTestResult === 'success' ? 'border-green-500 pr-10' : domainTestResult === 'error' ? 'border-destructive pr-10' : ''}
+                        />
+                        {domainTestResult && (
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            {domainTestResult === 'success' ? (
+                              <CheckCircle2 className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <XCircle className="h-4 w-4 text-destructive" />
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={testDomainConnection}
+                        disabled={isTestingDomain || !settings?.gateway_domain}
+                      >
+                        {isTestingDomain ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          language === 'zh' ? '测试连接' : 'Test'
+                        )}
+                      </Button>
+                    </div>
                     <p className="text-xs text-muted-foreground">
                       {language === 'zh' ? '您网关的公共URL，用于API文档（无需末尾斜杠）' : "Your gateway's public URL for API documentation (no trailing slash)"}
                     </p>
