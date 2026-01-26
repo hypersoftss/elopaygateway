@@ -326,18 +326,18 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Check for large transaction and create notification
-    if (amountNum >= (adminSettings?.[0]?.large_payin_threshold || 10000)) {
-      await createNotification(
-        supabaseAdmin,
-        'large_payin',
-        `Large Pay-in: ₹${amountNum.toLocaleString()}`,
-        `Merchant ${merchant.merchant_name} (${merchant_id}) created a large pay-in order of ₹${amountNum.toLocaleString()}`,
-        amountNum,
-        merchant.id,
-        txData?.id
-      )
-    }
+    // Always create notification for new payin
+    await createNotification(
+      supabaseAdmin,
+      amountNum >= (adminSettings?.[0]?.large_payin_threshold || 10000) ? 'large_payin' : 'new_payin',
+      amountNum >= (adminSettings?.[0]?.large_payin_threshold || 10000) 
+        ? `🔔 Large Pay-in: ₹${amountNum.toLocaleString()}`
+        : `🔔 New Pay-in: ₹${amountNum.toLocaleString()}`,
+      `Merchant ${merchant.merchant_name} (${merchant_id}) created a pay-in order of ₹${amountNum.toLocaleString()}`,
+      amountNum,
+      merchant.id,
+      txData?.id
+    )
 
     // Send Telegram notification for payin created
     await sendTelegramNotification('payin_created', merchant.id, {

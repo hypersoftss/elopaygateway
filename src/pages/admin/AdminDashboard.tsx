@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Users, 
@@ -29,6 +29,7 @@ import { ErrorBanner } from '@/components/ErrorBanner';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useTranslation } from '@/lib/i18n';
 import { supabase } from '@/integrations/supabase/client';
+import { useRealtimeTransactions } from '@/hooks/useRealtimeTransactions';
 import { format, subDays } from 'date-fns';
 
 interface DashboardStats {
@@ -92,6 +93,50 @@ const AdminDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isLive, setIsLive] = useState(true);
+
+  // Real-time transaction notifications
+  const handleNewTransaction = useCallback((tx: any) => {
+    // Add to recent transactions list at the top
+    setRecentTransactions(prev => [tx, ...prev.slice(0, 9)]);
+    
+    // Update today's stats
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const txDate = new Date(tx.created_at);
+    
+    if (txDate >= today) {
+      setStats(prev => {
+        if (!prev) return prev;
+        if (tx.transaction_type === 'payin') {
+          return {
+            ...prev,
+            todayPayinCount: prev.todayPayinCount + 1,
+            todayPayinAmount: prev.todayPayinAmount + Number(tx.amount),
+          };
+        } else {
+          return {
+            ...prev,
+            todayPayoutCount: prev.todayPayoutCount + 1,
+            todayPayoutAmount: prev.todayPayoutAmount + Number(tx.amount),
+          };
+        }
+      });
+    }
+  }, []);
+
+  const handleTransactionUpdate = useCallback((tx: any) => {
+    // Update the transaction in the list
+    setRecentTransactions(prev => 
+      prev.map(t => t.id === tx.id ? { ...t, ...tx } : t)
+    );
+  }, []);
+
+  // Subscribe to real-time transactions for admin (all transactions)
+  useRealtimeTransactions({
+    onNewTransaction: handleNewTransaction,
+    onTransactionUpdate: handleTransactionUpdate,
+    isAdmin: true,
+  });
 
   const fetchGatewayBalances = async () => {
     setIsLoadingBalances(true);
