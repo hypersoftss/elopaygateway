@@ -244,7 +244,7 @@ const AdminWithdrawals = () => {
       toast({
         title: t('common.success'),
         description: actionType === 'approve' 
-          ? (language === 'zh' ? '已发送到HYPER PAY处理' : 'Sent to HYPER PAY for processing')
+          ? (language === 'zh' ? '已发送到ELOPAY处理' : 'Sent to ELOPAY for processing')
           : (language === 'zh' ? '已拒绝，余额已退回' : 'Rejected, balance refunded'),
       });
 
@@ -321,7 +321,7 @@ const AdminWithdrawals = () => {
             <div className="flex-1">
               <h1 className="text-xl md:text-2xl font-bold">{language === 'zh' ? '代付管理' : 'Payout Management'}</h1>
               <p className="text-xs md:text-sm text-muted-foreground">
-                {language === 'zh' ? '审批后自动发送到HYPER PAY' : 'Auto-send to HYPER PAY on approval'}
+                {language === 'zh' ? '审批后自动发送到ELOPAY' : 'Auto-send to ELOPAY on approval'}
               </p>
             </div>
           </div>

@@ -301,7 +301,7 @@ const AdminSettingsPage = () => {
     
     return `#!/bin/bash
 # ===============================================
-# HYPER SOFTS GATEWAY - AUTO DEPLOY SCRIPT
+# ELOPAY GATEWAY - AUTO DEPLOY SCRIPT
 # Generated: ${new Date().toISOString()}
 # ===============================================
 
@@ -1299,7 +1299,7 @@ echo ""
                         const url = window.URL.createObjectURL(blob);
                         const a = document.createElement('a');
                         a.href = url;
-                        a.download = `hyper_softs_backup_${new Date().toISOString().split('T')[0]}.sql`;
+                        a.download = `elopay_backup_${new Date().toISOString().split('T')[0]}.sql`;
                         document.body.appendChild(a);
                         a.click();
                         document.body.removeChild(a);

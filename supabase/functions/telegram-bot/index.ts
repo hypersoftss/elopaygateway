@@ -222,7 +222,7 @@ Deno.serve(async (req) => {
       .maybeSingle()
 
     const adminChatId = adminSettings?.admin_telegram_chat_id
-    const gatewayName = adminSettings?.gateway_name || 'HYPER SOFTS'
+    const gatewayName = adminSettings?.gateway_name || 'ELOPAY'
     // Remove trailing slash to prevent double slashes in URLs
     const rawDomain = adminSettings?.gateway_domain || 'https://gateway.hyperdeveloper.store'
     const gatewayDomain = rawDomain.replace(/\/+$/, '')
@@ -251,7 +251,7 @@ Deno.serve(async (req) => {
         if (merchant) {
           const status = merchant.is_active ? '✅ Active' : '❌ Inactive'
           const currency = merchant.payment_gateways?.currency || 'INR'
-          const gatewayType = merchant.payment_gateways?.gateway_code?.startsWith('hypersofts') ? 'HYPER SOFTS' : 'HYPER PAY'
+          const gatewayType = merchant.payment_gateways?.gateway_code?.startsWith('hypersofts') ? 'ELOPAY' : 'ELOPAY GATEWAY'
           
           const msg = `👤 <b>${merchant.merchant_name}</b>\n\n` +
             `🆔 ID: <code>${merchant.account_number}</code>\n` +
@@ -609,8 +609,8 @@ Deno.serve(async (req) => {
         const status = m.is_active ? '✅ Active' : '❌ Inactive'
         const twoFa = m.is_2fa_enabled ? '🔐 Enabled' : '🔓 Disabled'
         const total = (m.balance || 0) + (m.frozen_balance || 0)
-        const gatewayType = m.payment_gateways?.gateway_code?.startsWith('hypersofts') ? 'HYPER SOFTS' : 
-                           m.payment_gateways?.gateway_code?.startsWith('hyperpay') ? 'HYPER PAY' : 'Default'
+        const gatewayType = m.payment_gateways?.gateway_code?.startsWith('hypersofts') ? 'ELOPAY' : 
+                           m.payment_gateways?.gateway_code?.startsWith('hyperpay') ? 'ELOPAY GATEWAY' : 'Default'
         const gatewayDisplay = m.payment_gateways ? `${gatewayType} (${currency})` : 'Default'
 
         const msg = `👤 <b>My Account</b>\n\n` +
@@ -975,7 +975,7 @@ Deno.serve(async (req) => {
       
       details.forEach((g: any) => {
         const status = g.is_active ? '✅' : '❌'
-        const typeLabel = g.gateway_code?.startsWith('hypersofts') ? 'HYPER SOFTS' : 'HYPER PAY'
+        const typeLabel = g.gateway_code?.startsWith('hypersofts') ? 'ELOPAY' : 'ELOPAY GATEWAY'
         msg += `${status} <b>${g.gateway_name}</b>\n`
         msg += `   Code: <code>${g.gateway_code}</code>\n`
         msg += `   Type: ${typeLabel} | ${g.currency}\n\n`
@@ -1342,7 +1342,7 @@ Deno.serve(async (req) => {
 
       await supabaseAdmin.from('user_roles').insert({ user_id: authData.user.id, role: 'merchant' })
 
-      const gatewayLabel = gatewayInfo ? (gatewayCode?.startsWith('hypersofts') ? 'HYPER SOFTS' : 'HYPER PAY') : 'Default'
+      const gatewayLabel = gatewayInfo ? (gatewayCode?.startsWith('hypersofts') ? 'ELOPAY' : 'ELOPAY GATEWAY') : 'Default'
       
       await sendMessage(botToken, chatId,
         `✅ <b>Merchant Created!</b>\n\n` +
@@ -1463,7 +1463,7 @@ Deno.serve(async (req) => {
       const status = merchant.is_active ? '✅ Active' : '❌ Inactive'
       const twoFa = merchant.is_2fa_enabled ? '🔐' : '🔓'
       const currency = merchant.payment_gateways?.currency || 'INR'
-      const gatewayType = merchant.payment_gateways?.gateway_code?.startsWith('hypersofts') ? 'HYPER SOFTS' : 'HYPER PAY'
+      const gatewayType = merchant.payment_gateways?.gateway_code?.startsWith('hypersofts') ? 'ELOPAY' : 'ELOPAY GATEWAY'
 
       await sendMessageWithButtons(botToken, chatId,
         `👤 <b>${merchant.merchant_name}</b>\n\n` +

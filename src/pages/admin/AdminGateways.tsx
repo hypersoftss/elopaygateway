@@ -50,7 +50,7 @@ const getTradeTypeOptions = (gatewayType: string, currency: string) => {
     return [{ value: '', label: 'Default' }];
   }
   
-  // HYPER SOFTS options
+  // ELOPAY options
   if (currency === 'INR') {
     return [
       { value: 'INRUPI', label: 'INRUPI (UPI)' },
@@ -108,7 +108,7 @@ const AdminGatewaysPage = () => {
 
   const handleSaveGateway = async () => {
     try {
-      // For HYPER SOFTS, payout_key is same as api_key
+      // For ELOPAY, payout_key is same as api_key
       const payoutKey = newGateway.gateway_type === 'hypersofts' 
         ? newGateway.api_key 
         : (newGateway.payout_key || null);
@@ -334,7 +334,7 @@ const AdminGatewaysPage = () => {
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">
-                          {gateway.gateway_type === 'hypersofts' ? 'HYPER SOFTS' : 'HYPER PAY'}
+                          {gateway.gateway_type === 'hypersofts' ? 'ELOPAY' : 'ELOPAY GATEWAY'}
                         </Badge>
                       </TableCell>
                       <TableCell>{gateway.currency}</TableCell>
@@ -399,23 +399,23 @@ const AdminGatewaysPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">{language === 'zh' ? 'HYPER SOFTS 配置' : 'HYPER SOFTS Configuration'}</CardTitle>
+              <CardTitle className="text-base">{language === 'zh' ? 'ELOPAY 配置' : 'ELOPAY Configuration'}</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground space-y-2">
               <p><strong>INR:</strong> Trade Type = INRUPI (UPI) or usdt (USDT), Payout Code = INR</p>
               <p><strong>PKR:</strong> Trade Type = PKRPH, Payout Code = PKR</p>
               <p><strong>BDT:</strong> Trade Type = nagad/bkash, Payout Code = BDT</p>
-              <p className="text-xs mt-2 text-primary">Note: HYPER SOFTS uses same key for payin and payout</p>
+              <p className="text-xs mt-2 text-primary">Note: ELOPAY uses same key for payin and payout</p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">{language === 'zh' ? 'HYPER PAY 配置' : 'HYPER PAY Configuration'}</CardTitle>
+              <CardTitle className="text-base">{language === 'zh' ? 'ELOPAY GATEWAY 配置' : 'ELOPAY GATEWAY Configuration'}</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground space-y-2">
               <p><strong>INR:</strong> Requires separate Payout Key</p>
               <p><strong>Base URL:</strong> https://api.bond-pays.com</p>
-              <p className="text-xs mt-2 text-primary">Note: HYPER PAY uses different keys for payin and payout</p>
+              <p className="text-xs mt-2 text-primary">Note: ELOPAY GATEWAY uses different keys for payin and payout</p>
             </CardContent>
           </Card>
         </div>
@@ -453,7 +453,7 @@ const AdminGatewaysPage = () => {
                 <Input
                   value={newGateway.gateway_name}
                   onChange={(e) => setNewGateway(g => ({ ...g, gateway_name: e.target.value }))}
-                  placeholder="HYPER SOFTS INR"
+                  placeholder="ELOPAY INR"
                 />
               </div>
             </div>
@@ -466,8 +466,8 @@ const AdminGatewaysPage = () => {
                   value={newGateway.gateway_type}
                   onChange={(e) => setNewGateway(g => ({ ...g, gateway_type: e.target.value, trade_type: '' }))}
                 >
-                  <option value="hypersofts">HYPER SOFTS</option>
-                  <option value="hyperpay">HYPER PAY</option>
+                  <option value="hypersofts">ELOPAY</option>
+                  <option value="hyperpay">ELOPAY GATEWAY</option>
                 </select>
               </div>
               <div className="space-y-2">
@@ -526,12 +526,12 @@ const AdminGatewaysPage = () => {
               />
               {newGateway.gateway_type === 'hypersofts' && (
                 <p className="text-xs text-muted-foreground">
-                  {language === 'zh' ? 'HYPER SOFTS使用相同的密钥进行收款和付款' : 'HYPER SOFTS uses the same key for payin and payout'}
+                  {language === 'zh' ? 'ELOPAY使用相同的密钥进行收款和付款' : 'ELOPAY uses the same key for payin and payout'}
                 </p>
               )}
             </div>
 
-            {/* Only show payout_key for HYPER PAY */}
+            {/* Only show payout_key for ELOPAY GATEWAY */}
             {newGateway.gateway_type === 'hyperpay' && (
               <div className="space-y-2">
                 <Label>Payout Key</Label>

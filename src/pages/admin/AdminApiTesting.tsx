@@ -102,12 +102,12 @@ const AdminApiTesting = () => {
     
     const { gateway_type, gateway_code, currency } = merchant;
     
-    // HYPER PAY - default UPI
+    // ELOPAY GATEWAY - default UPI
     if (gateway_type === 'hyperpay') {
       return [{ value: 'default', label: 'UPI (Default)' }];
     }
     
-    // HYPER SOFTS options based on gateway_code/currency
+    // ELOPAY options based on gateway_code/currency
     if (gateway_type === 'hypersofts' || gateway_code?.startsWith('hypersofts')) {
       if (currency === 'INR' || gateway_code === 'hypersofts_inr') {
         return [
@@ -138,12 +138,12 @@ const AdminApiTesting = () => {
     
     const { gateway_type, gateway_code, currency } = merchant;
     
-    // HYPER PAY - INR bank transfer
+    // ELOPAY GATEWAY - INR bank transfer
     if (gateway_type === 'hyperpay') {
       return [{ value: 'bank', label: '🏦 Bank Transfer' }];
     }
     
-    // HYPER SOFTS payout options based on currency
+    // ELOPAY payout options based on currency
     if (gateway_type === 'hypersofts' || gateway_code?.startsWith('hypersofts')) {
       if (currency === 'INR' || gateway_code === 'hypersofts_inr') {
         return [
@@ -428,8 +428,8 @@ const AdminApiTesting = () => {
                 <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-purple-600">
-                      {selectedMerchant?.gateway_code?.startsWith('hypersofts') ? 'HYPER SOFTS' : 
-                       selectedMerchant?.gateway_code?.startsWith('hyperpay') ? 'HYPER PAY' : 'DEFAULT'}
+                      {selectedMerchant?.gateway_code?.startsWith('hypersofts') ? 'ELOPAY' : 
+                       selectedMerchant?.gateway_code?.startsWith('hyperpay') ? 'ELOPAY GATEWAY' : 'DEFAULT'}
                     </span>
                     <span className="text-muted-foreground">|</span>
                     <span className="text-sm">{selectedMerchant?.currency || 'INR'}</span>
