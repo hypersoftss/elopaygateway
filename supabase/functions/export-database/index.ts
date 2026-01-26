@@ -38,7 +38,7 @@ const generateInsertStatement = (tableName: string, row: Record<string, any>): s
 // Complete schema SQL
 const SCHEMA_SQL = `
 -- ================================================
--- HYPER SOFTS GATEWAY - COMPLETE DATABASE SCHEMA
+-- ELOPAY GATEWAY - COMPLETE DATABASE SCHEMA
 -- ================================================
 
 -- ==================== ENUMS ====================
@@ -462,7 +462,7 @@ Deno.serve(async (req) => {
     
     // Header
     lines.push('-- ================================================================');
-    lines.push('-- HYPER SOFTS GATEWAY - COMPLETE DATABASE EXPORT');
+    lines.push('-- ELOPAY GATEWAY - COMPLETE DATABASE EXPORT');
     lines.push('-- ================================================================');
     lines.push(`-- Generated: ${timestamp}`);
     lines.push(`-- Admin: ${user.email}`);
@@ -550,7 +550,7 @@ Deno.serve(async (req) => {
     lines.push('-- Export completed successfully!');
 
     const sqlContent = lines.join('\n');
-    const filename = `hyper_softs_complete_${timestamp.split('T')[0]}.sql`;
+    const filename = `elopay_complete_${timestamp.split('T')[0]}.sql`;
 
     console.log(`Export complete: ${totalRows} total rows, schema + RLS + data included`);
 

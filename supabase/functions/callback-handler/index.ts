@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Verify HYPER SOFTS callback signature
+// Verify ELOPAY callback signature
 function verifyHyperSoftsSignature(params: Record<string, any>, key: string, receivedSign: string): boolean {
   const filteredParams = Object.entries(params)
     .filter(([k, v]) => v !== '' && v !== null && v !== undefined && k !== 'sign')
@@ -21,13 +21,13 @@ function verifyHyperSoftsSignature(params: Record<string, any>, key: string, rec
   hash.update(signString)
   const expectedSign = hash.toString().toUpperCase()
   
-  console.log('HYPER SOFTS callback signature verification:', { signString, expectedSign, receivedSign })
+  console.log('ELOPAY callback signature verification:', { signString, expectedSign, receivedSign })
   return expectedSign === receivedSign
 }
 
-// Verify HyperPay callback signature (MD5-based)
+// Verify ELOPAY GATEWAY callback signature (MD5-based)
 function verifyHyperPaySignature(params: Record<string, any>, apiKey: string, receivedSign: string): boolean {
-  // HyperPay uses similar MD5 signature verification
+  // ELOPAY GATEWAY uses similar MD5 signature verification
   const filteredParams = Object.entries(params)
     .filter(([k, v]) => v !== '' && v !== null && v !== undefined && k !== 'sign' && k !== 'signature')
     .sort(([a], [b]) => a.localeCompare(b))
@@ -41,7 +41,7 @@ function verifyHyperPaySignature(params: Record<string, any>, apiKey: string, re
   hash.update(signString)
   const expectedSign = hash.toString().toUpperCase()
   
-  console.log('HyperPay callback signature verification:', { expectedSign, receivedSign })
+  console.log('ELOPAY GATEWAY callback signature verification:', { expectedSign, receivedSign })
   return expectedSign === receivedSign
 }
 
@@ -154,10 +154,10 @@ Deno.serve(async (req) => {
     const isHyperPayPayout = body.transaction_id && body.merchant_id && !body.orderNo
 
     if (isHyperSoftsCallback) {
-      // HYPER SOFTS callback handler
+      // ELOPAY callback handler
       const { order_sn, money, status, pay_time, msg, remark, sign } = body
 
-      console.log('Processing HYPER SOFTS callback for order:', order_sn)
+      console.log('Processing ELOPAY callback for order:', order_sn)
 
       // Find our transaction by order_no
       const { data: transactions, error: txFindError } = await supabaseAdmin
@@ -167,7 +167,7 @@ Deno.serve(async (req) => {
         .limit(1)
 
       if (txFindError || !transactions || transactions.length === 0) {
-        console.error('Transaction not found for HYPER SOFTS callback:', order_sn)
+        console.error('Transaction not found for ELOPAY callback:', order_sn)
         return new Response('ok', { headers: corsHeaders })
       }
 
@@ -186,15 +186,15 @@ Deno.serve(async (req) => {
         delete signParams.sign
         const isValidSign = verifyHyperSoftsSignature(signParams, gateway.api_key, sign)
         if (!isValidSign) {
-          console.error('SECURITY: Invalid HYPER SOFTS callback signature - REJECTING')
+          console.error('SECURITY: Invalid ELOPAY callback signature - REJECTING')
           return new Response(
             JSON.stringify({ status: 'error', message: 'Invalid signature' }),
             { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
         }
-        console.log('HYPER SOFTS signature verified successfully')
+        console.log('ELOPAY signature verified successfully')
       } else if (!sign) {
-        console.error('SECURITY: Missing signature in HYPER SOFTS callback - REJECTING')
+        console.error('SECURITY: Missing signature in ELOPAY callback - REJECTING')
         return new Response(
           JSON.stringify({ status: 'error', message: 'Missing signature' }),
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -211,7 +211,7 @@ Deno.serve(async (req) => {
         )
       }
 
-      // HYPER SOFTS: status 1 = success, 0 = failed (for payout), payin only sends success
+      // ELOPAY: status 1 = success, 0 = failed (for payout), payin only sends success
       const newStatus = status === 1 || status === '1' ? 'success' : 'failed'
 
       // Update transaction status with processed flag for idempotency
@@ -297,7 +297,7 @@ Deno.serve(async (req) => {
         
         const result = await sendWebhookWithRetry(extraData.merchant_callback, webhookPayload, 3)
         if (result.success) {
-          console.log(`Forwarded HYPER SOFTS callback to merchant on attempt ${result.attempt}`)
+          console.log(`Forwarded ELOPAY callback to merchant on attempt ${result.attempt}`)
         } else {
           console.error(`Failed to forward callback after ${result.attempt} attempts: ${result.error}`)
         }
@@ -319,13 +319,13 @@ Deno.serve(async (req) => {
         redirectUrl = `${extraData.failure_url}?${params.toString()}`
       }
 
-      console.log('HYPER SOFTS callback processed successfully for order:', order_sn)
+      console.log('ELOPAY callback processed successfully for order:', order_sn)
       
-      // HYPER SOFTS expects "ok" response
+      // ELOPAY expects "ok" response
       return new Response('ok', { headers: corsHeaders })
     }
 
-    // Handle HYPER PAY payin callback
+    // Handle ELOPAY GATEWAY payin callback
     if (isHyperPayPayin) {
       const { orderNo, merchantOrder, status, amount, sign, signature } = body
       const receivedSign = sign || signature
@@ -363,13 +363,13 @@ Deno.serve(async (req) => {
         delete signParams.signature
         const isValidSign = verifyHyperPaySignature(signParams, gateway.api_key, receivedSign)
         if (!isValidSign) {
-          console.error('SECURITY: Invalid HyperPay callback signature - REJECTING')
+          console.error('SECURITY: Invalid ELOPAY GATEWAY callback signature - REJECTING')
           return new Response(
             JSON.stringify({ status: 'error', message: 'Invalid signature' }),
             { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
         }
-        console.log('HyperPay signature verified successfully')
+        console.log('ELOPAY GATEWAY signature verified successfully')
       }
 
       // SECURITY: Verify amount matches
@@ -493,10 +493,10 @@ Deno.serve(async (req) => {
         redirectUrl = `${extraData.failure_url}?${params.toString()}`
       }
 
-      console.log('HYPER PAY callback processed successfully for order:', merchantOrder)
+      console.log('ELOPAY GATEWAY callback processed successfully for order:', merchantOrder)
     }
 
-    // Handle HYPER PAY payout callback
+    // Handle ELOPAY GATEWAY payout callback
     if (isHyperPayPayout) {
       const { transaction_id, status, sign, signature } = body
       const receivedSign = sign || signature

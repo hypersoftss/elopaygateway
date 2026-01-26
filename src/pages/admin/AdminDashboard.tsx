@@ -575,12 +575,12 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
 
-          {/* Pending HYPER PAY Payouts */}
+          {/* Pending ELOPAY Payouts */}
           <Card className="border-l-4 border-l-yellow-500">
             <CardHeader className="pb-2 px-4 pt-4">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Activity className="h-4 w-4 text-yellow-500" />
-                {language === 'zh' ? 'HYPER PAY代付' : 'HYPER PAY'}
+                {language === 'zh' ? 'ELOPAY代付' : 'ELOPAY'}
               </CardTitle>
             </CardHeader>
             <CardContent className="px-4 pb-4">
@@ -864,8 +864,8 @@ const AdminDashboard = () => {
                       <div className="mt-2 flex items-center justify-between text-xs">
                         <span className="text-muted-foreground">
                           {gateway.gateway_type === 'lgpay' || gateway.gateway_type === 'hypersofts' 
-                            ? 'HYPER SOFTS' 
-                            : 'HYPER PAY'}
+                            ? 'ELOPAY' 
+                            : 'ELOPAY GATEWAY'}
                         </span>
                         <span className={
                           balanceInfo?.status === 'online' ? 'text-green-500' : 

@@ -9,7 +9,7 @@ import { useGatewaySettings } from '@/hooks/useGatewaySettings';
 
 const HyperSoftsBDTDocs = () => {
   const { settings } = useGatewaySettings();
-  const gatewayName = settings.gatewayName || 'HYPER SOFTS';
+  const gatewayName = settings.gatewayName || 'ELOPAY';
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);

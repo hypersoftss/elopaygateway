@@ -9,7 +9,7 @@ import { useGatewaySettings } from '@/hooks/useGatewaySettings';
 
 const HyperPayINRDocs = () => {
   const { settings } = useGatewaySettings();
-  const gatewayName = settings.gatewayName || 'HYPER PAY';
+  const gatewayName = settings.gatewayName || 'ELOPAY GATEWAY';
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
