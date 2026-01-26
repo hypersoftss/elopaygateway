@@ -324,11 +324,28 @@ const AdminGatewaysPage = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {gateways.map((gateway) => (
+                  {gateways.map((gateway) => {
+                    // Transform gateway names to ELOPAY branding
+                    const getDisplayName = (name: string, type: string, currency: string) => {
+                      if (type === 'hyperpay' || type === 'bondpay') {
+                        return 'ELOPAY GATEWAY';
+                      }
+                      // For hypersofts/lgpay, show regional name
+                      const regionMap: Record<string, string> = {
+                        'INR': 'ELOPAY India',
+                        'PKR': 'ELOPAY Pakistan', 
+                        'BDT': 'ELOPAY Bangladesh',
+                      };
+                      return regionMap[currency] || 'ELOPAY';
+                    };
+                    
+                    const displayName = getDisplayName(gateway.gateway_name, gateway.gateway_type, gateway.currency);
+                    
+                    return (
                     <TableRow key={gateway.id}>
                       <TableCell>
                         <div>
-                          <p className="font-medium">{gateway.gateway_name}</p>
+                          <p className="font-medium">{displayName}</p>
                           <p className="text-xs text-muted-foreground">{gateway.gateway_code}</p>
                         </div>
                       </TableCell>
@@ -388,7 +405,7 @@ const AdminGatewaysPage = () => {
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )})}
                 </TableBody>
               </Table>
             )}
