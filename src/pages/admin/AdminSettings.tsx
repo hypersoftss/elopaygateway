@@ -69,8 +69,13 @@ const AdminSettingsPage = () => {
   const [isTestingDomain, setIsTestingDomain] = useState(false);
   const [domainTestResult, setDomainTestResult] = useState<'success' | 'error' | null>(null);
   
-  // Database export state
+  // Database export/restore state
   const [isExporting, setIsExporting] = useState(false);
+  const [sqlFileContent, setSqlFileContent] = useState<string | null>(null);
+  const [sqlFileName, setSqlFileName] = useState<string>('');
+  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [restoreConfirmText, setRestoreConfirmText] = useState('');
   
   // Domain checker state
   const [domainToCheck, setDomainToCheck] = useState('');
@@ -1239,7 +1244,7 @@ echo ""
               </CardContent>
             </Card>
 
-            {/* Database Backup */}
+            {/* Database Backup & Restore */}
             <Card className="border-2 border-primary/20 overflow-hidden mt-6">
               <CardHeader className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent">
                 <div className="flex items-center gap-3">
@@ -1248,26 +1253,27 @@ echo ""
                   </div>
                   <div>
                     <CardTitle>
-                      {language === 'zh' ? '完整数据库导出' : 'Complete Database Export'}
+                      {language === 'zh' ? '数据库备份与恢复' : 'Database Backup & Restore'}
                     </CardTitle>
                     <CardDescription>
                       {language === 'zh' 
-                        ? '下载包含Schema + RLS + 数据的完整SQL文件' 
-                        : 'Download complete SQL with Schema + RLS + Data'}
+                        ? '导出完整SQL或从备份恢复数据库' 
+                        : 'Export complete SQL or restore database from backup'}
                     </CardDescription>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
+              <CardContent className="p-6 space-y-6">
+                {/* Export Section */}
+                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center">
                       <Download className="h-6 w-6 text-blue-500" />
                     </div>
                     <div>
-                      <p className="font-medium">{language === 'zh' ? '一键导出全部' : 'Export Everything'}</p>
+                      <p className="font-medium">{language === 'zh' ? '导出数据库' : 'Export Database'}</p>
                       <p className="text-sm text-muted-foreground">
-                        {language === 'zh' ? 'Tables + Functions + RLS Policies + Data' : 'Tables + Functions + RLS Policies + Data'}
+                        {language === 'zh' ? 'Schema + RLS + Functions + Data' : 'Schema + RLS + Functions + Data'}
                       </p>
                     </div>
                   </div>
@@ -1324,22 +1330,220 @@ echo ""
                     ) : (
                       <>
                         <Download className="h-4 w-4 mr-2" />
-                        {language === 'zh' ? '下载完整SQL' : 'Download Complete SQL'}
+                        {language === 'zh' ? '下载SQL' : 'Download SQL'}
                       </>
                     )}
                   </Button>
                 </div>
+
+                {/* Restore Section */}
+                <div className="p-4 bg-muted/50 rounded-lg border space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-full bg-orange-500/10 flex items-center justify-center">
+                        <Upload className="h-6 w-6 text-orange-500" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{language === 'zh' ? '恢复数据库' : 'Restore Database'}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {language === 'zh' ? '从SQL备份文件恢复' : 'Restore from SQL backup file'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="file"
+                        accept=".sql"
+                        className="hidden"
+                        id="sql-restore-file"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setSqlFileName(file.name);
+                            const reader = new FileReader();
+                            reader.onload = (event) => {
+                              setSqlFileContent(event.target?.result as string);
+                            };
+                            reader.readAsText(file);
+                          }
+                        }}
+                      />
+                      <label htmlFor="sql-restore-file">
+                        <Button variant="outline" asChild className="cursor-pointer">
+                          <span>
+                            <Upload className="h-4 w-4 mr-2" />
+                            {language === 'zh' ? '选择SQL文件' : 'Select SQL File'}
+                          </span>
+                        </Button>
+                      </label>
+                    </div>
+                  </div>
+                  
+                  {sqlFileContent && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 p-3 bg-background rounded border">
+                        <FileCode className="h-5 w-5 text-primary" />
+                        <span className="font-medium text-sm flex-1">{sqlFileName}</span>
+                        <Badge variant="outline">{(sqlFileContent.length / 1024).toFixed(1)} KB</Badge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSqlFileContent(null);
+                            setSqlFileName('');
+                            const input = document.getElementById('sql-restore-file') as HTMLInputElement;
+                            if (input) input.value = '';
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      
+                      <div className="p-3 bg-background rounded border max-h-40 overflow-auto">
+                        <pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap">
+                          {sqlFileContent.slice(0, 1000)}
+                          {sqlFileContent.length > 1000 && '\n... (truncated)'}
+                        </pre>
+                      </div>
+                      
+                      <Button 
+                        onClick={() => setShowRestoreDialog(true)}
+                        variant="destructive"
+                        className="w-full"
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        {language === 'zh' ? '开始恢复' : 'Start Restore'}
+                      </Button>
+                    </div>
+                  )}
+                </div>
                 
-                <Alert className="mt-4 border-[hsl(var(--success))]/30 bg-[hsl(var(--success))]/5">
+                <Alert className="border-[hsl(var(--success))]/30 bg-[hsl(var(--success))]/5">
                   <CheckCircle2 className="h-4 w-4 text-[hsl(var(--success))]" />
                   <AlertDescription className="text-sm">
                     {language === 'zh' 
-                      ? '此SQL包含完整数据库：Enums + Functions + Tables + RLS Policies + Storage + Data。直接在新Supabase项目SQL编辑器运行即可。' 
-                      : 'This SQL contains everything: Enums + Functions + Tables + RLS Policies + Storage + Data. Run directly in new Supabase SQL Editor.'}
+                      ? '导出的SQL包含完整数据库：Enums + Functions + Tables + RLS Policies + Storage + Data。' 
+                      : 'Exported SQL contains everything: Enums + Functions + Tables + RLS Policies + Storage + Data.'}
+                  </AlertDescription>
+                </Alert>
+                
+                <Alert className="border-orange-500/30 bg-orange-500/5">
+                  <AlertTriangle className="h-4 w-4 text-orange-500" />
+                  <AlertDescription className="text-sm">
+                    {language === 'zh' 
+                      ? '⚠️ 恢复前请务必先导出当前数据作为备份！恢复操作会覆盖现有数据。' 
+                      : '⚠️ Always export current data as backup before restoring! Restore operation will overwrite existing data.'}
                   </AlertDescription>
                 </Alert>
               </CardContent>
             </Card>
+
+            {/* Restore Confirmation Dialog */}
+            <Dialog open={showRestoreDialog} onOpenChange={setShowRestoreDialog}>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2 text-destructive">
+                    <AlertTriangle className="h-5 w-5" />
+                    {language === 'zh' ? '确认数据库恢复' : 'Confirm Database Restore'}
+                  </DialogTitle>
+                  <DialogDescription>
+                    {language === 'zh' 
+                      ? '此操作将覆盖现有数据库数据。此操作不可撤销！'
+                      : 'This will overwrite existing database data. This action cannot be undone!'}
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="space-y-4 py-4">
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription className="text-sm">
+                      {language === 'zh' 
+                        ? '请输入 "RESTORE" 确认恢复操作'
+                        : 'Type "RESTORE" to confirm the restore operation'}
+                    </AlertDescription>
+                  </Alert>
+                  
+                  <Input
+                    placeholder={language === 'zh' ? '输入 RESTORE 确认' : 'Type RESTORE to confirm'}
+                    value={restoreConfirmText}
+                    onChange={(e) => setRestoreConfirmText(e.target.value.toUpperCase())}
+                    className="text-center font-mono text-lg"
+                  />
+                  
+                  <div className="text-sm text-muted-foreground text-center">
+                    {language === 'zh' 
+                      ? `将恢复文件: ${sqlFileName}`
+                      : `Will restore from: ${sqlFileName}`}
+                  </div>
+                </div>
+
+                <DialogFooter className="gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setShowRestoreDialog(false);
+                      setRestoreConfirmText('');
+                    }}
+                  >
+                    {language === 'zh' ? '取消' : 'Cancel'}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    disabled={restoreConfirmText !== 'RESTORE' || isRestoring}
+                    onClick={async () => {
+                      if (!sqlFileContent) return;
+                      
+                      setIsRestoring(true);
+                      try {
+                        // Copy SQL to clipboard for manual execution
+                        await navigator.clipboard.writeText(sqlFileContent);
+                        
+                        toast({
+                          title: language === 'zh' ? 'SQL已复制' : 'SQL Copied',
+                          description: language === 'zh' 
+                            ? '请在Supabase SQL编辑器中运行此SQL'
+                            : 'Please run this SQL in Supabase SQL Editor',
+                        });
+                        
+                        // Reset state
+                        setShowRestoreDialog(false);
+                        setRestoreConfirmText('');
+                        setSqlFileContent(null);
+                        setSqlFileName('');
+                        
+                        // Open backend for SQL execution
+                        toast({
+                          title: language === 'zh' ? '下一步' : 'Next Step',
+                          description: language === 'zh' 
+                            ? '打开后端 SQL Editor 粘贴运行SQL'
+                            : 'Open Backend SQL Editor and paste to run SQL',
+                        });
+                      } catch (err: any) {
+                        toast({
+                          title: language === 'zh' ? '复制失败' : 'Copy Failed',
+                          description: err.message,
+                          variant: 'destructive',
+                        });
+                      } finally {
+                        setIsRestoring(false);
+                      }
+                    }}
+                  >
+                    {isRestoring ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        {language === 'zh' ? '处理中...' : 'Processing...'}
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        {language === 'zh' ? '复制SQL并恢复' : 'Copy SQL & Restore'}
+                      </>
+                    )}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
 
             {/* VPS Deployment Guide */}
             <Card className="border-2 border-primary/20 overflow-hidden mt-6">
