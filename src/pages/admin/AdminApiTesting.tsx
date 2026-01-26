@@ -23,6 +23,7 @@ interface Merchant {
   trade_type: string | null;
   gateway_id: string | null;
   gateway_type: string | null;
+  gateway_code: string | null;
   currency: string | null;
 }
 
@@ -40,6 +41,7 @@ const AdminApiTesting = () => {
   const [payinOrderNo, setPayinOrderNo] = useState('');
   const [payinCallbackUrl, setPayinCallbackUrl] = useState('https://example.com/callback');
   const [payinSignature, setPayinSignature] = useState('');
+  const [payinTradeType, setPayinTradeType] = useState('');
   const [isSubmittingPayin, setIsSubmittingPayin] = useState(false);
 
   // Payout form
@@ -60,7 +62,7 @@ const AdminApiTesting = () => {
         .from('merchants')
         .select(`
           id, account_number, merchant_name, api_key, payout_key, balance, trade_type, gateway_id,
-          payment_gateways (gateway_type, currency)
+          payment_gateways (gateway_type, gateway_code, currency)
         `)
         .order('merchant_name');
 
@@ -69,12 +71,15 @@ const AdminApiTesting = () => {
       const formattedData = data?.map(m => ({
         ...m,
         gateway_type: (m.payment_gateways as any)?.gateway_type || null,
+        gateway_code: (m.payment_gateways as any)?.gateway_code || null,
         currency: (m.payment_gateways as any)?.currency || 'INR',
       })) || [];
       
       setMerchants(formattedData);
       if (formattedData.length > 0) {
         setSelectedMerchant(formattedData[0]);
+        // Set default trade type based on merchant's gateway
+        updateTradeTypeOptions(formattedData[0]);
       }
     } catch (error: any) {
       toast({
@@ -91,9 +96,52 @@ const AdminApiTesting = () => {
     fetchMerchants();
   }, []);
 
+  const getTradeTypeOptions = (merchant: Merchant | null) => {
+    if (!merchant) return [];
+    
+    const { gateway_type, gateway_code, currency } = merchant;
+    
+    // HYPER PAY - default UPI
+    if (gateway_type === 'hyperpay') {
+      return [{ value: 'default', label: 'UPI (Default)' }];
+    }
+    
+    // HYPER SOFTS options based on gateway_code/currency
+    if (gateway_type === 'hypersofts' || gateway_code?.startsWith('hypersofts')) {
+      if (currency === 'INR' || gateway_code === 'hypersofts_inr') {
+        return [
+          { value: 'INRUPI', label: '🇮🇳 UPI (INRUPI)' },
+          { value: 'usdt', label: '💰 USDT' },
+        ];
+      }
+      if (currency === 'BDT' || gateway_code === 'hypersofts_bdt') {
+        return [
+          { value: 'nagad', label: '🇧🇩 Nagad' },
+          { value: 'bkash', label: '🇧🇩 bKash' },
+        ];
+      }
+      if (currency === 'PKR' || gateway_code === 'hypersofts_pkr') {
+        return [
+          { value: 'easypaisa', label: '🇵🇰 Easypaisa' },
+          { value: 'jazzcash', label: '🇵🇰 JazzCash' },
+        ];
+      }
+    }
+    
+    return [{ value: 'default', label: 'Default' }];
+  };
+
+  const updateTradeTypeOptions = (merchant: Merchant | null) => {
+    const options = getTradeTypeOptions(merchant);
+    if (options.length > 0) {
+      setPayinTradeType(merchant?.trade_type || options[0].value);
+    }
+  };
+
   const handleMerchantChange = (merchantId: string) => {
     const merchant = merchants.find(m => m.id === merchantId);
     setSelectedMerchant(merchant || null);
+    updateTradeTypeOptions(merchant || null);
   };
 
   const updateBalance = async (action: 'add' | 'subtract') => {
@@ -337,9 +385,10 @@ const AdminApiTesting = () => {
               <div className="space-y-2">
                 <Label>{language === 'zh' ? '网关/Trade Type' : 'Gateway/Trade Type'}</Label>
                 <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-purple-600">
-                      {selectedMerchant?.gateway_type?.toUpperCase() || 'DEFAULT'}
+                      {selectedMerchant?.gateway_code?.startsWith('hypersofts') ? 'HYPER SOFTS' : 
+                       selectedMerchant?.gateway_code?.startsWith('hyperpay') ? 'HYPER PAY' : 'DEFAULT'}
                     </span>
                     <span className="text-muted-foreground">|</span>
                     <span className="text-sm">{selectedMerchant?.currency || 'INR'}</span>
@@ -349,6 +398,9 @@ const AdminApiTesting = () => {
                         <span className="text-xs bg-primary/10 px-2 py-0.5 rounded">{selectedMerchant.trade_type}</span>
                       </>
                     )}
+                  </div>
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    Available methods: {getTradeTypeOptions(selectedMerchant).map(o => o.label).join(', ')}
                   </div>
                 </div>
               </div>
@@ -447,6 +499,29 @@ const AdminApiTesting = () => {
                     />
                   </div>
                 </div>
+
+                {/* Trade Type Selection */}
+                {getTradeTypeOptions(selectedMerchant).length > 1 && (
+                  <div className="space-y-2">
+                    <Label>{language === 'zh' ? '支付方式' : 'Payment Method (Trade Type)'}</Label>
+                    <Select value={payinTradeType} onValueChange={setPayinTradeType}>
+                      <SelectTrigger className="bg-muted/50">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getTradeTypeOptions(selectedMerchant).map(opt => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {selectedMerchant?.currency === 'PKR' && 'PKR supports both Easypaisa and JazzCash'}
+                      {selectedMerchant?.currency === 'BDT' && 'BDT supports both Nagad and bKash'}
+                      {selectedMerchant?.currency === 'INR' && 'INR supports UPI and USDT'}
+                    </p>
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   <Label>{language === 'zh' ? '回调URL' : 'Callback URL'}</Label>
                   <Input

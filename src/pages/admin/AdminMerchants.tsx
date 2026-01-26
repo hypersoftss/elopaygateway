@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, MoreHorizontal, RefreshCw, Power, Eye, EyeOff, Copy, Download, Users, TrendingUp, Wallet, Shield, ShieldOff, KeyRound, Lock, RotateCcw, Edit, Trash2 } from 'lucide-react';
+import { Plus, Search, MoreHorizontal, RefreshCw, Power, Eye, EyeOff, Copy, Download, Users, TrendingUp, Wallet, Shield, ShieldOff, KeyRound, Lock, RotateCcw, Edit, Trash2, CheckSquare, Square } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -103,6 +103,7 @@ const AdminMerchants = () => {
   const [isUpdating, setIsUpdating] = useState(false);
 
   const [gateways, setGateways] = useState<Gateway[]>([]);
+  const [selectedMerchants, setSelectedMerchants] = useState<Set<string>>(new Set());
 
   const [newMerchant, setNewMerchant] = useState({
     merchantName: '',
@@ -450,6 +451,86 @@ const AdminMerchants = () => {
     });
   };
 
+  // Bulk selection handlers
+  const toggleSelectMerchant = (merchantId: string) => {
+    const newSet = new Set(selectedMerchants);
+    if (newSet.has(merchantId)) {
+      newSet.delete(merchantId);
+    } else {
+      newSet.add(merchantId);
+    }
+    setSelectedMerchants(newSet);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedMerchants.size === filteredMerchants.length) {
+      setSelectedMerchants(new Set());
+    } else {
+      setSelectedMerchants(new Set(filteredMerchants.map(m => m.id)));
+    }
+  };
+
+  const handleBulkEnable = async () => {
+    if (selectedMerchants.size === 0) return;
+    try {
+      const { error } = await supabase
+        .from('merchants')
+        .update({ is_active: true })
+        .in('id', Array.from(selectedMerchants));
+      if (error) throw error;
+      toast({ title: t('common.success'), description: `${selectedMerchants.size} merchants enabled` });
+      setSelectedMerchants(new Set());
+      fetchMerchants();
+    } catch (err: any) {
+      toast({ title: t('common.error'), description: err.message, variant: 'destructive' });
+    }
+  };
+
+  const handleBulkDisable = async () => {
+    if (selectedMerchants.size === 0) return;
+    try {
+      const { error } = await supabase
+        .from('merchants')
+        .update({ is_active: false })
+        .in('id', Array.from(selectedMerchants));
+      if (error) throw error;
+      toast({ title: t('common.success'), description: `${selectedMerchants.size} merchants disabled` });
+      setSelectedMerchants(new Set());
+      fetchMerchants();
+    } catch (err: any) {
+      toast({ title: t('common.error'), description: err.message, variant: 'destructive' });
+    }
+  };
+
+  const exportSelectedToCSV = () => {
+    const selectedList = filteredMerchants.filter(m => selectedMerchants.has(m.id));
+    if (selectedList.length === 0) return;
+    
+    const headers = ['Account Number', 'Name', 'Balance', 'Frozen Balance', 'Payin Fee', 'Payout Fee', 'Status', '2FA', 'Created At'];
+    const csvData = selectedList.map(m => [
+      m.account_number,
+      m.merchant_name,
+      m.balance.toString(),
+      m.frozen_balance.toString(),
+      `${m.payin_fee}%`,
+      `${m.payout_fee}%`,
+      m.is_active ? 'Active' : 'Inactive',
+      m.is_2fa_enabled ? 'Enabled' : 'Disabled',
+      format(new Date(m.created_at), 'yyyy-MM-dd HH:mm:ss')
+    ]);
+    
+    const csvContent = [headers.join(','), ...csvData.map(row => row.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `selected-merchants-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+    
+    toast({ title: t('common.success'), description: `${selectedList.length} merchants exported` });
+  };
+
   const filteredMerchants = merchants.filter(
     (m) =>
       m.merchant_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -653,16 +734,32 @@ const AdminMerchants = () => {
           </Card>
         </div>
 
-        {/* Search and Export */}
+        {/* Search, Bulk Actions and Export */}
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-          <div className="relative w-full sm:w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder={language === 'zh' ? '按名称或账号搜索...' : 'Search by name or account number...'}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
+          <div className="flex items-center gap-4">
+            <div className="relative w-full sm:w-80">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder={language === 'zh' ? '按名称或账号搜索...' : 'Search by name or account number...'}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            {selectedMerchants.size > 0 && (
+              <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
+                <span className="text-sm font-medium">{selectedMerchants.size} selected</span>
+                <Button size="sm" variant="outline" onClick={handleBulkEnable} className="h-7">
+                  <Power className="h-3 w-3 mr-1" /> Enable
+                </Button>
+                <Button size="sm" variant="outline" onClick={handleBulkDisable} className="h-7">
+                  <Power className="h-3 w-3 mr-1" /> Disable
+                </Button>
+                <Button size="sm" variant="outline" onClick={exportSelectedToCSV} className="h-7">
+                  <Download className="h-3 w-3 mr-1" /> Export
+                </Button>
+              </div>
+            )}
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="icon" onClick={fetchMerchants}>
@@ -670,7 +767,7 @@ const AdminMerchants = () => {
             </Button>
             <Button variant="outline" onClick={exportToCSV}>
               <Download className="h-4 w-4 mr-2" />
-              {language === 'zh' ? '导出CSV' : 'Export CSV'}
+              {language === 'zh' ? '导出全部' : 'Export All'}
             </Button>
           </div>
         </div>
@@ -681,6 +778,20 @@ const AdminMerchants = () => {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
+                  <TableHead className="w-10">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6"
+                      onClick={toggleSelectAll}
+                    >
+                      {selectedMerchants.size === filteredMerchants.length && filteredMerchants.length > 0 ? (
+                        <CheckSquare className="h-4 w-4" />
+                      ) : (
+                        <Square className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </TableHead>
                   <TableHead>{t('merchants.name')}</TableHead>
                   <TableHead>{language === 'zh' ? '网关' : 'Gateway'}</TableHead>
                   <TableHead>{language === 'zh' ? 'API密钥' : 'API Key'}</TableHead>
@@ -692,29 +803,44 @@ const AdminMerchants = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {isLoading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                      <TableCell><Skeleton className="h-6 w-16" /></TableCell>
-                      <TableCell><Skeleton className="h-8 w-8" /></TableCell>
+                  {isLoading ? (
+                    Array.from({ length: 5 }).map((_, i) => (
+                      <TableRow key={i}>
+                        <TableCell><Skeleton className="h-4 w-4" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                        <TableCell><Skeleton className="h-6 w-16" /></TableCell>
+                        <TableCell><Skeleton className="h-8 w-8" /></TableCell>
+                      </TableRow>
+                    ))
+                  ) : filteredMerchants.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                        {t('common.noData')}
+                      </TableCell>
                     </TableRow>
-                  ))
-                ) : filteredMerchants.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                      {t('common.noData')}
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredMerchants.map((merchant) => (
-                    <TableRow key={merchant.id} className="hover:bg-muted/50 transition-colors">
-                      <TableCell>
+                  ) : (
+                    filteredMerchants.map((merchant) => (
+                      <TableRow key={merchant.id} className={`hover:bg-muted/50 transition-colors ${selectedMerchants.has(merchant.id) ? 'bg-primary/5' : ''}`}>
+                        <TableCell>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6"
+                            onClick={() => toggleSelectMerchant(merchant.id)}
+                          >
+                            {selectedMerchants.has(merchant.id) ? (
+                              <CheckSquare className="h-4 w-4 text-primary" />
+                            ) : (
+                              <Square className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </TableCell>
+                        <TableCell>
                         <div>
                           <p className="font-medium">{merchant.merchant_name}</p>
                           <p className="text-xs text-muted-foreground font-mono">{merchant.account_number}</p>
