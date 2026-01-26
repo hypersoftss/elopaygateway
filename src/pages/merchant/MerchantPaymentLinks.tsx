@@ -77,8 +77,8 @@ const MerchantPaymentLinks = () => {
       return [{ value: 'default', label: 'UPI (Default)' }];
     }
 
-    // LG Pay options based on currency
-    if (gateway_type === 'lgpay') {
+    // HYPER SOFTS options based on currency
+    if (gateway_type === 'hypersofts') {
       switch (currency) {
         case 'INR':
           return [
