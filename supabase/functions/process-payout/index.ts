@@ -157,23 +157,22 @@ Deno.serve(async (req) => {
       let gatewayResponse = null
 
       if (gateway.gateway_type === 'hypersofts') {
-        // HYPER SOFTS payout - use specific withdrawal codes per currency
-        // Deposit codes differ from withdrawal codes:
-        // PKR: Deposit = PKRPH, Withdrawal = PKR
-        // BDT: Deposit = BDTBNK (or nagad/bkash), Withdrawal = BDT
-        // INR: Deposit = INR, Withdrawal = INR
+        // HYPER SOFTS payout - use specific withdrawal codes based on gateway_code
+        // hypersofts_bdt -> BDT withdrawal
+        // hypersofts_pkr -> PKR withdrawal  
+        // hypersofts_inr -> INR withdrawal
         let withdrawalCode = gateway.currency // Default to currency code
         
-        // Map currency to specific withdrawal codes
-        if (gateway.currency === 'PKR') {
+        // Map gateway_code to specific withdrawal codes
+        if (gateway.gateway_code === 'hypersofts_bdt') {
+          withdrawalCode = 'BDT' // BDT payout code
+        } else if (gateway.gateway_code === 'hypersofts_pkr') {
           withdrawalCode = 'PKR' // PKR payout code
-        } else if (gateway.currency === 'BDT') {
-          withdrawalCode = 'BDT' // BDT payout code  
-        } else if (gateway.currency === 'INR') {
+        } else if (gateway.gateway_code === 'hypersofts_inr') {
           withdrawalCode = 'INR' // INR payout code
         }
         
-        console.log('HYPER SOFTS payout - Currency:', gateway.currency, 'Withdrawal code:', withdrawalCode)
+        console.log('HYPER SOFTS payout - Gateway code:', gateway.gateway_code, 'Currency:', gateway.currency, 'Withdrawal code:', withdrawalCode)
         
         const hsParams: Record<string, any> = {
           app_id: gateway.app_id,
