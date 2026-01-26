@@ -42,19 +42,26 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Get payment link details
+    // Get payment link details with merchant and gateway info for currency
     const { data: linkData, error: linkError } = await supabaseAdmin
       .from('payment_links')
       .select(`
         id,
+        link_code,
         amount,
         description,
         is_active,
         expires_at,
+        trade_type,
         merchant_id,
         merchants (
           merchant_name,
-          account_number
+          account_number,
+          gateway_id,
+          payment_gateways (
+            currency,
+            gateway_type
+          )
         )
       `)
       .eq('link_code', link_code)
@@ -91,15 +98,29 @@ Deno.serve(async (req) => {
       .select('gateway_name, logo_url')
       .limit(1)
 
-    const merchantData = link.merchants as unknown as { merchant_name: string; account_number: string } | null
+    const merchantData = link.merchants as unknown as { 
+      merchant_name: string; 
+      account_number: string;
+      gateway_id: string | null;
+      payment_gateways: { currency: string; gateway_type: string } | null;
+    } | null
+
+    // Get currency from merchant's gateway
+    const currency = merchantData?.payment_gateways?.currency || 'INR'
 
     return new Response(
       JSON.stringify({
         success: true,
         payment_link: {
+          id: link.id,
+          link_code: link.link_code,
           amount: link.amount,
           description: link.description,
+          is_active: link.is_active,
+          expires_at: link.expires_at,
+          trade_type: link.trade_type,
           merchant_name: merchantData?.merchant_name,
+          currency: currency,
         },
         gateway_settings: settings?.[0] || { gateway_name: 'PayGate', logo_url: null }
       }),

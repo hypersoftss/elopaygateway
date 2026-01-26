@@ -13,18 +13,22 @@ interface PaymentLinkData {
   description: string | null;
   is_active: boolean;
   expires_at: string | null;
-  created_at: string;
-  merchant_id: string;
-}
-
-interface MerchantData {
+  trade_type: string | null;
   merchant_name: string;
+  currency: string;
 }
 
 interface GatewaySettings {
   gateway_name: string;
   logo_url: string | null;
 }
+
+// Currency symbols and flags
+const CURRENCY_INFO: Record<string, { symbol: string; flag: string }> = {
+  INR: { symbol: '₹', flag: '🇮🇳' },
+  PKR: { symbol: 'Rs.', flag: '🇵🇰' },
+  BDT: { symbol: '৳', flag: '🇧🇩' },
+};
 
 const translations = {
   zh: {
@@ -47,7 +51,7 @@ const translations = {
   en: {
     loading: 'Loading...',
     invalidLink: 'Invalid Link',
-    notFound: 'Link not found',
+    notFound: 'Link does not exist',
     expired: 'Link expired',
     inactive: 'Link inactive',
     loadFailed: 'Load failed',
@@ -57,7 +61,7 @@ const translations = {
     secured: 'Secure Payment · 256-bit SSL',
     goHome: 'Go Home',
     paymentFailed: 'Payment failed',
-    tryAgain: 'Try again',
+    tryAgain: 'Please try again.',
     orderNo: 'Order',
     amount: 'Amount',
   },
@@ -66,15 +70,19 @@ const translations = {
 const PaymentPage = () => {
   const { linkCode } = useParams<{ linkCode: string }>();
   const [paymentLink, setPaymentLink] = useState<PaymentLinkData | null>(null);
-  const [merchant, setMerchant] = useState<MerchantData | null>(null);
   const [gateway, setGateway] = useState<GatewaySettings>({ gateway_name: '', logo_url: null });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [language, setLanguage] = useState<Language>('zh');
+  const [language, setLanguage] = useState<Language>('en');
   const [isDark, setIsDark] = useState(true);
 
   const t = translations[language];
+
+  // Get currency symbol
+  const getCurrencySymbol = (currency: string): string => {
+    return CURRENCY_INFO[currency]?.symbol || '₹';
+  };
 
   useEffect(() => {
     document.documentElement.classList.add('dark');
@@ -98,55 +106,43 @@ const PaymentPage = () => {
       }
 
       try {
-        // Fetch gateway settings via edge function (bypasses RLS)
-        const { data: gatewayResponse } = await supabase.functions.invoke('get-payment-link-merchant', {
-          body: { get_gateway_settings: true }
+        // Fetch payment link data via edge function (bypasses RLS)
+        const { data: response, error: fetchError } = await supabase.functions.invoke('get-payment-link-merchant', {
+          body: { link_code: linkCode }
         });
-        
-        if (gatewayResponse?.gateway_settings) {
-          setGateway({
-            gateway_name: gatewayResponse.gateway_settings.gateway_name || 'Payment Gateway',
-            logo_url: gatewayResponse.gateway_settings.logo_url
-          });
-        }
 
-        // Fetch payment link
-        const { data: linkData, error: linkError } = await supabase
-          .from('payment_links')
-          .select('*')
-          .eq('link_code', linkCode)
-          .maybeSingle();
-
-        if (linkError) throw linkError;
-
-        if (!linkData) {
+        if (fetchError) {
+          console.error('Edge function error:', fetchError);
           setError(t.notFound);
           setIsLoading(false);
           return;
         }
 
-        setPaymentLink(linkData);
-
-        if (linkData.expires_at && new Date(linkData.expires_at) < new Date()) {
-          setError(t.expired);
+        if (response?.error) {
+          console.error('Response error:', response.error);
+          if (response.error.includes('not found')) {
+            setError(t.notFound);
+          } else if (response.error.includes('expired')) {
+            setError(t.expired);
+          } else if (response.error.includes('inactive')) {
+            setError(t.inactive);
+          } else {
+            setError(t.loadFailed);
+          }
           setIsLoading(false);
           return;
         }
 
-        if (!linkData.is_active) {
-          setError(t.inactive);
-          setIsLoading(false);
-          return;
+        if (response?.payment_link) {
+          setPaymentLink(response.payment_link);
         }
 
-        // Fetch merchant info
-        const { data: merchantData } = await supabase
-          .from('merchants')
-          .select('merchant_name')
-          .eq('id', linkData.merchant_id)
-          .maybeSingle();
-
-        if (merchantData) setMerchant(merchantData);
+        if (response?.gateway_settings) {
+          setGateway({
+            gateway_name: response.gateway_settings.gateway_name || 'Payment Gateway',
+            logo_url: response.gateway_settings.logo_url
+          });
+        }
 
       } catch (err) {
         console.error('Error:', err);
@@ -197,6 +193,9 @@ const PaymentPage = () => {
       setIsProcessing(false);
     }
   };
+
+  // Currency symbol for display
+  const currencySymbol = paymentLink ? getCurrencySymbol(paymentLink.currency) : '₹';
 
   // Loading State
   if (isLoading) {
@@ -288,12 +287,12 @@ const PaymentPage = () => {
             <div className="p-8 text-center bg-gradient-to-b from-muted/50 to-transparent">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium mb-4">
                 <Sparkles className="h-3 w-3" />
-                {t.payTo} {merchant?.merchant_name}
+                {t.payTo} {paymentLink?.merchant_name}
               </div>
               
               <p className="text-sm text-muted-foreground mb-2">{t.amount}</p>
               <p className="text-5xl font-bold text-foreground">
-                ₹{paymentLink?.amount.toLocaleString()}
+                {currencySymbol}{paymentLink?.amount.toLocaleString()}
               </p>
               
               {paymentLink?.description && (
@@ -324,7 +323,7 @@ const PaymentPage = () => {
                 ) : (
                   <>
                     <Lock className="h-5 w-5" />
-                    {t.payNow} ₹{paymentLink?.amount.toLocaleString()}
+                    {t.payNow} {currencySymbol}{paymentLink?.amount.toLocaleString()}
                     <ExternalLink className="h-4 w-4 ml-1" />
                   </>
                 )}
