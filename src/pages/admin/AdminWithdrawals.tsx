@@ -56,18 +56,24 @@ interface PayoutTransaction {
   } | null;
 }
 
-// Currency symbols
-const CURRENCY_SYMBOLS: Record<string, string> = {
-  INR: '₹',
-  PKR: 'Rs',
-  BDT: '৳',
-  USDT: '$',
+// Currency symbols and flags
+const CURRENCY_INFO: Record<string, { symbol: string; flag: string }> = {
+  INR: { symbol: '₹', flag: '🇮🇳' },
+  PKR: { symbol: 'Rs', flag: '🇵🇰' },
+  BDT: { symbol: '৳', flag: '🇧🇩' },
+  USDT: { symbol: '$', flag: '💲' },
 };
 
 // Get currency symbol helper
 const getCurrencySymbol = (currency: string | null): string => {
   if (!currency) return '₹';
-  return CURRENCY_SYMBOLS[currency] || '₹';
+  return CURRENCY_INFO[currency]?.symbol || '₹';
+};
+
+// Get currency flag helper
+const getCurrencyFlag = (currency: string | null): string => {
+  if (!currency) return '🇮🇳';
+  return CURRENCY_INFO[currency]?.flag || '🇮🇳';
 };
 
 // Withdrawal method icons and labels
@@ -501,7 +507,10 @@ const AdminWithdrawals = () => {
                         </TableCell>
                         <TableCell className="text-right">
                           <div>
-                            <p className="font-semibold text-sm">{getCurrencySymbol(currency || methodInfo.defaultCurrency)}{w.amount.toLocaleString()}</p>
+                            <p className="font-semibold text-sm">
+                              <span className="mr-1">{getCurrencyFlag(currency || methodInfo.defaultCurrency)}</span>
+                              {getCurrencySymbol(currency || methodInfo.defaultCurrency)}{w.amount.toLocaleString()}
+                            </p>
                             {w.fee > 0 && <p className="text-xs text-muted-foreground">Fee: {getCurrencySymbol(currency || methodInfo.defaultCurrency)}{w.fee}</p>}
                           </div>
                         </TableCell>
@@ -606,9 +615,12 @@ const AdminWithdrawals = () => {
                     <span className="text-muted-foreground text-sm">{language === 'zh' ? '状态' : 'Status'}</span>
                     <StatusBadge status={viewPayout.status} />
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center">
                     <span className="text-muted-foreground text-sm">{language === 'zh' ? '金额' : 'Amount'}</span>
-                    <span className="font-bold text-lg">{getCurrencySymbol(currency || methodInfo.defaultCurrency)}{viewPayout.amount.toLocaleString()}</span>
+                    <span className="font-bold text-lg">
+                      <span className="mr-1">{getCurrencyFlag(currency || methodInfo.defaultCurrency)}</span>
+                      {getCurrencySymbol(currency || methodInfo.defaultCurrency)}{viewPayout.amount.toLocaleString()}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground text-sm">{language === 'zh' ? '手续费' : 'Fee'}</span>
@@ -712,9 +724,12 @@ const AdminWithdrawals = () => {
                           {methodInfo.icon} {methodInfo.label}
                         </Badge>
                       </div>
-                      <div className="flex justify-between text-sm">
+                      <div className="flex justify-between items-center text-sm">
                         <span className="text-muted-foreground">{language === 'zh' ? '金额' : 'Amount'}</span>
-                        <span className="font-bold text-lg">{symbol}{selectedPayout.amount.toLocaleString()}</span>
+                        <span className="font-bold text-lg">
+                          <span className="mr-1">{getCurrencyFlag(currency || methodInfo.defaultCurrency)}</span>
+                          {symbol}{selectedPayout.amount.toLocaleString()}
+                        </span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">{language === 'zh' ? '商户' : 'Merchant'}</span>
