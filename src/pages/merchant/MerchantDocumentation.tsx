@@ -388,7 +388,7 @@ const MerchantDocumentation = () => {
                       </CardContent>
                     </Card>
                   </div>
-                ) : credentials?.gatewayType === 'lgpay' ? (
+                ) : (credentials?.gatewayType === 'lgpay' || credentials?.gatewayType === 'hypersofts') ? (
                   /* HYPER SOFTS Documentation */
                   <div className="space-y-6">
                     <Card className="border-purple-500/20">

@@ -3,19 +3,23 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Copy, Smartphone } from 'lucide-react';
+import { Copy, Smartphone, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { useGatewaySettings } from '@/hooks/useGatewaySettings';
 
 const HyperSoftsPKRDocs = () => {
+  const { settings } = useGatewaySettings();
+  const gatewayName = settings.gatewayName || 'HYPER SOFTS';
+
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`${label} copied to clipboard`);
   };
 
-  const signatureCode = `// HYPER SOFTS Signature Algorithm (ASCII Sorted MD5)
+  const signatureCode = `// ${gatewayName} Signature Algorithm (ASCII Sorted MD5)
 const crypto = require('crypto');
 
-function generateHyperSoftsSignature(params, secretKey) {
+function generateSignature(params, secretKey) {
   // Step 1: Filter out empty values and 'sign' key
   const filteredParams = Object.entries(params)
     .filter(([key, value]) => value !== '' && value !== null && value !== undefined && key !== 'sign');
@@ -36,19 +40,19 @@ function generateHyperSoftsSignature(params, secretKey) {
 }
 
 // Example
-const sign = generateHyperSoftsSignature({
-  app_id: 'PKR3202',
+const sign = generateSignature({
+  app_id: 'YOUR_APP_ID',
   order_sn: 'ORDER123456',
   money: 100000, // 1000 PKR * 100
   notify_url: 'https://yoursite.com/callback',
   trade_type: 'easypaisa'
-}, 't5RO5J1afOgrnzqfjg2xg6tKuJYxV3xM');`;
+}, 'YOUR_API_KEY');`;
 
   const payinRequest = `// Pay-In Request (Easypaisa / JazzCash)
-POST https://www.lg-pay.com/api/order/create
+POST {GATEWAY_BASE_URL}/api/order/create
 Content-Type: application/x-www-form-urlencoded
 
-app_id=PKR3202
+app_id=YOUR_APP_ID
 trade_type=easypaisa  // or "jazzcash"
 order_sn=ORDER123456
 money=100000          // Amount × 100 (1000 PKR = 100000)
@@ -58,10 +62,10 @@ remark=optional_note
 sign=GENERATED_SIGNATURE`;
 
   const payoutEasypaisa = `// Pay-Out Request (Easypaisa)
-POST https://www.lg-pay.com/api/deposit/create
+POST {GATEWAY_BASE_URL}/api/deposit/create
 Content-Type: application/x-www-form-urlencoded
 
-app_id=PKR3202
+app_id=YOUR_APP_ID
 order_sn=PAYOUT123456
 currency=PKR
 money=100000          // Amount × 100
@@ -73,10 +77,10 @@ addon1=easypaisa
 sign=GENERATED_SIGNATURE`;
 
   const payoutJazzcash = `// Pay-Out Request (JazzCash)
-POST https://www.lg-pay.com/api/deposit/create
+POST {GATEWAY_BASE_URL}/api/deposit/create
 Content-Type: application/x-www-form-urlencoded
 
-app_id=PKR3202
+app_id=YOUR_APP_ID
 order_sn=PAYOUT123456
 currency=PKR
 money=100000          // Amount × 100
@@ -119,11 +123,22 @@ money: X    // Will stay pending (no callback)`;
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">HYPER SOFTS Pakistan (PKR)</h1>
+            <h1 className="text-2xl font-bold">{gatewayName} Pakistan (PKR)</h1>
             <p className="text-muted-foreground">Easypaisa & JazzCash Integration</p>
           </div>
-          <Badge variant="default" className="bg-green-600">Pakistan</Badge>
+          <Badge variant="default" className="bg-green-600">🇵🇰 Pakistan</Badge>
         </div>
+
+        {/* Confidential Notice */}
+        <Card className="border-yellow-500/50 bg-yellow-500/10">
+          <CardContent className="p-4 flex items-center gap-3">
+            <AlertTriangle className="h-5 w-5 text-yellow-600" />
+            <div>
+              <p className="font-medium text-yellow-700">Confidential Documentation</p>
+              <p className="text-sm text-yellow-600">This documentation is for internal use only. Do not share gateway credentials or endpoints with unauthorized parties.</p>
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
@@ -131,7 +146,7 @@ money: X    // Will stay pending (no callback)`;
               <CardTitle className="text-sm">Base URL</CardTitle>
             </CardHeader>
             <CardContent>
-              <code className="text-xs bg-muted px-2 py-1 rounded">https://www.lg-pay.com</code>
+              <code className="text-xs bg-muted px-2 py-1 rounded">Configured in Gateway Settings</code>
             </CardContent>
           </Card>
           <Card>
@@ -147,7 +162,7 @@ money: X    // Will stay pending (no callback)`;
               <CardTitle className="text-sm">App ID</CardTitle>
             </CardHeader>
             <CardContent>
-              <code className="text-xs bg-muted px-2 py-1 rounded">PKR3202</code>
+              <code className="text-xs bg-muted px-2 py-1 rounded">From Gateway Config</code>
             </CardContent>
           </Card>
           <Card>
@@ -202,7 +217,7 @@ money: X    // Will stay pending (no callback)`;
           <TabsContent value="signature">
             <Card>
               <CardHeader>
-                <CardTitle>HYPER SOFTS Signature Algorithm</CardTitle>
+                <CardTitle>{gatewayName} Signature Algorithm</CardTitle>
                 <CardDescription>ASCII-sorted MD5 with uppercase output</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -257,7 +272,7 @@ money: X    // Will stay pending (no callback)`;
                       </tr>
                     </thead>
                     <tbody>
-                      <tr className="border-t"><td className="p-3">app_id</td><td className="p-3">String</td><td className="p-3">✓</td><td className="p-3">Your merchant ID (PKR3202)</td></tr>
+                      <tr className="border-t"><td className="p-3">app_id</td><td className="p-3">String</td><td className="p-3">✓</td><td className="p-3">Your merchant app ID</td></tr>
                       <tr className="border-t"><td className="p-3">trade_type</td><td className="p-3">String</td><td className="p-3">✓</td><td className="p-3">easypaisa or jazzcash</td></tr>
                       <tr className="border-t"><td className="p-3">order_sn</td><td className="p-3">String</td><td className="p-3">✓</td><td className="p-3">Unique order number</td></tr>
                       <tr className="border-t"><td className="p-3">money</td><td className="p-3">Integer</td><td className="p-3">✓</td><td className="p-3">Amount × 100 (1000 PKR = 100000)</td></tr>
@@ -331,7 +346,7 @@ money: X    // Will stay pending (no callback)`;
             <Card>
               <CardHeader>
                 <CardTitle>Callback Handling</CardTitle>
-                <CardDescription>Process payment notifications from HYPER SOFTS</CardDescription>
+                <CardDescription>Process payment notifications</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-end">
