@@ -9,14 +9,14 @@ import { useGatewaySettings } from '@/hooks/useGatewaySettings';
 
 const HyperSoftsBDTDocs = () => {
   const { settings } = useGatewaySettings();
-  const gatewayName = settings.gatewayName || 'ELOPAY';
+  const gatewayName = 'ELOPAY_BDT';
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`${label} copied to clipboard`);
   };
 
-  const signatureCode = `// ${gatewayName} Signature Algorithm (ASCII Sorted MD5)
+  const signatureCode = `// ELOPAY_BDT Signature Algorithm (ASCII Sorted MD5)
 const crypto = require('crypto');
 
 function generateSignature(params, secretKey) {
@@ -119,8 +119,8 @@ money: X    // Will stay pending (no callback)`;
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">{gatewayName} Bangladesh (BDT)</h1>
-            <p className="text-muted-foreground">Nagad & bKash Integration</p>
+            <h1 className="text-2xl font-bold">ELOPAY_BDT</h1>
+            <p className="text-muted-foreground">ELOPAY Bangladesh - Nagad & bKash Integration</p>
           </div>
           <Badge variant="default" className="bg-emerald-600">🇧🇩 Bangladesh</Badge>
         </div>
@@ -213,7 +213,7 @@ money: X    // Will stay pending (no callback)`;
           <TabsContent value="signature">
             <Card>
               <CardHeader>
-                <CardTitle>{gatewayName} Signature Algorithm</CardTitle>
+                <CardTitle>ELOPAY_BDT Signature Algorithm</CardTitle>
                 <CardDescription>ASCII-sorted MD5 with uppercase output</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">

@@ -9,14 +9,14 @@ import { useGatewaySettings } from '@/hooks/useGatewaySettings';
 
 const HyperPayINRDocs = () => {
   const { settings } = useGatewaySettings();
-  const gatewayName = settings.gatewayName || 'ELOPAY GATEWAY';
+  const gatewayName = 'ELOPAYGATEWAY_INR';
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`${label} copied to clipboard`);
   };
 
-  const payinSignatureCode = `// ${gatewayName} Payin Signature (MD5)
+  const payinSignatureCode = `// ELOPAYGATEWAY_INR Payin Signature (MD5)
 const crypto = require('crypto');
 
 function generatePayinSignature(merchantId, amount, orderNo, apiKey, callbackUrl) {
@@ -33,7 +33,7 @@ const sign = generatePayinSignature(
   'https://yoursite.com/callback'
 );`;
 
-  const payoutSignatureCode = `// ${gatewayName} Payout Signature (MD5)
+  const payoutSignatureCode = `// ELOPAYGATEWAY_INR Payout Signature (MD5)
 const crypto = require('crypto');
 
 function generatePayoutSignature(params, payoutKey) {
@@ -102,8 +102,8 @@ Content-Type: application/json
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">{gatewayName} India (INR)</h1>
-            <p className="text-muted-foreground">Payment Gateway Integration Documentation</p>
+            <h1 className="text-2xl font-bold">ELOPAYGATEWAY_INR</h1>
+            <p className="text-muted-foreground">ELOPAY GATEWAY India - Payment Gateway Integration</p>
           </div>
           <Badge variant="default" className="bg-orange-500">🇮🇳 India Only</Badge>
         </div>

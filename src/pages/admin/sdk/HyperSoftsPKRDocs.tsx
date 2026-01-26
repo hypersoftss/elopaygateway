@@ -9,14 +9,14 @@ import { useGatewaySettings } from '@/hooks/useGatewaySettings';
 
 const HyperSoftsPKRDocs = () => {
   const { settings } = useGatewaySettings();
-  const gatewayName = settings.gatewayName || 'ELOPAY';
+  const gatewayName = 'ELOPAY_PKR';
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`${label} copied to clipboard`);
   };
 
-  const signatureCode = `// ${gatewayName} Signature Algorithm (ASCII Sorted MD5)
+  const signatureCode = `// ELOPAY_PKR Signature Algorithm (ASCII Sorted MD5)
 const crypto = require('crypto');
 
 function generateSignature(params, secretKey) {
@@ -123,8 +123,8 @@ money: X    // Will stay pending (no callback)`;
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">{gatewayName} Pakistan (PKR)</h1>
-            <p className="text-muted-foreground">Easypaisa & JazzCash Integration</p>
+            <h1 className="text-2xl font-bold">ELOPAY_PKR</h1>
+            <p className="text-muted-foreground">ELOPAY Pakistan - Easypaisa & JazzCash Integration</p>
           </div>
           <Badge variant="default" className="bg-green-600">🇵🇰 Pakistan</Badge>
         </div>
@@ -217,7 +217,7 @@ money: X    // Will stay pending (no callback)`;
           <TabsContent value="signature">
             <Card>
               <CardHeader>
-                <CardTitle>{gatewayName} Signature Algorithm</CardTitle>
+                <CardTitle>ELOPAY_PKR Signature Algorithm</CardTitle>
                 <CardDescription>ASCII-sorted MD5 with uppercase output</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
