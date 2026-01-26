@@ -8,7 +8,8 @@ interface MerchantCurrencyData {
   currencyFlag: string;
   currencyWithFlag: string;
   gatewayType: string | null;
-  tradeType: string | null;
+  gatewayCode: string | null;
+  gatewayName: string | null;
   isLoading: boolean;
 }
 
@@ -32,7 +33,8 @@ export const useMerchantCurrency = (): MerchantCurrencyData => {
     currencyFlag: '🇮🇳',
     currencyWithFlag: '🇮🇳 ₹',
     gatewayType: null,
-    tradeType: null,
+    gatewayCode: null,
+    gatewayName: null,
     isLoading: true,
   });
 
@@ -44,44 +46,35 @@ export const useMerchantCurrency = (): MerchantCurrencyData => {
       }
 
       try {
-        // First get the merchant's gateway_id and trade_type
-        const { data: merchant, error: merchantError } = await supabase
-          .from('merchants')
-          .select('gateway_id, trade_type')
-          .eq('id', user.merchantId)
-          .single();
+        // Use the secure RPC function to get gateway info
+        // This function only exposes safe fields (no API keys)
+        const { data: gatewayData, error } = await supabase.rpc('get_my_gateway');
 
-        if (merchantError) throw merchantError;
-
-        if (merchant?.gateway_id) {
-          // Then get the gateway details
-          const { data: gateway, error: gatewayError } = await supabase
-            .from('payment_gateways')
-            .select('gateway_type, currency')
-            .eq('id', merchant.gateway_id)
-            .single();
-
-          if (gatewayError) throw gatewayError;
-
-          if (gateway) {
-            const currency = gateway.currency || 'INR';
-            const symbol = CURRENCY_SYMBOLS[currency] || '₹';
-            const flag = CURRENCY_FLAGS[currency] || '🇮🇳';
-            setData({
-              currency,
-              currencySymbol: symbol,
-              currencyFlag: flag,
-              currencyWithFlag: `${flag} ${symbol}`,
-              gatewayType: gateway.gateway_type,
-              tradeType: merchant.trade_type,
-              isLoading: false,
-            });
-            return;
-          }
+        if (error) {
+          console.error('Error fetching gateway info:', error);
+          setData(prev => ({ ...prev, isLoading: false }));
+          return;
         }
 
-        // Fallback to INR if no gateway found
-        setData(prev => ({ ...prev, isLoading: false }));
+        if (gatewayData && gatewayData.length > 0) {
+          const gateway = gatewayData[0];
+          const currency = gateway.currency || 'INR';
+          const symbol = CURRENCY_SYMBOLS[currency] || '₹';
+          const flag = CURRENCY_FLAGS[currency] || '🇮🇳';
+          
+          setData({
+            currency,
+            currencySymbol: symbol,
+            currencyFlag: flag,
+            currencyWithFlag: `${flag} ${symbol}`,
+            gatewayType: gateway.gateway_type,
+            gatewayCode: gateway.gateway_code,
+            gatewayName: gateway.gateway_name,
+            isLoading: false,
+          });
+        } else {
+          setData(prev => ({ ...prev, isLoading: false }));
+        }
       } catch (error) {
         console.error('Error fetching merchant currency:', error);
         setData(prev => ({ ...prev, isLoading: false }));
