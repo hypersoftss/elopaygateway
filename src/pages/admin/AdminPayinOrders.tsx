@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { StatusBadge } from '@/components/StatusBadge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
-import { Search, Download, ArrowDownToLine } from 'lucide-react';
+import { Search, Download, ArrowDownToLine, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Transaction {
@@ -115,6 +115,33 @@ const AdminPayinOrders = () => {
     });
   };
 
+  const handleDeleteTransaction = async (txId: string) => {
+    if (!confirm(language === 'zh' ? '确定删除此交易吗？' : 'Are you sure you want to delete this transaction?')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('transactions')
+        .delete()
+        .eq('id', txId);
+
+      if (error) throw error;
+
+      toast({
+        title: t('common.success'),
+        description: language === 'zh' ? '交易已删除' : 'Transaction deleted',
+      });
+      fetchTransactions();
+    } catch (error: any) {
+      toast({
+        title: t('common.error'),
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
@@ -198,13 +225,14 @@ const AdminPayinOrders = () => {
                     <TableHead>{t('common.status')}</TableHead>
                     <TableHead>{language === 'zh' ? '银行名称' : 'Bank Name'}</TableHead>
                     <TableHead>{t('common.createdAt')}</TableHead>
+                    <TableHead className="text-center">{language === 'zh' ? '操作' : 'Actions'}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoading ? (
                     Array.from({ length: 5 }).map((_, i) => (
                       <TableRow key={i}>
-                        {Array.from({ length: 7 }).map((_, j) => (
+                        {Array.from({ length: 8 }).map((_, j) => (
                           <TableCell key={j}>
                             <Skeleton className="h-4 w-full" />
                           </TableCell>
@@ -213,7 +241,7 @@ const AdminPayinOrders = () => {
                     ))
                   ) : filteredTransactions.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                         {t('common.noData')}
                       </TableCell>
                     </TableRow>
@@ -235,6 +263,16 @@ const AdminPayinOrders = () => {
                         <TableCell>{tx.bank_name || '-'}</TableCell>
                         <TableCell className="text-muted-foreground">
                           {format(new Date(tx.created_at), 'yyyy-MM-dd HH:mm')}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={() => handleDeleteTransaction(tx.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))
