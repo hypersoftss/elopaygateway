@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useTranslation } from '@/lib/i18n';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthStore } from '@/lib/auth';
+import { useMerchantCurrency } from '@/hooks/useMerchantCurrency';
 import { supabase } from '@/integrations/supabase/client';
 import { md5 } from 'js-md5';
 
@@ -25,6 +26,7 @@ const MerchantApiTesting = () => {
   const { t, language } = useTranslation();
   const { toast } = useToast();
   const { user } = useAuthStore();
+  const { currencySymbol, currencyFlag, currency } = useMerchantCurrency();
   const [merchantInfo, setMerchantInfo] = useState<MerchantInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -202,6 +204,9 @@ const MerchantApiTesting = () => {
     });
   };
 
+  // Dynamic amount label based on currency
+  const amountLabel = language === 'zh' ? `金额 (${currencySymbol})` : `Amount (${currencySymbol})`;
+
   if (isLoading) {
     return (
       <DashboardLayout>
@@ -226,7 +231,7 @@ const MerchantApiTesting = () => {
             <div>
               <h1 className="text-2xl font-bold">{language === 'zh' ? 'API测试' : 'API Testing'}</h1>
               <p className="text-sm text-muted-foreground">
-                {language === 'zh' ? '使用您的凭证测试Payin/Payout API' : 'Test Payin/Payout APIs using your credentials'}
+                {language === 'zh' ? '使用您的凭证测试Payin/Payout API' : 'Test Payin/Payout APIs using your credentials'} • {currencyFlag} {currency}
               </p>
             </div>
           </div>
@@ -316,7 +321,7 @@ const MerchantApiTesting = () => {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>{language === 'zh' ? '金额 (₹)' : 'Amount (₹)'}</Label>
+                    <Label>{amountLabel}</Label>
                     <Input
                       type="number"
                       value={payinAmount}
@@ -385,7 +390,7 @@ const MerchantApiTesting = () => {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>{language === 'zh' ? '金额 (₹)' : 'Amount (₹)'}</Label>
+                    <Label>{amountLabel}</Label>
                     <Input
                       type="number"
                       value={payoutAmount}
@@ -456,14 +461,12 @@ const MerchantApiTesting = () => {
                     {language === 'zh' ? '生成签名' : 'Generate Signature'}
                   </Button>
                 </div>
-                
                 {payoutSignature && (
                   <div className="p-3 bg-muted rounded-lg">
                     <Label className="text-xs text-muted-foreground">{language === 'zh' ? '签名' : 'Signature'}</Label>
                     <p className="font-mono text-sm break-all">{payoutSignature}</p>
                   </div>
                 )}
-                
                 <Button 
                   className="w-full btn-gradient-warning" 
                   onClick={submitPayoutRequest}

@@ -5,7 +5,8 @@ import { useAuthStore } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TrendingUp, TrendingDown, IndianRupee } from 'lucide-react';
+import { TrendingUp, TrendingDown, Coins } from 'lucide-react';
+import { useMerchantCurrency, formatCurrency } from '@/hooks/useMerchantCurrency';
 
 interface MerchantFees {
   payin_fee: number;
@@ -15,6 +16,7 @@ interface MerchantFees {
 const MerchantChannelPrice = () => {
   const { t } = useTranslation();
   const { user } = useAuthStore();
+  const { currencySymbol, currencyFlag, currency, isLoading: currencyLoading } = useMerchantCurrency();
   const [isLoading, setIsLoading] = useState(true);
   const [fees, setFees] = useState<MerchantFees>({ payin_fee: 0, payout_fee: 0 });
 
@@ -47,13 +49,15 @@ const MerchantChannelPrice = () => {
   const payoutFeeAmount = (exampleAmount * fees.payout_fee) / 100;
   const payoutTotalDeduction = exampleAmount + payoutFeeAmount;
 
+  const loading = isLoading || currencyLoading;
+
   return (
     <DashboardLayout>
       <div className="space-y-6 max-w-5xl mx-auto">
         {/* Header */}
         <div>
           <h1 className="text-2xl font-bold">Channel Price</h1>
-          <p className="text-muted-foreground">View your current transaction fee rates</p>
+          <p className="text-muted-foreground">View your current transaction fee rates • {currencyFlag} {currency}</p>
         </div>
 
         {/* Fee Cards - Side by side */}
@@ -72,7 +76,7 @@ const MerchantChannelPrice = () => {
               </div>
             </div>
             <CardContent className="p-6">
-              {isLoading ? (
+              {loading ? (
                 <Skeleton className="h-24 w-full" />
               ) : (
                 <>
@@ -85,15 +89,15 @@ const MerchantChannelPrice = () => {
                     <p className="text-sm font-semibold text-[hsl(var(--warning))]">Example Calculation:</p>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Collection Amount:</span>
-                      <span>₹{exampleAmount.toFixed(2)}</span>
+                      <span>{formatCurrency(exampleAmount, currencySymbol)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Fee:</span>
-                      <span className="text-destructive">-₹{payinFeeAmount.toFixed(2)}</span>
+                      <span className="text-destructive">-{formatCurrency(payinFeeAmount, currencySymbol)}</span>
                     </div>
                     <div className="flex justify-between text-sm pt-2 border-t border-border">
                       <span className="font-medium text-[hsl(var(--success))]">Net Amount:</span>
-                      <span className="font-bold text-[hsl(var(--success))]">₹{payinNetAmount.toFixed(2)}</span>
+                      <span className="font-bold text-[hsl(var(--success))]">{formatCurrency(payinNetAmount, currencySymbol)}</span>
                     </div>
                   </div>
                 </>
@@ -115,7 +119,7 @@ const MerchantChannelPrice = () => {
               </div>
             </div>
             <CardContent className="p-6">
-              {isLoading ? (
+              {loading ? (
                 <Skeleton className="h-24 w-full" />
               ) : (
                 <>
@@ -128,15 +132,15 @@ const MerchantChannelPrice = () => {
                     <p className="text-sm font-semibold text-[hsl(var(--warning))]">Example Calculation:</p>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Withdrawal Amount:</span>
-                      <span>₹{exampleAmount.toFixed(2)}</span>
+                      <span>{formatCurrency(exampleAmount, currencySymbol)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Fee:</span>
-                      <span className="text-[hsl(var(--success))]">+₹{payoutFeeAmount.toFixed(2)}</span>
+                      <span className="text-[hsl(var(--success))]">+{formatCurrency(payoutFeeAmount, currencySymbol)}</span>
                     </div>
                     <div className="flex justify-between text-sm pt-2 border-t border-border">
                       <span className="font-medium text-[hsl(var(--warning))]">Total Deduction:</span>
-                      <span className="font-bold text-[hsl(var(--warning))]">₹{payoutTotalDeduction.toFixed(2)}</span>
+                      <span className="font-bold text-[hsl(var(--warning))]">{formatCurrency(payoutTotalDeduction, currencySymbol)}</span>
                     </div>
                   </div>
                 </>
@@ -150,7 +154,7 @@ const MerchantChannelPrice = () => {
           <CardContent className="p-6">
             <div className="flex items-start gap-3">
               <div className="p-2 rounded-lg bg-[hsl(var(--success))]/20">
-                <IndianRupee className="h-5 w-5 text-[hsl(var(--success))]" />
+                <Coins className="h-5 w-5 text-[hsl(var(--success))]" />
               </div>
               <div>
                 <h3 className="font-semibold">About Fee Rates</h3>
