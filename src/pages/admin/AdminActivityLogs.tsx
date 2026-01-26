@@ -36,15 +36,38 @@ interface ActivityLog {
 }
 
 const ACTION_TYPE_LABELS: Record<string, { label: string; color: string }> = {
+  // Admin actions
   fee_update: { label: 'Fee Update', color: 'bg-blue-500/10 text-blue-600 border-blue-500/20' },
   gateway_update: { label: 'Gateway Change', color: 'bg-purple-500/10 text-purple-600 border-purple-500/20' },
   bulk_gateway_assign: { label: 'Bulk Gateway', color: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20' },
+  bulk_delete: { label: 'Bulk Delete', color: 'bg-red-500/10 text-red-600 border-red-500/20' },
   password_reset: { label: 'Password Reset', color: 'bg-orange-500/10 text-orange-600 border-orange-500/20' },
   withdrawal_password_reset: { label: 'Withdrawal Pass Reset', color: 'bg-amber-500/10 text-amber-600 border-amber-500/20' },
   '2fa_reset': { label: '2FA Reset', color: 'bg-red-500/10 text-red-600 border-red-500/20' },
   status_change: { label: 'Status Change', color: 'bg-green-500/10 text-green-600 border-green-500/20' },
   delete: { label: 'Deleted', color: 'bg-destructive/10 text-destructive border-destructive/20' },
   create: { label: 'Created', color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' },
+  // Merchant actions
+  login: { label: 'Login', color: 'bg-sky-500/10 text-sky-600 border-sky-500/20' },
+  logout: { label: 'Logout', color: 'bg-slate-500/10 text-slate-600 border-slate-500/20' },
+  dashboard_view: { label: 'Dashboard View', color: 'bg-cyan-500/10 text-cyan-600 border-cyan-500/20' },
+  payin_view: { label: 'Pay-In View', color: 'bg-green-500/10 text-green-600 border-green-500/20' },
+  payout_view: { label: 'Pay-Out View', color: 'bg-orange-500/10 text-orange-600 border-orange-500/20' },
+  withdrawal_request: { label: 'Withdrawal Request', color: 'bg-amber-500/10 text-amber-600 border-amber-500/20' },
+  payment_link_create: { label: 'Link Created', color: 'bg-violet-500/10 text-violet-600 border-violet-500/20' },
+  payment_link_delete: { label: 'Link Deleted', color: 'bg-rose-500/10 text-rose-600 border-rose-500/20' },
+  api_test: { label: 'API Test', color: 'bg-teal-500/10 text-teal-600 border-teal-500/20' },
+  docs_view: { label: 'Docs View', color: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20' },
+  security_2fa_enable: { label: '2FA Enabled', color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' },
+  security_2fa_disable: { label: '2FA Disabled', color: 'bg-red-500/10 text-red-600 border-red-500/20' },
+  password_change: { label: 'Password Changed', color: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20' },
+  withdrawal_password_set: { label: 'Withdrawal Pass Set', color: 'bg-lime-500/10 text-lime-600 border-lime-500/20' },
+  callback_url_update: { label: 'Callback Updated', color: 'bg-fuchsia-500/10 text-fuchsia-600 border-fuchsia-500/20' },
+  telegram_connect: { label: 'Telegram Connected', color: 'bg-blue-500/10 text-blue-600 border-blue-500/20' },
+  analytics_view: { label: 'Analytics View', color: 'bg-pink-500/10 text-pink-600 border-pink-500/20' },
+  settlement_view: { label: 'Settlement View', color: 'bg-purple-500/10 text-purple-600 border-purple-500/20' },
+  channel_price_view: { label: 'Channel View', color: 'bg-cyan-500/10 text-cyan-600 border-cyan-500/20' },
+  account_info_view: { label: 'Account View', color: 'bg-gray-500/10 text-gray-600 border-gray-500/20' },
 };
 
 const AdminActivityLogs = () => {
