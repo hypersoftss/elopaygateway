@@ -70,18 +70,9 @@ interface Gateway {
   trade_type: string | null;
 }
 
-// Trade type options based on gateway currency
-const TRADE_TYPE_OPTIONS: Record<string, { value: string; label: string }[]> = {
-  BDT: [
-    { value: 'nagad', label: 'Nagad' },
-    { value: 'bkash', label: 'bKash' },
-  ],
-  PKR: [
-    { value: 'easypaisa', label: 'Easypaisa' },
-    { value: 'jazzcash', label: 'JazzCash' },
-  ],
-  INR: [], // No trade type selection for India
-};
+// Trade type is no longer fixed per merchant - it's selected per transaction
+// PKR merchants can use both Easypaisa and JazzCash
+// BDT merchants can use both Nagad and bKash
 
 const AdminMerchants = () => {
   const { t, language } = useTranslation();
@@ -106,7 +97,6 @@ const AdminMerchants = () => {
   const [editPayinFee, setEditPayinFee] = useState('');
   const [editPayoutFee, setEditPayoutFee] = useState('');
   const [editGatewayId, setEditGatewayId] = useState('');
-  const [editTradeType, setEditTradeType] = useState('');
 
   const [gateways, setGateways] = useState<Gateway[]>([]);
   const [selectedMerchants, setSelectedMerchants] = useState<Set<string>>(new Set());
@@ -119,7 +109,6 @@ const AdminMerchants = () => {
     payoutFee: '4.0',
     callbackUrl: '',
     gatewayId: '',
-    tradeType: '',
   });
 
   const fetchMerchants = async () => {
@@ -181,7 +170,6 @@ const AdminMerchants = () => {
             payoutFee: parseFloat(newMerchant.payoutFee),
             callbackUrl: newMerchant.callbackUrl || null,
             gatewayId: newMerchant.gatewayId || null,
-            tradeType: newMerchant.tradeType || null,
           }),
         }
       );
@@ -206,7 +194,6 @@ const AdminMerchants = () => {
         payoutFee: '4.0',
         callbackUrl: '',
         gatewayId: '',
-        tradeType: '',
       });
       fetchMerchants();
     } catch (err: any) {
@@ -251,7 +238,6 @@ const AdminMerchants = () => {
     setEditPayinFee(merchant.payin_fee?.toString() || '9');
     setEditPayoutFee(merchant.payout_fee?.toString() || '4');
     setEditGatewayId(merchant.gateway_id || '');
-    setEditTradeType('');
     setIsEditOpen(true);
   };
 
@@ -296,10 +282,6 @@ const AdminMerchants = () => {
       const updateData: any = { 
         gateway_id: editGatewayId,
       };
-      // Add trade type if selected
-      if (editTradeType) {
-        updateData.trade_type = editTradeType;
-      }
       
       const selectedGateway = gateways.find(g => g.id === editGatewayId);
       
@@ -314,7 +296,7 @@ const AdminMerchants = () => {
       await logMerchantActivity(
         editingMerchant.id, 
         'gateway_update', 
-        { gateway_id: editGatewayId, gateway_name: selectedGateway?.gateway_name, trade_type: editTradeType || null },
+        { gateway_id: editGatewayId, gateway_name: selectedGateway?.gateway_name },
         { gateway_id: editingMerchant.gateway_id },
         updateData
       );
@@ -601,17 +583,13 @@ const AdminMerchants = () => {
   // Bulk gateway assignment state
   const [isBulkGatewayOpen, setIsBulkGatewayOpen] = useState(false);
   const [bulkGatewayId, setBulkGatewayId] = useState('');
-  const [bulkTradeType, setBulkTradeType] = useState('');
   const [isAssigningGateway, setIsAssigningGateway] = useState(false);
 
   const handleBulkGatewayAssign = async () => {
     if (selectedMerchants.size === 0 || !bulkGatewayId) return;
     setIsAssigningGateway(true);
     try {
-      const updateData: any = { gateway_id: bulkGatewayId };
-      if (bulkTradeType) {
-        updateData.trade_type = bulkTradeType;
-      }
+      const updateData = { gateway_id: bulkGatewayId };
       
       const { error } = await supabase
         .from('merchants')
@@ -629,7 +607,7 @@ const AdminMerchants = () => {
           merchant_id: merchantId,
           admin_user_id: session?.session?.user?.id,
           action_type: 'bulk_gateway_assign',
-          action_details: { gateway_id: bulkGatewayId, gateway_name: selectedGateway?.gateway_name, trade_type: bulkTradeType || null },
+          action_details: { gateway_id: bulkGatewayId, gateway_name: selectedGateway?.gateway_name },
           new_values: updateData,
         });
       }
@@ -637,7 +615,6 @@ const AdminMerchants = () => {
       toast({ title: t('common.success'), description: `Gateway assigned to ${selectedMerchants.size} merchants` });
       setSelectedMerchants(new Set());
       setBulkGatewayId('');
-      setBulkTradeType('');
       setIsBulkGatewayOpen(false);
       fetchMerchants();
     } catch (err: any) {
@@ -792,14 +769,7 @@ const AdminMerchants = () => {
                   <select
                     className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
                     value={newMerchant.gatewayId}
-                    onChange={(e) => {
-                      const selectedGateway = gateways.find(g => g.id === e.target.value);
-                      setNewMerchant({ 
-                        ...newMerchant, 
-                        gatewayId: e.target.value,
-                        tradeType: '' // Reset trade type when gateway changes
-                      });
-                    }}
+                    onChange={(e) => setNewMerchant({ ...newMerchant, gatewayId: e.target.value })}
                   >
                     <option value="">{language === 'zh' ? '选择网关...' : 'Select gateway...'}</option>
                     {gateways.map((gw) => (
@@ -808,30 +778,12 @@ const AdminMerchants = () => {
                       </option>
                     ))}
                   </select>
+                  <p className="text-xs text-muted-foreground">
+                    {language === 'zh' 
+                      ? 'PKR/BDT 商户可在每笔交易时选择支付方式 (Easypaisa/JazzCash/Nagad/bKash)' 
+                      : 'PKR/BDT merchants can select payment method per transaction (Easypaisa/JazzCash/Nagad/bKash)'}
+                  </p>
                 </div>
-                {/* Trade Type Selection - Only show for BDT/PKR gateways */}
-                {(() => {
-                  const selectedGateway = gateways.find(g => g.id === newMerchant.gatewayId);
-                  const tradeTypes = selectedGateway ? TRADE_TYPE_OPTIONS[selectedGateway.currency] || [] : [];
-                  if (tradeTypes.length === 0) return null;
-                  return (
-                    <div className="space-y-2">
-                      <Label>{language === 'zh' ? '支付方式' : 'Trade Type'} *</Label>
-                      <select
-                        className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
-                        value={newMerchant.tradeType}
-                        onChange={(e) => setNewMerchant({ ...newMerchant, tradeType: e.target.value })}
-                      >
-                        <option value="">{language === 'zh' ? '选择支付方式...' : 'Select trade type...'}</option>
-                        {tradeTypes.map((tt) => (
-                          <option key={tt.value} value={tt.value}>
-                            {tt.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  );
-                })()}
                 <div className="flex gap-2">
                   <Button
                     className="flex-1 btn-gradient-primary"
@@ -1191,10 +1143,7 @@ const AdminMerchants = () => {
                   <select
                     className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
                     value={editGatewayId}
-                    onChange={(e) => {
-                      setEditGatewayId(e.target.value);
-                      setEditTradeType('');
-                    }}
+                    onChange={(e) => setEditGatewayId(e.target.value)}
                   >
                     <option value="">{language === 'zh' ? '选择网关...' : 'Select gateway...'}</option>
                     {gateways.map((gw) => (
@@ -1203,26 +1152,11 @@ const AdminMerchants = () => {
                       </option>
                     ))}
                   </select>
-                  {/* Trade Type */}
-                  {(() => {
-                    const selectedGateway = gateways.find(g => g.id === editGatewayId);
-                    const tradeTypes = selectedGateway ? TRADE_TYPE_OPTIONS[selectedGateway.currency] || [] : [];
-                    if (tradeTypes.length === 0) return null;
-                    return (
-                      <select
-                        className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
-                        value={editTradeType}
-                        onChange={(e) => setEditTradeType(e.target.value)}
-                      >
-                        <option value="">{language === 'zh' ? '选择支付方式...' : 'Select trade type...'}</option>
-                        {tradeTypes.map((tt) => (
-                          <option key={tt.value} value={tt.value}>
-                            {tt.label}
-                          </option>
-                        ))}
-                      </select>
-                    );
-                  })()}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {language === 'zh' 
+                      ? 'PKR/BDT 商户可在每笔交易时选择支付方式' 
+                      : 'PKR/BDT merchants can select payment method per transaction'}
+                  </p>
                 </div>
                 <Button onClick={handleUpdateGateway} disabled={isUpdating || !editGatewayId} size="sm" className="w-full">
                   {language === 'zh' ? '更新网关' : 'Update Gateway'}
@@ -1313,10 +1247,7 @@ const AdminMerchants = () => {
                 <select
                   className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
                   value={bulkGatewayId}
-                  onChange={(e) => {
-                    setBulkGatewayId(e.target.value);
-                    setBulkTradeType('');
-                  }}
+                  onChange={(e) => setBulkGatewayId(e.target.value)}
                 >
                   <option value="">{language === 'zh' ? '选择网关...' : 'Select gateway...'}</option>
                   {gateways.map((gw) => (
@@ -1327,29 +1258,11 @@ const AdminMerchants = () => {
                 </select>
               </div>
               
-              {/* Trade Type */}
-              {(() => {
-                const selectedGateway = gateways.find(g => g.id === bulkGatewayId);
-                const tradeTypes = selectedGateway ? TRADE_TYPE_OPTIONS[selectedGateway.currency] || [] : [];
-                if (tradeTypes.length === 0) return null;
-                return (
-                  <div className="space-y-2">
-                    <Label>{language === 'zh' ? '支付方式' : 'Trade Type'}</Label>
-                    <select
-                      className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
-                      value={bulkTradeType}
-                      onChange={(e) => setBulkTradeType(e.target.value)}
-                    >
-                      <option value="">{language === 'zh' ? '选择支付方式...' : 'Select trade type...'}</option>
-                      {tradeTypes.map((tt) => (
-                        <option key={tt.value} value={tt.value}>
-                          {tt.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                );
-              })()}
+              <p className="text-xs text-muted-foreground">
+                {language === 'zh' 
+                  ? 'PKR/BDT 商户可在每笔交易时选择支付方式 (Easypaisa/JazzCash/Nagad/bKash)' 
+                  : 'PKR/BDT merchants can select payment method per transaction (Easypaisa/JazzCash/Nagad/bKash)'}
+              </p>
 
               <div className="flex gap-2">
                 <Button
