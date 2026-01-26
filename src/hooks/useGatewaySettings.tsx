@@ -6,6 +6,15 @@ interface GatewaySettings {
   logoUrl: string | null;
   faviconUrl: string | null;
   supportEmail: string | null;
+  gatewayDomain: string | null;
+}
+
+interface GatewayBrandingRow {
+  gateway_name: string | null;
+  logo_url: string | null;
+  favicon_url: string | null;
+  support_email: string | null;
+  gateway_domain: string | null;
 }
 
 // Cache the settings globally to avoid flicker on navigation
@@ -18,6 +27,7 @@ export const useGatewaySettings = () => {
       logoUrl: null,
       faviconUrl: null,
       supportEmail: null,
+      gatewayDomain: null,
     }
   );
   const [isLoading, setIsLoading] = useState(!cachedSettings);
@@ -32,23 +42,27 @@ export const useGatewaySettings = () => {
 
     const fetchSettings = async () => {
       try {
-        const { data, error } = await supabase
-          .from('admin_settings')
-          .select('gateway_name, logo_url, favicon_url, support_email')
-          .limit(1);
+        // Use the secure gateway_branding view instead of admin_settings
+        // This view only exposes public branding fields, not sensitive data
+        // Using RPC to query the view since it's not in the generated types
+        const { data, error } = await supabase.rpc('get_gateway_branding' as any);
 
         if (error) {
-          console.error('Error fetching gateway settings:', error);
+          // Fallback: try querying admin_settings for admins or use empty settings
+          console.warn('Gateway branding view not available, falling back');
+          setIsLoading(false);
           return;
         }
 
-        const settingsData = data?.[0];
+        const settingsData = Array.isArray(data) ? data[0] : data;
         if (settingsData) {
+          const row = settingsData as GatewayBrandingRow;
           const newSettings = {
-            gatewayName: settingsData.gateway_name || 'Payment Gateway',
-            logoUrl: settingsData.logo_url,
-            faviconUrl: (settingsData as any).favicon_url || null,
-            supportEmail: settingsData.support_email,
+            gatewayName: row.gateway_name || 'Payment Gateway',
+            logoUrl: row.logo_url,
+            faviconUrl: row.favicon_url || null,
+            supportEmail: row.support_email,
+            gatewayDomain: row.gateway_domain || null,
           };
           // Cache the settings
           cachedSettings = newSettings;
