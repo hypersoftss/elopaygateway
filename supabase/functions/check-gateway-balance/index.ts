@@ -382,9 +382,12 @@ Deno.serve(async (req) => {
     for (const gateway of gateways) {
       let balance: GatewayBalance
 
-      if (gateway.gateway_type === 'lgpay') {
+      // HYPER SOFTS (lgpay/hypersofts) gateway types
+      if (gateway.gateway_type === 'lgpay' || gateway.gateway_type === 'hypersofts') {
         balance = await checkLGPayBalance(gateway)
-      } else if (gateway.gateway_type === 'bondpay') {
+      } 
+      // HYPER PAY (bondpay/hyperpay) gateway types
+      else if (gateway.gateway_type === 'bondpay' || gateway.gateway_type === 'hyperpay') {
         balance = await checkBondPayBalance(gateway)
       } else {
         balance = {
