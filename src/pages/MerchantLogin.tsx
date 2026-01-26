@@ -51,7 +51,7 @@ const MerchantLogin = () => {
         });
         if (!error && data?.gateway_settings) {
           setSettings({
-            gatewayName: data.gateway_settings.gateway_name || 'PayGate',
+            gatewayName: data.gateway_settings.gateway_name || 'ELOPAY',
             logoUrl: data.gateway_settings.logo_url
           });
         }
@@ -170,7 +170,7 @@ const MerchantLogin = () => {
     setIsSubmitting(true);
     try {
       const totp = new OTPAuth.TOTP({
-        issuer: settings.gatewayName || 'PayGate',
+        issuer: settings.gatewayName || 'ELOPAY',
         label: email,
         algorithm: 'SHA1',
         digits: 6,
@@ -269,7 +269,7 @@ const MerchantLogin = () => {
               </div>
             )}
             <div>
-              <h1 className="text-2xl xl:text-3xl font-bold">{settings.gatewayName || 'PayGate'}</h1>
+              <h1 className="text-2xl xl:text-3xl font-bold">{settings.gatewayName || 'ELOPAY'}</h1>
               <p className="text-white/70 text-sm">{language === 'zh' ? '商户支付平台' : 'Merchant Platform'}</p>
             </div>
           </div>
@@ -321,7 +321,7 @@ const MerchantLogin = () => {
                 <Store className="h-5 w-5 text-primary-foreground" />
               </div>
             )}
-            <span className="font-bold text-foreground">{settings.gatewayName || 'PayGate'}</span>
+            <span className="font-bold text-foreground">{settings.gatewayName || 'ELOPAY'}</span>
           </div>
           <div className="hidden lg:block" />
           
