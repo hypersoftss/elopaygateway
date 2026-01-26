@@ -81,26 +81,22 @@ const MerchantWithdrawal = () => {
     const fetchMerchantData = async () => {
       if (!user?.merchantId) return;
 
+      // Fetch merchant data
       const { data } = await supabase
         .from('merchants')
-        .select('balance, frozen_balance, payout_fee, withdrawal_password_hash, withdrawal_password, gateway_id')
+        .select('balance, frozen_balance, payout_fee, withdrawal_password_hash, withdrawal_password')
         .eq('id', user.merchantId)
         .single();
 
-      if (data) {
-        // Get currency from gateway
-        let currency = 'INR';
-        if (data.gateway_id) {
-          const { data: gateway } = await supabase
-            .from('payment_gateways')
-            .select('currency')
-            .eq('id', data.gateway_id)
-            .single();
-          if (gateway) {
-            currency = gateway.currency;
-          }
-        }
+      // Use secure RPC function to get gateway info (merchants can't read payment_gateways directly)
+      const { data: gatewayData } = await supabase.rpc('get_my_gateway');
+      
+      let currency = 'INR';
+      if (gatewayData && gatewayData.length > 0) {
+        currency = gatewayData[0].currency || 'INR';
+      }
 
+      if (data) {
         setMerchantData({
           balance: Number(data.balance) || 0,
           frozen_balance: Number(data.frozen_balance) || 0,
