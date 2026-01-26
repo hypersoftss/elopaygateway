@@ -56,14 +56,28 @@ interface PayoutTransaction {
   } | null;
 }
 
+// Currency symbols
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  INR: '₹',
+  PKR: 'Rs',
+  BDT: '৳',
+  USDT: '$',
+};
+
+// Get currency symbol helper
+const getCurrencySymbol = (currency: string | null): string => {
+  if (!currency) return '₹';
+  return CURRENCY_SYMBOLS[currency] || '₹';
+};
+
 // Withdrawal method icons and labels
-const WITHDRAWAL_METHODS: Record<string, { icon: string; label: string; color: string }> = {
-  nagad: { icon: '📱', label: 'Nagad', color: 'bg-orange-500/10 text-orange-600 border-orange-500/30' },
-  bkash: { icon: '📲', label: 'bKash', color: 'bg-pink-500/10 text-pink-600 border-pink-500/30' },
-  easypaisa: { icon: '📱', label: 'Easypaisa', color: 'bg-green-500/10 text-green-600 border-green-500/30' },
-  jazzcash: { icon: '📲', label: 'JazzCash', color: 'bg-red-500/10 text-red-600 border-red-500/30' },
-  bank: { icon: '🏦', label: 'Bank Transfer', color: 'bg-blue-500/10 text-blue-600 border-blue-500/30' },
-  usdt: { icon: '💰', label: 'USDT (TRC20)', color: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/30' },
+const WITHDRAWAL_METHODS: Record<string, { icon: string; label: string; color: string; defaultCurrency: string }> = {
+  nagad: { icon: '📱', label: 'Nagad', color: 'bg-orange-500/10 text-orange-600 border-orange-500/30', defaultCurrency: 'BDT' },
+  bkash: { icon: '📲', label: 'bKash', color: 'bg-pink-500/10 text-pink-600 border-pink-500/30', defaultCurrency: 'BDT' },
+  easypaisa: { icon: '📱', label: 'Easypaisa', color: 'bg-green-500/10 text-green-600 border-green-500/30', defaultCurrency: 'PKR' },
+  jazzcash: { icon: '📲', label: 'JazzCash', color: 'bg-red-500/10 text-red-600 border-red-500/30', defaultCurrency: 'PKR' },
+  bank: { icon: '🏦', label: 'Bank Transfer', color: 'bg-blue-500/10 text-blue-600 border-blue-500/30', defaultCurrency: 'INR' },
+  usdt: { icon: '💰', label: 'USDT (TRC20)', color: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/30', defaultCurrency: 'USDT' },
 };
 
 // Parse extra field to get withdrawal method info
@@ -487,8 +501,8 @@ const AdminWithdrawals = () => {
                         </TableCell>
                         <TableCell className="text-right">
                           <div>
-                            <p className="font-semibold text-sm">₹{w.amount.toLocaleString()}</p>
-                            {w.fee > 0 && <p className="text-xs text-muted-foreground">Fee: ₹{w.fee}</p>}
+                            <p className="font-semibold text-sm">{getCurrencySymbol(currency || methodInfo.defaultCurrency)}{w.amount.toLocaleString()}</p>
+                            {w.fee > 0 && <p className="text-xs text-muted-foreground">Fee: {getCurrencySymbol(currency || methodInfo.defaultCurrency)}{w.fee}</p>}
                           </div>
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
@@ -594,11 +608,15 @@ const AdminWithdrawals = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground text-sm">{language === 'zh' ? '金额' : 'Amount'}</span>
-                    <span className="font-bold text-lg">₹{viewPayout.amount.toLocaleString()}</span>
+                    <span className="font-bold text-lg">{getCurrencySymbol(currency || methodInfo.defaultCurrency)}{viewPayout.amount.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground text-sm">{language === 'zh' ? '手续费' : 'Fee'}</span>
-                    <span>₹{(viewPayout.fee || 0).toLocaleString()}</span>
+                    <span>{getCurrencySymbol(currency || methodInfo.defaultCurrency)}{(viewPayout.fee || 0).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground text-sm">{language === 'zh' ? '实际到账' : 'Net Amount'}</span>
+                    <span className="font-semibold text-[hsl(var(--success))]">{getCurrencySymbol(currency || methodInfo.defaultCurrency)}{(viewPayout.net_amount || viewPayout.amount - (viewPayout.fee || 0)).toLocaleString()}</span>
                   </div>
                 </div>
 
@@ -681,30 +699,39 @@ const AdminWithdrawals = () => {
               </AlertDialogTitle>
               <AlertDialogDescription asChild>
                 <div className="space-y-3 mt-2">
-                  <div className="p-3 rounded-lg bg-muted/50 space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">{language === 'zh' ? '金额' : 'Amount'}</span>
-                      <span className="font-bold text-lg">₹{selectedPayout?.amount.toLocaleString()}</span>
+                  {selectedPayout && (() => {
+                    const { method, currency } = parseWithdrawalMethod(selectedPayout.extra, selectedPayout.bank_name, selectedPayout.usdt_address);
+                    const methodInfo = WITHDRAWAL_METHODS[method] || WITHDRAWAL_METHODS.bank;
+                    const symbol = getCurrencySymbol(currency || methodInfo.defaultCurrency);
+                    
+                    return (
+                    <div className="p-3 rounded-lg bg-muted/50 space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">{language === 'zh' ? '方式' : 'Method'}</span>
+                        <Badge variant="outline" className={`${methodInfo.color} text-xs`}>
+                          {methodInfo.icon} {methodInfo.label}
+                        </Badge>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">{language === 'zh' ? '金额' : 'Amount'}</span>
+                        <span className="font-bold text-lg">{symbol}{selectedPayout.amount.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">{language === 'zh' ? '商户' : 'Merchant'}</span>
+                        <span>{selectedPayout.merchants?.merchant_name}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">{language === 'zh' ? '账户' : 'Account'}</span>
+                        <span className="font-mono">{selectedPayout.account_number || selectedPayout.usdt_address}</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">{language === 'zh' ? '商户' : 'Merchant'}</span>
-                      <span>{selectedPayout?.merchants?.merchant_name}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">{language === 'zh' ? '收款银行' : 'Bank'}</span>
-                      <span>{selectedPayout?.bank_name}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">{language === 'zh' ? '账户' : 'Account'}</span>
-                      <span className="font-mono">{selectedPayout?.account_number}</span>
-                    </div>
-                  </div>
+                  );})()}
                   
                   {actionType === 'approve' && (
                     <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
                       <p className="text-sm text-green-600 flex items-center gap-2">
                         <Send className="h-4 w-4" />
-                        {language === 'zh' ? '批准后将自动发送到HYPER PAY处理' : 'Will be sent to HYPER PAY for processing'}
+                        {language === 'zh' ? '批准后将自动发送到HYPER处理' : 'Will be sent to HYPER for processing'}
                       </p>
                     </div>
                   )}
