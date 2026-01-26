@@ -904,6 +904,104 @@ console.log(order.payment_url);`}
     </div>
   );
 
+  // Full page loading state
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          {/* Header Skeleton */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <Skeleton className="h-8 w-48" />
+              <Skeleton className="h-4 w-72" />
+            </div>
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-7 w-32 rounded-full" />
+              <Skeleton className="h-7 w-36 rounded-full" />
+            </div>
+          </div>
+
+          {/* Quick Stats Skeleton */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i} className="border-muted">
+                <CardContent className="p-4 text-center space-y-2">
+                  <Skeleton className="h-8 w-8 mx-auto rounded" />
+                  <Skeleton className="h-7 w-16 mx-auto" />
+                  <Skeleton className="h-4 w-20 mx-auto" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Credentials Card Skeleton */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-5 w-5" />
+                <Skeleton className="h-6 w-40" />
+              </div>
+              <Skeleton className="h-4 w-64" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-5 w-48" />
+                  </div>
+                  <Skeleton className="h-8 w-8 rounded" />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Payment Methods Skeleton */}
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-56" />
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="text-center p-4 bg-muted/30 rounded-lg space-y-3">
+                    <Skeleton className="h-12 w-12 rounded-full mx-auto" />
+                    <Skeleton className="h-5 w-20 mx-auto" />
+                    <Skeleton className="h-4 w-24 mx-auto" />
+                    <Skeleton className="h-6 w-16 mx-auto rounded" />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* API Reference Skeleton */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-5 w-5" />
+                <Skeleton className="h-6 w-32" />
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-2">
+                {[1, 2, 3, 4].map((i) => (
+                  <Skeleton key={i} className="h-10 flex-1 rounded" />
+                ))}
+              </div>
+              <div className="space-y-4 mt-6">
+                <Skeleton className="h-24 w-full rounded-lg" />
+                <Skeleton className="h-48 w-full rounded-lg" />
+                <Skeleton className="h-32 w-full rounded-lg" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -966,77 +1064,70 @@ console.log(order.payment_url);`}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {isLoading ? (
-              <div className="space-y-4">
-                <Skeleton className="h-16 w-full" />
-                <Skeleton className="h-16 w-full" />
+            <div className="grid gap-4">
+              {/* Merchant ID */}
+              <div className="flex items-center justify-between p-4 bg-card rounded-lg border">
+                <div>
+                  <p className="text-sm text-muted-foreground">Merchant ID</p>
+                  <p className="font-mono font-bold text-lg">{credentials?.accountNumber}</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => copyToClipboard(credentials?.accountNumber || '', 'merchantId')}
+                >
+                  {copiedField === 'merchantId' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                </Button>
               </div>
-            ) : (
-              <div className="grid gap-4">
-                {/* Merchant ID */}
-                <div className="flex items-center justify-between p-4 bg-card rounded-lg border">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Merchant ID</p>
-                    <p className="font-mono font-bold text-lg">{credentials?.accountNumber}</p>
-                  </div>
+
+              {/* API Key */}
+              <div className="flex items-center justify-between p-4 bg-card rounded-lg border">
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    API Key <Badge variant="secondary" className="ml-2 text-xs">Pay-in</Badge>
+                  </p>
+                  <p className="font-mono font-medium">
+                    {showApiKey ? credentials?.apiKey : maskKey(credentials?.apiKey || '')}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => setShowApiKey(!showApiKey)}>
+                    {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => copyToClipboard(credentials?.accountNumber || '', 'merchantId')}
+                    onClick={() => copyToClipboard(credentials?.apiKey || '', 'apiKey')}
                   >
-                    {copiedField === 'merchantId' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    {copiedField === 'apiKey' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                   </Button>
                 </div>
+              </div>
 
-                {/* API Key */}
-                <div className="flex items-center justify-between p-4 bg-card rounded-lg border">
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      API Key <Badge variant="secondary" className="ml-2 text-xs">Pay-in</Badge>
-                    </p>
-                    <p className="font-mono font-medium">
-                      {showApiKey ? credentials?.apiKey : maskKey(credentials?.apiKey || '')}
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => setShowApiKey(!showApiKey)}>
-                      {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => copyToClipboard(credentials?.apiKey || '', 'apiKey')}
-                    >
-                      {copiedField === 'apiKey' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                    </Button>
-                  </div>
+              {/* Payout Key */}
+              <div className="flex items-center justify-between p-4 bg-card rounded-lg border">
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    Payout Key <Badge variant="secondary" className="ml-2 text-xs">Pay-out</Badge>
+                  </p>
+                  <p className="font-mono font-medium">
+                    {showPayoutKey ? credentials?.payoutKey : maskKey(credentials?.payoutKey || '')}
+                  </p>
                 </div>
-
-                {/* Payout Key */}
-                <div className="flex items-center justify-between p-4 bg-card rounded-lg border">
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      Payout Key <Badge variant="secondary" className="ml-2 text-xs">Pay-out</Badge>
-                    </p>
-                    <p className="font-mono font-medium">
-                      {showPayoutKey ? credentials?.payoutKey : maskKey(credentials?.payoutKey || '')}
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => setShowPayoutKey(!showPayoutKey)}>
-                      {showPayoutKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => copyToClipboard(credentials?.payoutKey || '', 'payoutKey')}
-                    >
-                      {copiedField === 'payoutKey' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                    </Button>
-                  </div>
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => setShowPayoutKey(!showPayoutKey)}>
+                    {showPayoutKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyToClipboard(credentials?.payoutKey || '', 'payoutKey')}
+                  >
+                    {copiedField === 'payoutKey' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  </Button>
                 </div>
               </div>
-            )}
+            </div>
           </CardContent>
         </Card>
 
