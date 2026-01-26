@@ -26,22 +26,25 @@ Deno.serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
-    // Verify caller is admin
+    // Verify caller using getClaims (more reliable than getUser for token validation)
     const token = authHeader.replace('Bearer ', '')
-    const { data: claimsData, error: claimsError } = await supabaseAdmin.auth.getUser(token)
+    const { data: claimsData, error: claimsError } = await supabaseAdmin.auth.getClaims(token)
     
-    if (claimsError || !claimsData.user) {
+    if (claimsError || !claimsData?.claims?.sub) {
+      console.error('Token validation failed:', claimsError?.message || 'No claims')
       return new Response(
-        JSON.stringify({ error: 'Invalid token' }),
+        JSON.stringify({ error: 'Session expired. Please logout and login again.' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+
+    const adminUserId = claimsData.claims.sub
 
     // Check if user is admin
     const { data: roleData } = await supabaseAdmin
       .from('user_roles')
       .select('role')
-      .eq('user_id', claimsData.user.id)
+      .eq('user_id', adminUserId)
       .eq('role', 'admin')
       .limit(1)
 
