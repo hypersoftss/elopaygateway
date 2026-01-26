@@ -982,12 +982,12 @@ const AdminSettingsPage = () => {
                   </div>
                   <div>
                     <CardTitle>
-                      {language === 'zh' ? '数据库备份' : 'Database Backup'}
+                      {language === 'zh' ? '完整数据库导出' : 'Complete Database Export'}
                     </CardTitle>
                     <CardDescription>
                       {language === 'zh' 
-                        ? '下载完整数据库SQL备份文件' 
-                        : 'Download complete database SQL backup file'}
+                        ? '下载包含Schema + RLS + 数据的完整SQL文件' 
+                        : 'Download complete SQL with Schema + RLS + Data'}
                     </CardDescription>
                   </div>
                 </div>
@@ -999,9 +999,9 @@ const AdminSettingsPage = () => {
                       <Download className="h-6 w-6 text-blue-500" />
                     </div>
                     <div>
-                      <p className="font-medium">{language === 'zh' ? '导出SQL备份' : 'Export SQL Backup'}</p>
+                      <p className="font-medium">{language === 'zh' ? '一键导出全部' : 'Export Everything'}</p>
                       <p className="text-sm text-muted-foreground">
-                        {language === 'zh' ? '包含所有表数据的INSERT语句' : 'Contains INSERT statements for all table data'}
+                        {language === 'zh' ? 'Tables + Functions + RLS Policies + Data' : 'Tables + Functions + RLS Policies + Data'}
                       </p>
                     </div>
                   </div>
@@ -1058,18 +1058,18 @@ const AdminSettingsPage = () => {
                     ) : (
                       <>
                         <Download className="h-4 w-4 mr-2" />
-                        {language === 'zh' ? '下载SQL备份' : 'Download SQL'}
+                        {language === 'zh' ? '下载完整SQL' : 'Download Complete SQL'}
                       </>
                     )}
                   </Button>
                 </div>
                 
-                <Alert className="mt-4 border-yellow-500/30 bg-yellow-500/5">
-                  <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                <Alert className="mt-4 border-[hsl(var(--success))]/30 bg-[hsl(var(--success))]/5">
+                  <CheckCircle2 className="h-4 w-4 text-[hsl(var(--success))]" />
                   <AlertDescription className="text-sm">
                     {language === 'zh' 
-                      ? '此备份仅包含数据。要完整迁移，请先运行数据库迁移创建表结构。' 
-                      : 'This backup contains data only. For full migration, run database migrations first to create table structure.'}
+                      ? '此SQL包含完整数据库：Enums + Functions + Tables + RLS Policies + Storage + Data。直接在新Supabase项目SQL编辑器运行即可。' 
+                      : 'This SQL contains everything: Enums + Functions + Tables + RLS Policies + Storage + Data. Run directly in new Supabase SQL Editor.'}
                   </AlertDescription>
                 </Alert>
               </CardContent>
