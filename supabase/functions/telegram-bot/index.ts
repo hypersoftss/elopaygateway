@@ -585,12 +585,39 @@ function generateTextChart(data: Record<string, number>, title: string): string 
 
 // ============= MAIN HANDLER =============
 
+// List of admin-only commands that require chat ID authorization
+const ADMIN_ONLY_COMMANDS = [
+  '/create_merchant', '/broadcast', '/stats', '/admin_stats', '/gateways',
+  '/merchants', '/large', '/pending', '/health', '/setmenu', '/alerts',
+  '/weekly', '/monthly', '/peak', '/compare', '/help'
+]
+
+// Check if command is admin-only
+function isAdminCommand(text: string): boolean {
+  if (!text) return false
+  const command = text.toLowerCase().split(' ')[0].split('@')[0]
+  return ADMIN_ONLY_COMMANDS.some(cmd => command === cmd.toLowerCase())
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
+    // SECURITY FIX: Validate Telegram webhook secret if configured
+    const webhookSecret = Deno.env.get('TELEGRAM_WEBHOOK_SECRET')
+    if (webhookSecret) {
+      const secretToken = req.headers.get('X-Telegram-Bot-Api-Secret-Token')
+      if (!secretToken || secretToken !== webhookSecret) {
+        console.error('Invalid webhook secret token')
+        return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), { 
+          status: 401, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        })
+      }
+    }
+
     const body = await req.json()
     console.log('Telegram webhook received:', JSON.stringify(body))
 
@@ -627,6 +654,32 @@ Deno.serve(async (req) => {
     const gatewayName = adminSettings?.gateway_name || 'ELOPAY'
     const rawDomain = adminSettings?.gateway_domain || 'https://gateway.hyperdeveloper.store'
     const gatewayDomain = rawDomain.replace(/\/+$/, '')
+
+    // SECURITY FIX: Validate chat ID for admin commands
+    const incomingChatId = body.message?.chat?.id?.toString() || 
+                          body.callback_query?.message?.chat?.id?.toString()
+    const messageText = body.message?.text || ''
+    
+    // If admin chat ID is configured and this is an admin command, verify authorization
+    if (adminChatId && incomingChatId && isAdminCommand(messageText)) {
+      if (incomingChatId !== adminChatId) {
+        // Check if this chat ID belongs to a known merchant
+        const merchant = await findMerchantByChatId(supabaseAdmin, incomingChatId)
+        if (!merchant) {
+          console.warn(`Unauthorized admin command attempt from chat ID: ${incomingChatId}`)
+          await sendMessage(botToken, incomingChatId, '⛔ Unauthorized. This command is restricted to admin users.', 'HTML', undefined, true, true)
+          return new Response(JSON.stringify({ ok: true }), { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          })
+        }
+        // Merchant users can only use merchant-specific commands, not admin commands
+        console.warn(`Merchant ${merchant.account_number} attempted admin command: ${messageText}`)
+        await sendMessage(botToken, incomingChatId, '⛔ This command is restricted to admin users. Use /mybalance, /mytransactions, or /mystats for merchant commands.', 'HTML', undefined, true, true)
+        return new Response(JSON.stringify({ ok: true }), { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        })
+      }
+    }
 
     // ============ Handle Callback Query (Button clicks) ============
     if (body.callback_query) {
