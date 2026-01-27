@@ -6,6 +6,13 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import { 
   Store, 
   ArrowRight, 
@@ -39,7 +46,8 @@ import {
   X,
   Crown,
   Gem,
-  Medal
+  Medal,
+  Menu
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { LanguageSwitch } from '@/components/LanguageSwitch';
@@ -268,7 +276,7 @@ const Index = () => {
             <span className="text-xl font-bold">{gatewayName}</span>
           </div>
           
-          {/* Navigation Links */}
+          {/* Desktop Navigation Links */}
           <nav className="hidden lg:flex items-center gap-6">
             {[
               { href: '#features', label: isEnglish ? 'Features' : '特性' },
@@ -290,7 +298,7 @@ const Index = () => {
             ))}
           </nav>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <ThemeToggle />
             <LanguageSwitch />
             <Button asChild variant="default" size="sm" className="hidden sm:flex">
@@ -299,6 +307,77 @@ const Index = () => {
                 <ArrowRight className="h-4 w-4 ml-1" />
               </Link>
             </Button>
+            
+            {/* Mobile Menu */}
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="lg:hidden">
+                  <Menu className="h-5 w-5" />
+                  <span className="sr-only">Open menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[300px] sm:w-[350px]">
+                <SheetHeader>
+                  <SheetTitle className="flex items-center gap-3">
+                    {logoUrl ? (
+                      <img src={logoUrl} alt="Logo" className="h-8 w-8 rounded-xl object-contain" />
+                    ) : (
+                      <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
+                        <Zap className="h-4 w-4 text-primary-foreground" />
+                      </div>
+                    )}
+                    {gatewayName}
+                  </SheetTitle>
+                </SheetHeader>
+                
+                <nav className="flex flex-col gap-1 mt-8">
+                  {[
+                    { href: '#features', label: isEnglish ? 'Features' : '特性', icon: Sparkles },
+                    { href: '#pricing', label: isEnglish ? 'Pricing' : '定价', icon: Crown },
+                    { href: '#testimonials', label: isEnglish ? 'Reviews' : '评价', icon: Star },
+                    { href: '#faq', label: isEnglish ? 'FAQ' : '常见问题', icon: HelpCircle },
+                  ].map((link) => (
+                    <a
+                      key={link.href}
+                      href={link.href}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        document.querySelector(link.href)?.scrollIntoView({ behavior: 'smooth' });
+                        // Close the sheet by clicking outside or using escape
+                        const closeButton = document.querySelector('[data-radix-collection-item]');
+                        if (closeButton instanceof HTMLElement) closeButton.click();
+                      }}
+                      className="flex items-center gap-3 px-4 py-3 rounded-lg text-foreground hover:bg-accent transition-colors"
+                    >
+                      <link.icon className="h-5 w-5 text-primary" />
+                      <span className="font-medium">{link.label}</span>
+                    </a>
+                  ))}
+                </nav>
+                
+                <div className="mt-8 pt-6 border-t border-border">
+                  <Button asChild className="w-full" size="lg">
+                    <Link to="/merchant-login">
+                      <Store className="h-5 w-5 mr-2" />
+                      {isEnglish ? 'Merchant Login' : '商户登录'}
+                    </Link>
+                  </Button>
+                </div>
+                
+                <div className="mt-6 flex flex-col gap-4 text-sm text-muted-foreground">
+                  <Link to="/docs" className="flex items-center gap-2 hover:text-foreground transition-colors">
+                    <Play className="h-4 w-4" />
+                    {isEnglish ? 'Documentation' : '文档'}
+                  </Link>
+                  {settings.supportEmail && (
+                    <a href={`mailto:${settings.supportEmail}`} className="flex items-center gap-2 hover:text-foreground transition-colors">
+                      <HelpCircle className="h-4 w-4" />
+                      {isEnglish ? 'Contact Support' : '联系支持'}
+                    </a>
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       </header>
