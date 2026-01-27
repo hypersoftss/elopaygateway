@@ -267,6 +267,29 @@ const Index = () => {
             )}
             <span className="text-xl font-bold">{gatewayName}</span>
           </div>
+          
+          {/* Navigation Links */}
+          <nav className="hidden lg:flex items-center gap-6">
+            {[
+              { href: '#features', label: isEnglish ? 'Features' : '特性' },
+              { href: '#pricing', label: isEnglish ? 'Pricing' : '定价' },
+              { href: '#testimonials', label: isEnglish ? 'Reviews' : '评价' },
+              { href: '#faq', label: isEnglish ? 'FAQ' : '常见问题' },
+            ].map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                onClick={(e) => {
+                  e.preventDefault();
+                  document.querySelector(link.href)?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {link.label}
+              </a>
+            ))}
+          </nav>
+          
           <div className="flex items-center gap-3">
             <ThemeToggle />
             <LanguageSwitch />
@@ -456,7 +479,7 @@ const Index = () => {
       </section>
 
       {/* Features Section */}
-      <section className="py-20 md:py-32">
+      <section id="features" className="py-20 md:py-32 scroll-mt-20">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
@@ -488,7 +511,7 @@ const Index = () => {
       </section>
 
       {/* Pricing Section */}
-      <section className="py-20 md:py-32 bg-gradient-to-b from-transparent via-card/30 to-transparent">
+      <section id="pricing" className="py-20 md:py-32 bg-gradient-to-b from-transparent via-card/30 to-transparent scroll-mt-20">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium text-primary mb-6">
@@ -621,7 +644,7 @@ const Index = () => {
       </section>
 
       {/* Testimonials Section */}
-      <section className="py-20 md:py-32 bg-gradient-to-b from-transparent via-card/30 to-transparent">
+      <section id="testimonials" className="py-20 md:py-32 bg-gradient-to-b from-transparent via-card/30 to-transparent scroll-mt-20">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium text-primary mb-6">
@@ -739,7 +762,7 @@ const Index = () => {
       </section>
 
       {/* FAQ Section */}
-      <section className="py-20 md:py-32">
+      <section id="faq" className="py-20 md:py-32 scroll-mt-20">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium text-primary mb-6">
