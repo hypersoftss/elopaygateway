@@ -630,6 +630,40 @@ const AdminApiTesting = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Balance Warning */}
+                {selectedMerchant && (
+                  <div className={`p-4 rounded-lg border ${
+                    (selectedMerchant.balance || 0) < parseFloat(payoutAmount || '0') 
+                      ? 'bg-destructive/10 border-destructive/30' 
+                      : 'bg-[hsl(var(--success))]/10 border-[hsl(var(--success))]/30'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">
+                          {language === 'zh' ? '可用余额' : 'Available Balance'}
+                        </p>
+                        <p className={`text-2xl font-bold ${
+                          (selectedMerchant.balance || 0) < parseFloat(payoutAmount || '0')
+                            ? 'text-destructive'
+                            : 'text-[hsl(var(--success))]'
+                        }`}>
+                          {getCurrencySymbol(selectedMerchant)}{(selectedMerchant.balance || 0).toLocaleString()}
+                        </p>
+                      </div>
+                      {(selectedMerchant.balance || 0) < parseFloat(payoutAmount || '0') && (
+                        <div className="text-right">
+                          <p className="text-sm font-semibold text-destructive">
+                            ⚠️ {language === 'zh' ? '余额不足!' : 'Insufficient Balance!'}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {language === 'zh' ? '请先添加测试余额' : 'Add test balance first'}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Payout Method Selection */}
                 {getPayoutTradeTypeOptions(selectedMerchant).length > 0 && (
                   <div className="space-y-2">
