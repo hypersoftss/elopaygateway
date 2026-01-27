@@ -14,9 +14,17 @@ Deno.serve(async (req) => {
   try {
     const { email, password, setupKey } = await req.json()
 
-    // Validate setup key
-    const validSetupKey = Deno.env.get('ADMIN_SETUP_KEY') || 'PAYGATE2024'
-    if (setupKey !== validSetupKey) {
+    // SECURITY FIX: Require ADMIN_SETUP_KEY environment variable - no default fallback
+    const validSetupKey = Deno.env.get('ADMIN_SETUP_KEY')
+    if (!validSetupKey) {
+      console.error('ADMIN_SETUP_KEY environment variable is not configured')
+      return new Response(
+        JSON.stringify({ error: 'Setup key not configured. Please set ADMIN_SETUP_KEY in environment variables.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!setupKey || setupKey !== validSetupKey) {
       return new Response(
         JSON.stringify({ error: 'Invalid setup key' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -93,7 +101,7 @@ Deno.serve(async (req) => {
       console.error('Profile error:', profileError)
     }
 
-    // Create initial admin settings if not exist
+    // Create initial admin settings if not exist - SECURITY FIX: Use placeholder values
     const { data: existingSettings } = await supabaseAdmin
       .from('admin_settings')
       .select('id')
@@ -101,9 +109,9 @@ Deno.serve(async (req) => {
 
     if (!existingSettings || existingSettings.length === 0) {
       await supabaseAdmin.from('admin_settings').insert({
-        master_merchant_id: '100888140',
-        master_api_key: 'ab76fe01039a5a5aff089d193da40a40',
-        master_payout_key: 'D7EF0E76DE29CD13E6128D722C1F6270',
+        master_merchant_id: 'CHANGE_ME_MERCHANT_ID',
+        master_api_key: 'CHANGE_ME_API_KEY',
+        master_payout_key: 'CHANGE_ME_PAYOUT_KEY',
         bondpay_base_url: 'https://api.bond-pays.com',
         default_payin_fee: 9.0,
         default_payout_fee: 4.0,

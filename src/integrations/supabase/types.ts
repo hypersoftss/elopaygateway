@@ -574,33 +574,6 @@ export type Database = {
         }
         Relationships: []
       }
-      public_payment_links: {
-        Row: {
-          amount: number | null
-          description: string | null
-          expires_at: string | null
-          is_active: boolean | null
-          link_code: string | null
-          trade_type: string | null
-        }
-        Insert: {
-          amount?: number | null
-          description?: string | null
-          expires_at?: string | null
-          is_active?: boolean | null
-          link_code?: string | null
-          trade_type?: string | null
-        }
-        Update: {
-          amount?: number | null
-          description?: string | null
-          expires_at?: string | null
-          is_active?: boolean | null
-          link_code?: string | null
-          trade_type?: string | null
-        }
-        Relationships: []
-      }
     }
     Functions: {
       generate_account_number: { Args: never; Returns: string }
