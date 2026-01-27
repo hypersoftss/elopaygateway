@@ -1,35 +1,28 @@
 <?php
 /**
- * PayGate SDK - PHP
- * Simple integration for Payin and Payout APIs
+ * ELOPAY SDK - PHP
+ * Simple integration for Pay-in and Pay-out APIs
+ * Supports INR (India), PKR (Pakistan), BDT (Bangladesh)
  * 
- * Usage:
- *   require_once 'PayGateSDK.php';
- * 
+ * Quick Start:
  *   $sdk = new PayGateSDK([
  *       'merchantId' => 'YOUR_MERCHANT_ID',
  *       'apiKey' => 'YOUR_API_KEY',
  *       'payoutKey' => 'YOUR_PAYOUT_KEY',
- *       'baseUrl' => 'https://your-gateway-url/functions/v1'
+ *       'baseUrl' => 'https://your-gateway.com/functions/v1',
+ *       'signatureType' => 'standard'  // 'standard' for INR, 'ascii' for PKR/BDT
  *   ]);
  * 
- *   // Payin
+ *   // Collect Payment (Pay-in)
  *   $result = $sdk->createPayin([
  *       'amount' => '500.00',
  *       'orderNo' => 'ORDER_123',
- *       'callbackUrl' => 'https://your-site.com/callback'
+ *       'callbackUrl' => 'https://your-site.com/callback',
+ *       'tradeType' => 'easypaisa'  // For PKR/BDT only
  *   ]);
- * 
- *   // Payout
- *   $result = $sdk->createPayout([
- *       'amount' => 150,
- *       'transactionId' => 'TXN_123',
- *       'accountNumber' => '1234567890',
- *       'ifsc' => 'HDFC0001234',
- *       'name' => 'John Doe',
- *       'bankName' => 'HDFC Bank',
- *       'callbackUrl' => 'https://your-site.com/payout-callback'
- *   ]);
+ *   
+ *   // Redirect to payment page
+ *   header('Location: ' . $result['data']['payment_url']);
  */
 
 class PayGateSDK {
@@ -37,176 +30,194 @@ class PayGateSDK {
     private $apiKey;
     private $payoutKey;
     private $baseUrl;
+    private $signatureType;
 
     /**
-     * Initialize the SDK
-     * 
-     * @param array $config Configuration array with merchantId, apiKey, payoutKey, baseUrl
-     * @throws Exception If required config is missing
+     * Initialize SDK
+     * @param array $config Configuration array
      */
     public function __construct(array $config) {
-        if (empty($config['merchantId'])) {
-            throw new Exception('merchantId is required');
-        }
-        if (empty($config['apiKey'])) {
-            throw new Exception('apiKey is required');
-        }
-        if (empty($config['payoutKey'])) {
-            throw new Exception('payoutKey is required');
-        }
-        if (empty($config['baseUrl'])) {
-            throw new Exception('baseUrl is required');
-        }
+        if (empty($config['merchantId'])) throw new Exception('merchantId is required');
+        if (empty($config['apiKey'])) throw new Exception('apiKey is required');
+        if (empty($config['payoutKey'])) throw new Exception('payoutKey is required');
+        if (empty($config['baseUrl'])) throw new Exception('baseUrl is required');
 
         $this->merchantId = $config['merchantId'];
         $this->apiKey = $config['apiKey'];
         $this->payoutKey = $config['payoutKey'];
         $this->baseUrl = rtrim($config['baseUrl'], '/');
+        $this->signatureType = $config['signatureType'] ?? 'standard';
     }
 
     /**
-     * Create Payin Request
-     * 
-     * @param array $params [amount, orderNo, callbackUrl, extra (optional)]
-     * @return array API response
-     * @throws Exception On validation or request failure
+     * Generate ASCII-sorted signature (for PKR/BDT)
      */
-    public function createPayin(array $params) {
-        if (empty($params['amount'])) {
-            throw new Exception('amount is required');
-        }
-        if (empty($params['orderNo'])) {
-            throw new Exception('orderNo is required');
-        }
-        if (empty($params['callbackUrl'])) {
-            throw new Exception('callbackUrl is required');
-        }
+    private function generateAsciiSignature(array $params, string $secretKey): string {
+        // Filter empty values and 'sign' key
+        $filtered = array_filter($params, function($value, $key) {
+            return $value !== '' && $value !== null && $key !== 'sign';
+        }, ARRAY_FILTER_USE_BOTH);
+
+        // Sort by key (ASCII order)
+        ksort($filtered, SORT_STRING);
+
+        // Create query string
+        $queryString = http_build_query($filtered);
+
+        // Append key and hash
+        return strtoupper(md5($queryString . '&key=' . $secretKey));
+    }
+
+    /**
+     * Create Pay-in Request (Collect Payment)
+     * 
+     * @param array $params [amount, orderNo, callbackUrl, tradeType?, extra?]
+     * @return array Response data
+     */
+    public function createPayin(array $params): array {
+        if (empty($params['amount'])) throw new Exception('amount is required');
+        if (empty($params['orderNo'])) throw new Exception('orderNo is required');
+        if (empty($params['callbackUrl'])) throw new Exception('callbackUrl is required');
 
         $amount = $params['amount'];
         $orderNo = $params['orderNo'];
         $callbackUrl = $params['callbackUrl'];
-        $extra = isset($params['extra']) ? $params['extra'] : '';
+        $tradeType = $params['tradeType'] ?? '';
+        $extra = $params['extra'] ?? '';
 
-        // Generate signature: md5(merchant_id + amount + merchant_order_no + api_key + callback_url)
-        $signString = $this->merchantId . $amount . $orderNo . $this->apiKey . $callbackUrl;
-        $sign = md5($signString);
+        if ($this->signatureType === 'ascii') {
+            // PKR/BDT - ASCII sorted signature
+            $signParams = [
+                'merchant_id' => $this->merchantId,
+                'amount' => $amount,
+                'merchant_order_no' => $orderNo,
+                'callback_url' => $callbackUrl,
+            ];
+            if ($tradeType) $signParams['trade_type'] = $tradeType;
+            if ($extra) $signParams['extra'] = $extra;
+            
+            $sign = $this->generateAsciiSignature($signParams, $this->apiKey);
+            $payload = array_merge($signParams, ['sign' => $sign]);
+        } else {
+            // INR - Standard concatenation
+            $signString = $this->merchantId . $amount . $orderNo . $this->apiKey . $callbackUrl;
+            $sign = md5($signString);
+            $payload = [
+                'merchant_id' => $this->merchantId,
+                'amount' => $amount,
+                'merchant_order_no' => $orderNo,
+                'callback_url' => $callbackUrl,
+                'extra' => $extra,
+                'sign' => $sign
+            ];
+        }
 
-        $payload = [
-            'merchant_id' => $this->merchantId,
-            'amount' => $amount,
-            'merchant_order_no' => $orderNo,
-            'callback_url' => $callbackUrl,
-            'extra' => $extra,
-            'sign' => $sign
-        ];
-
-        return $this->request('/payin', $payload);
+        return $this->sendRequest('/payin', $payload);
     }
 
     /**
-     * Create Payout Request
+     * Create Pay-out Request (Send Payment)
      * 
-     * @param array $params [amount, transactionId, accountNumber, ifsc, name, bankName, callbackUrl]
-     * @return array API response
-     * @throws Exception On validation or request failure
+     * @param array $params [amount, transactionId, accountNumber, name, ifsc?, bankName?, withdrawalMethod?, callbackUrl]
+     * @return array Response data
      */
-    public function createPayout(array $params) {
-        $required = ['amount', 'transactionId', 'accountNumber', 'ifsc', 'name', 'bankName', 'callbackUrl'];
-        foreach ($required as $field) {
-            if (empty($params[$field])) {
-                throw new Exception("$field is required");
-            }
-        }
+    public function createPayout(array $params): array {
+        if (empty($params['amount'])) throw new Exception('amount is required');
+        if (empty($params['transactionId'])) throw new Exception('transactionId is required');
+        if (empty($params['accountNumber'])) throw new Exception('accountNumber is required');
+        if (empty($params['name'])) throw new Exception('name is required');
+        if (empty($params['callbackUrl'])) throw new Exception('callbackUrl is required');
 
         $amount = $params['amount'];
         $transactionId = $params['transactionId'];
         $accountNumber = $params['accountNumber'];
-        $ifsc = $params['ifsc'];
         $name = $params['name'];
-        $bankName = $params['bankName'];
+        $ifsc = $params['ifsc'] ?? '';
+        $bankName = $params['bankName'] ?? '';
+        $withdrawalMethod = $params['withdrawalMethod'] ?? '';
         $callbackUrl = $params['callbackUrl'];
 
-        // Generate signature: md5(account_number + amount + bank_name + callback_url + ifsc + merchant_id + name + transaction_id + payout_key)
-        $signString = $accountNumber . $amount . $bankName . $callbackUrl . $ifsc . $this->merchantId . $name . $transactionId . $this->payoutKey;
-        $sign = md5($signString);
+        if ($this->signatureType === 'ascii') {
+            // PKR/BDT - ASCII sorted signature
+            $signParams = [
+                'merchant_id' => $this->merchantId,
+                'amount' => $amount,
+                'transaction_id' => $transactionId,
+                'account_number' => $accountNumber,
+                'name' => $name,
+                'callback_url' => $callbackUrl,
+            ];
+            if ($withdrawalMethod) $signParams['withdrawal_method'] = $withdrawalMethod;
+            
+            $sign = $this->generateAsciiSignature($signParams, $this->payoutKey);
+            $payload = array_merge($signParams, ['sign' => $sign]);
+        } else {
+            // INR - Standard concatenation (alphabetical order)
+            if (empty($ifsc)) throw new Exception('ifsc is required for INR payout');
+            if (empty($bankName)) throw new Exception('bankName is required for INR payout');
 
-        $payload = [
-            'merchant_id' => $this->merchantId,
-            'amount' => $amount,
-            'transaction_id' => $transactionId,
-            'account_number' => $accountNumber,
-            'ifsc' => $ifsc,
-            'name' => $name,
-            'bank_name' => $bankName,
-            'callback_url' => $callbackUrl,
-            'sign' => $sign
-        ];
+            $signString = $accountNumber . $amount . $bankName . $callbackUrl . $ifsc . $this->merchantId . $name . $transactionId . $this->payoutKey;
+            $sign = md5($signString);
+            $payload = [
+                'merchant_id' => $this->merchantId,
+                'amount' => $amount,
+                'transaction_id' => $transactionId,
+                'account_number' => $accountNumber,
+                'ifsc' => $ifsc,
+                'name' => $name,
+                'bank_name' => $bankName,
+                'callback_url' => $callbackUrl,
+                'sign' => $sign
+            ];
+        }
 
-        return $this->request('/payout', $payload);
+        return $this->sendRequest('/payout', $payload);
     }
 
     /**
-     * Verify Payin callback signature
-     * 
-     * @param array $callbackData Callback data received
-     * @param string $receivedSign Signature received in callback
-     * @return bool Whether signature is valid
+     * Verify Pay-in callback signature
      */
     public function verifyPayinCallback(array $callbackData, string $receivedSign): bool {
-        $signString = $callbackData['merchant_id'] 
-            . $callbackData['amount'] 
-            . $callbackData['merchant_order_no'] 
-            . $this->apiKey 
-            . $callbackData['callback_url'];
-        
-        $expectedSign = md5($signString);
-        return $expectedSign === $receivedSign;
+        if ($this->signatureType === 'ascii') {
+            $expectedSign = $this->generateAsciiSignature($callbackData, $this->apiKey);
+            return $expectedSign === $receivedSign;
+        } else {
+            $signString = $callbackData['merchant_id'] . $callbackData['amount'] . 
+                          $callbackData['merchant_order_no'] . $this->apiKey . $callbackData['callback_url'];
+            return md5($signString) === $receivedSign;
+        }
     }
 
     /**
-     * Verify Payout callback signature
-     * 
-     * @param array $callbackData Callback data received
-     * @param string $receivedSign Signature received in callback
-     * @return bool Whether signature is valid
+     * Verify Pay-out callback signature
      */
     public function verifyPayoutCallback(array $callbackData, string $receivedSign): bool {
-        $signString = $callbackData['account_number']
-            . $callbackData['amount']
-            . $callbackData['bank_name']
-            . $callbackData['callback_url']
-            . $callbackData['ifsc']
-            . $callbackData['merchant_id']
-            . $callbackData['name']
-            . $callbackData['transaction_id']
-            . $this->payoutKey;
-        
-        $expectedSign = md5($signString);
-        return $expectedSign === $receivedSign;
+        if ($this->signatureType === 'ascii') {
+            $expectedSign = $this->generateAsciiSignature($callbackData, $this->payoutKey);
+            return $expectedSign === $receivedSign;
+        } else {
+            $signString = $callbackData['account_number'] . $callbackData['amount'] . 
+                          $callbackData['bank_name'] . $callbackData['callback_url'] . 
+                          $callbackData['ifsc'] . $callbackData['merchant_id'] . 
+                          $callbackData['name'] . $callbackData['transaction_id'] . $this->payoutKey;
+            return md5($signString) === $receivedSign;
+        }
     }
 
     /**
-     * Make HTTP request to API
-     * 
-     * @param string $endpoint API endpoint
-     * @param array $data Request payload
-     * @return array Decoded response
-     * @throws Exception On request failure
+     * Send HTTP request to API
      */
-    private function request(string $endpoint, array $data): array {
-        $url = $this->baseUrl . $endpoint;
-        
-        $ch = curl_init($url);
+    private function sendRequest(string $endpoint, array $payload): array {
+        $ch = curl_init($this->baseUrl . $endpoint);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => json_encode($data),
+            CURLOPT_POSTFIELDS => json_encode($payload),
             CURLOPT_HTTPHEADER => [
                 'Content-Type: application/json',
                 'Accept: application/json'
             ],
-            CURLOPT_TIMEOUT => 30,
-            CURLOPT_SSL_VERIFYPEER => true
+            CURLOPT_TIMEOUT => 30
         ]);
 
         $response = curl_exec($ch);
@@ -215,74 +226,105 @@ class PayGateSDK {
         curl_close($ch);
 
         if ($error) {
-            throw new Exception("Request failed: $error");
+            throw new Exception('Request failed: ' . $error);
         }
 
-        $decoded = json_decode($response, true);
-        
+        $data = json_decode($response, true);
         if ($httpCode >= 400) {
-            $message = isset($decoded['message']) ? $decoded['message'] : 'Request failed';
-            throw new Exception($message);
+            throw new Exception($data['message'] ?? 'Request failed with code ' . $httpCode);
         }
 
-        return $decoded;
+        return $data;
     }
 }
 
-// ============= Example Usage =============
-/*
-try {
-    $sdk = new PayGateSDK([
-        'merchantId' => 'YOUR_MERCHANT_ID',
-        'apiKey' => 'YOUR_API_KEY',
-        'payoutKey' => 'YOUR_PAYOUT_KEY',
-        'baseUrl' => 'https://your-gateway/functions/v1'
-    ]);
+// === USAGE EXAMPLES ===
 
-    // Create Payin
-    $payin = $sdk->createPayin([
-        'amount' => '1000.00',
+/*
+// 1. Initialize SDK (INR - India)
+$sdk = new PayGateSDK([
+    'merchantId' => 'YOUR_MERCHANT_ID',
+    'apiKey' => 'YOUR_API_KEY',
+    'payoutKey' => 'YOUR_PAYOUT_KEY',
+    'baseUrl' => 'https://your-gateway.com/functions/v1',
+    'signatureType' => 'standard'
+]);
+
+// 2. Initialize SDK (PKR/BDT - Pakistan/Bangladesh)
+$sdk = new PayGateSDK([
+    'merchantId' => 'YOUR_MERCHANT_ID',
+    'apiKey' => 'YOUR_API_KEY',
+    'payoutKey' => 'YOUR_PAYOUT_KEY',
+    'baseUrl' => 'https://your-gateway.com/functions/v1',
+    'signatureType' => 'ascii'  // Required for PKR/BDT
+]);
+
+// 3. Create Pay-in (INR)
+try {
+    $result = $sdk->createPayin([
+        'amount' => '500.00',
         'orderNo' => 'ORDER_' . time(),
         'callbackUrl' => 'https://yoursite.com/callback'
     ]);
     
-    echo "Payment URL: " . $payin['data']['payment_url'];
-    
-    // Create Payout
-    $payout = $sdk->createPayout([
-        'amount' => 5000,
-        'transactionId' => 'WD_' . time(),
-        'accountNumber' => '1234567890',
-        'ifsc' => 'HDFC0001234',
-        'name' => 'John Doe',
-        'bankName' => 'HDFC Bank',
-        'callbackUrl' => 'https://yoursite.com/payout-callback'
-    ]);
-    
-    echo "Order No: " . $payout['data']['order_no'];
-
-} catch (Exception $e) {
-    echo "Error: " . $e->getMessage();
-}
-*/
-
-// ============= Callback Handler Example =============
-/*
-// callback.php
-$sdk = new PayGateSDK([...]);
-
-$input = json_decode(file_get_contents('php://input'), true);
-$sign = $input['sign'];
-unset($input['sign']);
-
-if ($sdk->verifyPayinCallback($input, $sign)) {
-    // Valid callback
-    if ($input['status'] === 'success') {
-        // Payment successful - fulfill order
-        echo "OK";
+    if ($result['success']) {
+        header('Location: ' . $result['data']['payment_url']);
+        exit;
     }
+} catch (Exception $e) {
+    echo 'Error: ' . $e->getMessage();
+}
+
+// 4. Create Pay-in (PKR - Easypaisa)
+$result = $sdk->createPayin([
+    'amount' => '5000.00',
+    'orderNo' => 'ORDER_' . time(),
+    'callbackUrl' => 'https://yoursite.com/callback',
+    'tradeType' => 'easypaisa'  // or 'jazzcash'
+]);
+
+// 5. Create Pay-in (BDT - Nagad)
+$result = $sdk->createPayin([
+    'amount' => '2000.00',
+    'orderNo' => 'ORDER_' . time(),
+    'callbackUrl' => 'https://yoursite.com/callback',
+    'tradeType' => 'nagad'  // or 'bkash'
+]);
+
+// 6. Create Pay-out (INR - Bank Transfer)
+$result = $sdk->createPayout([
+    'amount' => 1500,
+    'transactionId' => 'TXN_' . time(),
+    'accountNumber' => '1234567890',
+    'ifsc' => 'HDFC0001234',
+    'name' => 'Rahul Sharma',
+    'bankName' => 'HDFC Bank',
+    'callbackUrl' => 'https://yoursite.com/payout-callback'
+]);
+
+// 7. Create Pay-out (PKR - Easypaisa)
+$result = $sdk->createPayout([
+    'amount' => 5000,
+    'transactionId' => 'TXN_' . time(),
+    'accountNumber' => '03001234567',
+    'name' => 'Muhammad Ali',
+    'withdrawalMethod' => 'easypaisa',
+    'callbackUrl' => 'https://yoursite.com/payout-callback'
+]);
+
+// 8. Handle Callback
+$callbackData = json_decode(file_get_contents('php://input'), true);
+$sign = $callbackData['sign'];
+unset($callbackData['sign']);
+
+if ($sdk->verifyPayinCallback($callbackData, $sign)) {
+    // Valid callback - process it
+    if ($callbackData['status'] === 'success') {
+        // Update order status in database
+    }
+    echo 'ok';
 } else {
     http_response_code(400);
-    echo "Invalid signature";
+    echo 'Invalid signature';
 }
 */

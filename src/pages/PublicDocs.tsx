@@ -49,23 +49,52 @@ const PublicDocs = () => {
     },
   ];
 
-  const samplePayinRequest = `{
-  "merchant_id": "your-merchant-id",
-  "api_key": "your-api-key",
-  "amount": 1000,
-  "merchant_order_no": "ORDER_123456",
-  "extra": "Optional extra data"
+  const samplePayinRequest = `// Pay-in Request (INR/PKR/BDT)
+POST /payin
+Content-Type: application/json
+
+{
+  "merchant_id": "100000001",
+  "amount": "1000.00",
+  "merchant_order_no": "ORDER_${Date.now()}",
+  "callback_url": "https://yoursite.com/callback",
+  "trade_type": "easypaisa",  // PKR: easypaisa/jazzcash, BDT: nagad/bkash
+  "sign": "MD5_SIGNATURE"
+}
+
+// Response
+{
+  "success": true,
+  "data": {
+    "order_no": "PI1737569847123",
+    "payment_url": "https://pay...",
+    "status": "pending"
+  }
 }`;
 
-  const samplePayoutRequest = `{
-  "merchant_id": "your-merchant-id",
-  "payout_key": "your-payout-key",
-  "amount": 500,
-  "account_holder_name": "John Doe",
+  const samplePayoutRequest = `// Pay-out Request (Bank/Wallet)
+POST /payout
+Content-Type: application/json
+
+{
+  "merchant_id": "100000001",
+  "amount": 5000,
+  "transaction_id": "TXN_${Date.now()}",
   "account_number": "1234567890",
-  "bank_name": "Example Bank",
-  "ifsc_code": "EXMP0001234",
-  "merchant_order_no": "PAYOUT_123456"
+  "name": "Account Holder",
+  "bank_name": "HDFC Bank",
+  "ifsc": "HDFC0001234",
+  "callback_url": "https://yoursite.com/callback",
+  "sign": "MD5_SIGNATURE"
+}
+
+// Response
+{
+  "success": true,
+  "data": {
+    "order_no": "PO1737569847456",
+    "status": "pending"
+  }
 }`;
 
   return (
