@@ -188,6 +188,21 @@ const AdminApiTesting = () => {
     if (payoutOptions.length > 0) {
       setPayoutTradeType(payoutOptions[0].value);
     }
+    
+    // Set default wallet/bank name based on currency
+    if (merchant?.currency === 'PKR') {
+      setPayoutBankName('Easypaisa');
+      setPayoutAccountNumber('03001234567');
+      setPayoutIfsc('N/A');
+    } else if (merchant?.currency === 'BDT') {
+      setPayoutBankName('Nagad');
+      setPayoutAccountNumber('01712345678');
+      setPayoutIfsc('N/A');
+    } else {
+      setPayoutBankName('HDFC Bank');
+      setPayoutAccountNumber('1234567890');
+      setPayoutIfsc('HDFC0001234');
+    }
   };
 
   const handleMerchantChange = (merchantId: string) => {
@@ -684,15 +699,41 @@ const AdminApiTesting = () => {
                   </div>
                   <div className="space-y-2">
                     <Label>{selectedMerchant?.currency === 'PKR' || selectedMerchant?.currency === 'BDT' ? (language === 'zh' ? '钱包类型' : 'Wallet Type') : (language === 'zh' ? '银行名称' : 'Bank Name')}</Label>
-                    <Input
-                      value={payoutBankName}
-                      onChange={(e) => setPayoutBankName(e.target.value)}
-                      placeholder={
-                        selectedMerchant?.currency === 'PKR' ? (payoutTradeType === 'easypaisa' ? 'Easypaisa' : 'JazzCash') :
-                        selectedMerchant?.currency === 'BDT' ? (payoutTradeType === 'nagad' ? 'Nagad' : 'bKash') :
-                        'HDFC Bank'
-                      }
-                    />
+                    {selectedMerchant?.currency === 'PKR' ? (
+                      <Select value={payoutBankName} onValueChange={setPayoutBankName}>
+                        <SelectTrigger className="bg-muted/50">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Easypaisa">🇵🇰 Easypaisa</SelectItem>
+                          <SelectItem value="JazzCash">🇵🇰 JazzCash</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : selectedMerchant?.currency === 'BDT' ? (
+                      <Select value={payoutBankName} onValueChange={setPayoutBankName}>
+                        <SelectTrigger className="bg-muted/50">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Nagad">🇧🇩 Nagad</SelectItem>
+                          <SelectItem value="bKash">🇧🇩 bKash</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Select value={payoutBankName} onValueChange={setPayoutBankName}>
+                        <SelectTrigger className="bg-muted/50">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="HDFC Bank">🏦 HDFC Bank</SelectItem>
+                          <SelectItem value="ICICI Bank">🏦 ICICI Bank</SelectItem>
+                          <SelectItem value="SBI Bank">🏦 SBI Bank</SelectItem>
+                          <SelectItem value="Axis Bank">🏦 Axis Bank</SelectItem>
+                          <SelectItem value="Kotak Bank">🏦 Kotak Bank</SelectItem>
+                          <SelectItem value="Other Bank">🏦 Other Bank</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
                 </div>
                 <div className="space-y-2">
