@@ -587,7 +587,10 @@ const MerchantWithdrawal = () => {
               {(() => {
                 const enteredAmount = parseFloat(form.amount) || 0;
                 const minAmount = merchantData.min_withdrawal_amount || 1000;
+                const availableBalance = merchantData.balance;
                 const isBelowMinimum = form.amount && enteredAmount > 0 && enteredAmount < minAmount;
+                const isAboveBalance = form.amount && enteredAmount > 0 && enteredAmount > availableBalance;
+                const hasError = isBelowMinimum || isAboveBalance;
                 
                 return (
                   <>
@@ -601,7 +604,7 @@ const MerchantWithdrawal = () => {
                         onChange={(e) => setForm({ ...form, amount: e.target.value })}
                         placeholder="0.00"
                         className={`pl-10 h-14 text-2xl font-bold bg-muted/30 transition-colors ${
-                          isBelowMinimum 
+                          hasError 
                             ? 'border-destructive border-2 focus-visible:ring-destructive/50' 
                             : 'border-border/50'
                         }`}
@@ -609,7 +612,7 @@ const MerchantWithdrawal = () => {
                     </div>
                     {isBelowMinimum && (
                       <div className="flex items-center gap-2 text-destructive text-sm animate-in fade-in slide-in-from-top-1">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
                           <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                         </svg>
                         <span>
@@ -619,12 +622,24 @@ const MerchantWithdrawal = () => {
                         </span>
                       </div>
                     )}
+                    {isAboveBalance && !isBelowMinimum && (
+                      <div className="flex items-center gap-2 text-destructive text-sm animate-in fade-in slide-in-from-top-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        <span>
+                          {language === 'zh' 
+                            ? `余额不足，可用余额为 ${currencySymbol}${availableBalance.toLocaleString()}` 
+                            : `Insufficient balance. Available: ${currencySymbol}${availableBalance.toLocaleString()}`}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-sm">
-                      <span className={isBelowMinimum ? 'text-destructive font-medium' : 'text-muted-foreground'}>
-                        {language === 'zh' ? '最低' : 'Min'}: {currencySymbol}{minAmount.toLocaleString()} • {language === 'zh' ? '可用' : 'Available'}: {currencySymbol}{merchantData.balance.toLocaleString()}
+                      <span className={hasError ? 'text-destructive font-medium' : 'text-muted-foreground'}>
+                        {language === 'zh' ? '最低' : 'Min'}: {currencySymbol}{minAmount.toLocaleString()} • {language === 'zh' ? '可用' : 'Available'}: {currencySymbol}{availableBalance.toLocaleString()}
                       </span>
                       <button
-                        onClick={() => setForm({ ...form, amount: merchantData.balance.toString() })}
+                        onClick={() => setForm({ ...form, amount: availableBalance.toString() })}
                         className="text-primary font-medium hover:underline"
                       >
                         {language === 'zh' ? '全部提现' : 'Withdraw All'}
