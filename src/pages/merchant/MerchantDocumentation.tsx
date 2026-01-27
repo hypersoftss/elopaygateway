@@ -230,7 +230,7 @@ const MerchantDocumentation = () => {
 
           <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
             <p className="font-semibold text-yellow-700 mb-1">⚠️ Important</p>
-            <p className="text-sm text-yellow-600">PKR transactions require <code className="bg-yellow-200/50 px-1 rounded">trade_type</code> parameter. Use "easypaisa" or "jazzcash".</p>
+            <p className="text-sm text-yellow-600">PKR transactions require <code className="bg-yellow-200/50 px-1 rounded">trade_type</code> parameter. Use <code className="bg-yellow-200/50 px-1 rounded">PKRPH</code> for JazzCash or <code className="bg-yellow-200/50 px-1 rounded">PKRPH-EASY</code> for Easypaisa.</p>
           </div>
 
           <div>
@@ -241,7 +241,7 @@ const MerchantDocumentation = () => {
   amount: '5000.00',
   merchant_order_no: 'ORDER_123456',
   callback_url: 'https://your-site.com/callback',
-  trade_type: 'easypaisa',
+  trade_type: 'PKRPH',
   sign: 'YOUR_MD5_SIGNATURE'
 }, null, 2)}
             </pre>
