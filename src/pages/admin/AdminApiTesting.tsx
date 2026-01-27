@@ -150,8 +150,8 @@ const AdminApiTesting = () => {
       }
       if (currency === 'PKR' || gateway_code === 'ELOPAY_PKR' || gateway_code === 'hypersofts_pkr') {
         return [
-          { value: 'easypaisa', label: '🇵🇰 Easypaisa' },
-          { value: 'jazzcash', label: '🇵🇰 JazzCash' },
+          { value: 'PKRPH', label: '🇵🇰 JazzCash (PKRPH)' },
+          { value: 'PKRPH-EASY', label: '🇵🇰 Easypaisa (PKRPH-EASY)' },
         ];
       }
     }

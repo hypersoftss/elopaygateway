@@ -48,16 +48,16 @@ const sign = generateSignature({
   trade_type: 'easypaisa'
 }, 'YOUR_API_KEY');`;
 
-  const payinRequest = `// Pay-In Request (Easypaisa / JazzCash)
+  const payinRequest = `// Pay-In Request (JazzCash / Easypaisa)
 POST {GATEWAY_BASE_URL}/api/order/create
 Content-Type: application/x-www-form-urlencoded
 
 app_id=YOUR_APP_ID
-trade_type=easypaisa  // or "jazzcash"
+trade_type=PKRPH           // JazzCash: PKRPH, Easypaisa: PKRPH-EASY
 order_sn=ORDER123456
-money=100000          // Amount × 100 (1000 PKR = 100000)
+money=100000               // Amount × 100 (1000 PKR = 100000)
 notify_url=https://yoursite.com/callback
-user_id=03xxxxxxxxx  // 11-digit mobile number
+user_id=03xxxxxxxxx        // 11-digit mobile number (optional)
 remark=optional_note
 sign=GENERATED_SIGNATURE`;
 
@@ -200,19 +200,19 @@ money: X    // Will stay pending (no callback)`;
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="border rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Badge className="bg-green-600">Easypaisa</Badge>
-                </div>
-                <p className="text-sm text-muted-foreground">Mobile wallet payments via Easypaisa</p>
-                <p className="text-xs mt-2"><strong>trade_type:</strong> <code>easypaisa</code></p>
-                <p className="text-xs"><strong>addon1 (payout):</strong> <code>easypaisa</code></p>
-              </div>
-              <div className="border rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-2">
                   <Badge className="bg-red-600">JazzCash</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">Mobile wallet payments via JazzCash</p>
-                <p className="text-xs mt-2"><strong>trade_type:</strong> <code>jazzcash</code></p>
+                <p className="text-xs mt-2"><strong>trade_type (payin):</strong> <code>PKRPH</code></p>
                 <p className="text-xs"><strong>addon1 (payout):</strong> <code>jazzcash</code></p>
+              </div>
+              <div className="border rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Badge className="bg-green-600">Easypaisa</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">Mobile wallet payments via Easypaisa</p>
+                <p className="text-xs mt-2"><strong>trade_type (payin):</strong> <code>PKRPH-EASY</code></p>
+                <p className="text-xs"><strong>addon1 (payout):</strong> <code>easypaisa</code></p>
               </div>
             </div>
           </CardContent>

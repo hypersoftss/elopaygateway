@@ -149,23 +149,24 @@ function generateHyperSoftsSign(params: Record<string, string>, apiKey: string):
   return md5(finalStr).toUpperCase()
 }
 
-// HYPERSOFTS balance check
+// HYPERSOFTS balance check - uses /api/deposit/balance endpoint with 'time' parameter
 async function checkHyperSoftsBalance(gateway: any): Promise<GatewayBalance> {
-  const baseUrl = gateway.base_url?.replace(/\/$/, '') || 'https://openapi.lgpayments.co'
+  const baseUrl = gateway.base_url?.replace(/\/$/, '') || 'https://www.lg-pay.com'
   const timestamp = Math.floor(Date.now() / 1000).toString()
   
   const params: Record<string, string> = {
     app_id: gateway.app_id,
-    timestamp,
+    time: timestamp, // Use 'time' not 'timestamp' per API docs
   }
   
   const sign = generateHyperSoftsSign(params, gateway.api_key)
   params.sign = sign
 
   try {
-    console.log(`Checking HYPERSOFTS balance for ${gateway.gateway_code} at ${baseUrl}/api/balance`)
+    console.log(`Checking HYPERSOFTS balance for ${gateway.gateway_code} at ${baseUrl}/api/deposit/balance`)
     
-    const response = await fetch(`${baseUrl}/api/balance`, {
+    // Use the correct endpoint /api/deposit/balance (not /api/balance)
+    const response = await fetch(`${baseUrl}/api/deposit/balance`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(params),

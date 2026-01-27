@@ -64,7 +64,8 @@ const getTradeTypeOptions = (gatewayType: string, currency: string) => {
   }
   if (currency === 'PKR') {
     return [
-      { value: 'PKRPH', label: 'PKRPH (Easypaisa/JazzCash)' },
+      { value: 'PKRPH', label: 'PKRPH (JazzCash)' },
+      { value: 'PKRPH-EASY', label: 'PKRPH-EASY (Easypaisa)' },
     ];
   }
   if (currency === 'BDT') {
@@ -525,7 +526,7 @@ const AdminGatewaysPage = () => {
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground space-y-2">
               <p><strong>INR:</strong> Trade Type = INRUPI (UPI) or usdt (USDT), Payout Code = INR</p>
-              <p><strong>PKR:</strong> Trade Type = PKRPH, Payout Code = PKR</p>
+              <p><strong>PKR:</strong> Trade Type = PKRPH (JazzCash) or PKRPH-EASY (Easypaisa), Payout Code = PKR</p>
               <p><strong>BDT:</strong> Trade Type = nagad/bkash, Payout Code = BDT</p>
               <p className="text-xs mt-2 text-primary">Note: ELOPAY uses same key for payin and payout</p>
             </CardContent>

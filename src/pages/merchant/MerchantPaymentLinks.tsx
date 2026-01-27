@@ -85,8 +85,8 @@ const MerchantPaymentLinks = () => {
           ];
         case 'PKR':
           return [
-            { value: 'easypaisa', label: '🇵🇰 Easypaisa' },
-            { value: 'jazzcash', label: '🇵🇰 JazzCash' },
+            { value: 'PKRPH', label: '🇵🇰 JazzCash (PKRPH)' },
+            { value: 'PKRPH-EASY', label: '🇵🇰 Easypaisa (PKRPH-EASY)' },
           ];
         default:
           return [];
