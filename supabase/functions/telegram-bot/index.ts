@@ -39,9 +39,33 @@ async function getBotToken(supabaseAdmin: any): Promise<string | null> {
   return settings?.telegram_bot_token || Deno.env.get('TG_BOT_TOKEN') || null
 }
 
-// Helper to send Telegram message with optional keyboard
-async function sendMessage(botToken: string, chatId: string, text: string, parseMode: string = 'HTML', keyboard?: any) {
+// In-memory store for last bot message per chat (for auto-delete)
+const lastBotMessages: Map<string, number> = new Map()
+
+// Delete a message
+async function deleteMessage(botToken: string, chatId: string, messageId: number) {
+  try {
+    await fetch(`https://api.telegram.org/bot${botToken}/deleteMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, message_id: messageId }),
+    })
+  } catch (e) {
+    // Ignore delete errors (message may already be deleted or too old)
+  }
+}
+
+// Helper to send Telegram message with optional keyboard (auto-deletes previous bot message)
+async function sendMessage(botToken: string, chatId: string, text: string, parseMode: string = 'HTML', keyboard?: any, autoDelete: boolean = true) {
   if (!botToken) return
+
+  // Delete previous bot message if exists
+  if (autoDelete) {
+    const lastMsgId = lastBotMessages.get(chatId)
+    if (lastMsgId) {
+      await deleteMessage(botToken, chatId, lastMsgId)
+    }
+  }
 
   const body: any = {
     chat_id: chatId,
@@ -53,18 +77,36 @@ async function sendMessage(botToken: string, chatId: string, text: string, parse
     body.reply_markup = keyboard
   }
 
-  await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+  const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
+
+  // Track the new message ID for future auto-delete
+  try {
+    const result = await response.json()
+    if (result.ok && result.result?.message_id) {
+      lastBotMessages.set(chatId, result.result.message_id)
+    }
+  } catch (e) {
+    // Ignore parsing errors
+  }
 }
 
-// Send message with inline keyboard
-async function sendMessageWithButtons(botToken: string, chatId: string, text: string, buttons: { text: string; callback_data: string }[][]) {
+// Send message with inline keyboard (auto-deletes previous bot message)
+async function sendMessageWithButtons(botToken: string, chatId: string, text: string, buttons: { text: string; callback_data: string }[][], autoDelete: boolean = true) {
   if (!botToken) return
 
-  await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+  // Delete previous bot message if exists
+  if (autoDelete) {
+    const lastMsgId = lastBotMessages.get(chatId)
+    if (lastMsgId) {
+      await deleteMessage(botToken, chatId, lastMsgId)
+    }
+  }
+
+  const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -76,6 +118,16 @@ async function sendMessageWithButtons(botToken: string, chatId: string, text: st
       },
     }),
   })
+
+  // Track the new message ID for future auto-delete
+  try {
+    const result = await response.json()
+    if (result.ok && result.result?.message_id) {
+      lastBotMessages.set(chatId, result.result.message_id)
+    }
+  } catch (e) {
+    // Ignore parsing errors
+  }
 }
 
 // Answer callback query
@@ -1321,6 +1373,16 @@ Deno.serve(async (req) => {
     const text = message.text.trim()
     const chatType = message.chat.type
     const isAdmin = adminChatId && chatId === adminChatId
+    const userMessageId = message.message_id
+
+    // Delete user's command message to keep chat clean (only for bot commands in groups)
+    if (text.startsWith('/') && chatType !== 'private') {
+      try {
+        await deleteMessage(botToken, chatId, userMessageId)
+      } catch (e) {
+        // Ignore - bot may not have delete permission
+      }
+    }
 
     // Parse command and arguments
     const parts = text.split(/\s+/)
