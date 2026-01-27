@@ -43,6 +43,7 @@ interface PaymentGateway {
   is_active: boolean;
   created_at: string;
   min_withdrawal_amount: number | null;
+  max_withdrawal_amount: number | null;
 }
 
 // Trade type options based on gateway type and currency
@@ -91,6 +92,7 @@ const AdminGatewaysPage = () => {
     currency: 'INR',
     trade_type: '',
     min_withdrawal_amount: 1000,
+    max_withdrawal_amount: 50000,
   });
 
   const fetchGateways = async () => {
@@ -129,6 +131,7 @@ const AdminGatewaysPage = () => {
             currency: newGateway.currency,
             trade_type: newGateway.trade_type || null,
             min_withdrawal_amount: newGateway.min_withdrawal_amount || 1000,
+            max_withdrawal_amount: newGateway.max_withdrawal_amount || 50000,
           })
           .eq('id', editingGateway.id);
         if (error) throw error;
@@ -150,6 +153,7 @@ const AdminGatewaysPage = () => {
             currency: newGateway.currency,
             trade_type: newGateway.trade_type || null,
             min_withdrawal_amount: newGateway.min_withdrawal_amount || 1000,
+            max_withdrawal_amount: newGateway.max_withdrawal_amount || 50000,
           });
         if (error) throw error;
         toast({
@@ -182,6 +186,7 @@ const AdminGatewaysPage = () => {
       currency: 'INR',
       trade_type: '',
       min_withdrawal_amount: 1000,
+      max_withdrawal_amount: 50000,
     });
   };
 
@@ -245,6 +250,7 @@ const AdminGatewaysPage = () => {
       currency: gateway.currency,
       trade_type: gateway.trade_type || '',
       min_withdrawal_amount: gateway.min_withdrawal_amount || 1000,
+      max_withdrawal_amount: gateway.max_withdrawal_amount || 50000,
     });
     setShowGatewayDialog(true);
   };
@@ -567,19 +573,30 @@ const AdminGatewaysPage = () => {
               </div>
             )}
 
-            {/* Minimum Withdrawal Amount */}
-            <div className="space-y-2">
-              <Label>{language === 'zh' ? '最低提现金额' : 'Min Withdrawal Amount'}</Label>
-              <Input
-                type="number"
-                value={newGateway.min_withdrawal_amount}
-                onChange={(e) => setNewGateway(g => ({ ...g, min_withdrawal_amount: parseFloat(e.target.value) || 1000 }))}
-                placeholder="1000"
-              />
-              <p className="text-xs text-muted-foreground">
-                {language === 'zh' ? '商户最低提现金额限制' : 'Minimum withdrawal amount for merchants'}
-              </p>
+            {/* Withdrawal Amount Limits */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>{language === 'zh' ? '最低提现金额' : 'Min Withdrawal'}</Label>
+                <Input
+                  type="number"
+                  value={newGateway.min_withdrawal_amount}
+                  onChange={(e) => setNewGateway(g => ({ ...g, min_withdrawal_amount: parseFloat(e.target.value) || 1000 }))}
+                  placeholder="1000"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>{language === 'zh' ? '最高提现金额' : 'Max Withdrawal'}</Label>
+                <Input
+                  type="number"
+                  value={newGateway.max_withdrawal_amount}
+                  onChange={(e) => setNewGateway(g => ({ ...g, max_withdrawal_amount: parseFloat(e.target.value) || 50000 }))}
+                  placeholder="50000"
+                />
+              </div>
             </div>
+            <p className="text-xs text-muted-foreground -mt-2">
+              {language === 'zh' ? '商户单笔提现金额限制' : 'Per-transaction withdrawal limits for merchants'}
+            </p>
           </div>
 
           <DialogFooter className="gap-2">
