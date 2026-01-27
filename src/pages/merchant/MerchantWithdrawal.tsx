@@ -584,29 +584,55 @@ const MerchantWithdrawal = () => {
               <Label className="text-muted-foreground text-xs font-medium">
                 {language === 'zh' ? '提现金额' : 'Withdrawal Amount'}
               </Label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-bold text-muted-foreground">
-                  {currencySymbol}
-                </span>
-                <Input
-                  type="number"
-                  value={form.amount}
-                  onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                  placeholder="0.00"
-                  className="pl-10 h-14 text-2xl font-bold bg-muted/30 border-border/50"
-                />
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">
-                  {language === 'zh' ? '最低' : 'Min'}: {currencySymbol}{merchantData.min_withdrawal_amount.toLocaleString()} • {language === 'zh' ? '可用' : 'Available'}: {currencySymbol}{merchantData.balance.toLocaleString()}
-                </span>
-                <button
-                  onClick={() => setForm({ ...form, amount: merchantData.balance.toString() })}
-                  className="text-primary font-medium hover:underline"
-                >
-                  {language === 'zh' ? '全部提现' : 'Withdraw All'}
-                </button>
-              </div>
+              {(() => {
+                const enteredAmount = parseFloat(form.amount) || 0;
+                const minAmount = merchantData.min_withdrawal_amount || 1000;
+                const isBelowMinimum = form.amount && enteredAmount > 0 && enteredAmount < minAmount;
+                
+                return (
+                  <>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-bold text-muted-foreground">
+                        {currencySymbol}
+                      </span>
+                      <Input
+                        type="number"
+                        value={form.amount}
+                        onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                        placeholder="0.00"
+                        className={`pl-10 h-14 text-2xl font-bold bg-muted/30 transition-colors ${
+                          isBelowMinimum 
+                            ? 'border-destructive border-2 focus-visible:ring-destructive/50' 
+                            : 'border-border/50'
+                        }`}
+                      />
+                    </div>
+                    {isBelowMinimum && (
+                      <div className="flex items-center gap-2 text-destructive text-sm animate-in fade-in slide-in-from-top-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        <span>
+                          {language === 'zh' 
+                            ? `金额必须至少为 ${currencySymbol}${minAmount.toLocaleString()}` 
+                            : `Amount must be at least ${currencySymbol}${minAmount.toLocaleString()}`}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-sm">
+                      <span className={isBelowMinimum ? 'text-destructive font-medium' : 'text-muted-foreground'}>
+                        {language === 'zh' ? '最低' : 'Min'}: {currencySymbol}{minAmount.toLocaleString()} • {language === 'zh' ? '可用' : 'Available'}: {currencySymbol}{merchantData.balance.toLocaleString()}
+                      </span>
+                      <button
+                        onClick={() => setForm({ ...form, amount: merchantData.balance.toString() })}
+                        className="text-primary font-medium hover:underline"
+                      >
+                        {language === 'zh' ? '全部提现' : 'Withdraw All'}
+                      </button>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
 
             {/* Fee Breakdown */}
