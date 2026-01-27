@@ -337,23 +337,101 @@ function getThresholdForCurrency(currency: string, thresholds: BalanceThresholds
   }
 }
 
+// Throttle state: tracks when last alert was sent and count per day per gateway
+// Key format: gateway_id -> { lastAlertTime: timestamp, alertCountToday: number, lastAlertDate: 'YYYY-MM-DD' }
+const alertThrottleState: Map<string, { lastAlertTime: number, alertCountToday: number, lastAlertDate: string }> = new Map()
+
+const MAX_ALERTS_PER_DAY = 3
+const MIN_HOURS_BETWEEN_ALERTS = 5
+
+async function shouldSendLowBalanceAlert(
+  supabase: any,
+  gatewayId: string
+): Promise<boolean> {
+  const now = new Date()
+  const todayDate = now.toISOString().split('T')[0] // YYYY-MM-DD
+  const currentTime = now.getTime()
+  const fiveHoursMs = MIN_HOURS_BETWEEN_ALERTS * 60 * 60 * 1000
+
+  // Check if we have recent alerts in the database from today
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
+  
+  const { data: recentAlerts, error } = await supabase
+    .from('gateway_balance_history')
+    .select('checked_at')
+    .eq('gateway_id', gatewayId)
+    .eq('status', 'low_balance_alert_sent')
+    .gte('checked_at', startOfDay)
+    .order('checked_at', { ascending: false })
+    .limit(MAX_ALERTS_PER_DAY)
+
+  if (error) {
+    console.error('Error checking alert history:', error)
+    // If we can't check, allow the alert to be sent
+    return true
+  }
+
+  const alertsToday = recentAlerts?.length || 0
+  
+  // Check if we've already sent max alerts today
+  if (alertsToday >= MAX_ALERTS_PER_DAY) {
+    console.log(`Throttling: Already sent ${alertsToday}/${MAX_ALERTS_PER_DAY} alerts today for gateway ${gatewayId}`)
+    return false
+  }
+
+  // Check if at least 5 hours have passed since last alert
+  if (recentAlerts && recentAlerts.length > 0) {
+    const lastAlertTime = new Date(recentAlerts[0].checked_at).getTime()
+    const timeSinceLastAlert = currentTime - lastAlertTime
+    
+    if (timeSinceLastAlert < fiveHoursMs) {
+      const hoursRemaining = ((fiveHoursMs - timeSinceLastAlert) / (60 * 60 * 1000)).toFixed(1)
+      console.log(`Throttling: Only ${(timeSinceLastAlert / (60 * 60 * 1000)).toFixed(1)}h since last alert for gateway ${gatewayId}. Need ${hoursRemaining}h more.`)
+      return false
+    }
+  }
+
+  return true
+}
+
+async function recordAlertSent(supabase: any, gatewayId: string) {
+  // Record that we sent an alert by adding a special entry
+  await supabase
+    .from('gateway_balance_history')
+    .insert({
+      gateway_id: gatewayId,
+      balance: null,
+      status: 'low_balance_alert_sent',
+      message: 'Low balance Telegram alert sent',
+      checked_at: new Date().toISOString(),
+    })
+}
+
 async function sendLowBalanceAlert(
+  supabase: any,
   gateway: GatewayBalance, 
   threshold: number,
   adminChatId: string,
   botToken: string
-) {
+): Promise<boolean> {
+  // Check throttling first
+  const shouldSend = await shouldSendLowBalanceAlert(supabase, gateway.gateway_id)
+  if (!shouldSend) {
+    console.log(`Low balance alert throttled for gateway: ${gateway.gateway_name}`)
+    return false
+  }
+
   const currencySymbol = gateway.currency === 'INR' ? '₹' : 
                          gateway.currency === 'PKR' ? 'Rs.' : 
                          gateway.currency === 'BDT' ? '৳' : '$'
   
   const message = `⚠️ <b>Low Gateway Balance Alert</b>\n\n` +
     `🏦 Gateway: ${gateway.gateway_name}\n` +
-    `💰 Balance: ${currencySymbol}${gateway.balance?.toLocaleString() || '0'}\n` +
+    `💰 Balance: ${currencySymbol}${gateway.balance?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0'}\n` +
     `📊 Threshold: ${currencySymbol}${threshold.toLocaleString()}\n` +
     `💱 Currency: ${gateway.currency}\n` +
     `⏰ Time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}\n\n` +
-    `<i>Please top up the gateway balance to avoid payout failures.</i>`
+    `<i>Max ${MAX_ALERTS_PER_DAY} alerts/day • ${MIN_HOURS_BETWEEN_ALERTS}h gap between alerts</i>`
 
   try {
     await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
@@ -365,9 +443,15 @@ async function sendLowBalanceAlert(
         parse_mode: 'HTML',
       }),
     })
+    
+    // Record that we sent this alert
+    await recordAlertSent(supabase, gateway.gateway_id)
+    
     console.log('Low balance alert sent for gateway:', gateway.gateway_name)
+    return true
   } catch (error) {
     console.error('Failed to send low balance alert:', error)
+    return false
   }
 }
 
@@ -512,11 +596,11 @@ Deno.serve(async (req) => {
       // Save balance history
       await saveBalanceHistory(supabaseAdmin, balance)
 
-      // Send alert if balance is below currency-specific threshold
+      // Send alert if balance is below currency-specific threshold (with throttling)
       if (balance.balance !== null && botToken && adminChatId) {
         const threshold = getThresholdForCurrency(balance.currency, thresholds)
         if (balance.balance < threshold) {
-          await sendLowBalanceAlert(balance, threshold, adminChatId, botToken)
+          await sendLowBalanceAlert(supabaseAdmin, balance, threshold, adminChatId, botToken)
         }
       }
     }
