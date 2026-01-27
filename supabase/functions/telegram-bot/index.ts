@@ -39,9 +39,6 @@ async function getBotToken(supabaseAdmin: any): Promise<string | null> {
   return settings?.telegram_bot_token || Deno.env.get('TG_BOT_TOKEN') || null
 }
 
-// In-memory store for last bot message per chat (for auto-delete)
-const lastBotMessages: Map<string, number> = new Map()
-
 // Commands that should NOT trigger auto-delete (keep messages visible)
 const NO_AUTO_DELETE_COMMANDS = [
   '/help',
@@ -53,10 +50,62 @@ const NO_AUTO_DELETE_COMMANDS = [
   '/broadcast',
 ]
 
+// Global supabase client for the current request
+let _supabaseAdmin: any = null
+
+// Set the global supabase client
+function setSupabaseAdmin(client: any) {
+  _supabaseAdmin = client
+}
+
 // Check if command should skip auto-delete
 function shouldSkipAutoDelete(command: string): boolean {
   const cmd = command.toLowerCase().split('@')[0]
   return NO_AUTO_DELETE_COMMANDS.includes(cmd)
+}
+
+// Get last bot message ID from database
+async function getLastBotMessageId(chatId: string): Promise<number | null> {
+  if (!_supabaseAdmin) return null
+  try {
+    const { data } = await _supabaseAdmin
+      .from('telegram_bot_messages')
+      .select('last_message_id')
+      .eq('chat_id', chatId)
+      .maybeSingle()
+    return data?.last_message_id || null
+  } catch (e) {
+    return null
+  }
+}
+
+// Save last bot message ID to database
+async function saveLastBotMessageId(chatId: string, messageId: number) {
+  if (!_supabaseAdmin) return
+  try {
+    await _supabaseAdmin
+      .from('telegram_bot_messages')
+      .upsert({ 
+        chat_id: chatId, 
+        last_message_id: messageId,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'chat_id' })
+  } catch (e) {
+    // Ignore errors
+  }
+}
+
+// Clear last bot message ID from database
+async function clearLastBotMessageId(chatId: string) {
+  if (!_supabaseAdmin) return
+  try {
+    await _supabaseAdmin
+      .from('telegram_bot_messages')
+      .delete()
+      .eq('chat_id', chatId)
+  } catch (e) {
+    // Ignore errors
+  }
 }
 
 // Delete a message
@@ -76,9 +125,9 @@ async function deleteMessage(botToken: string, chatId: string, messageId: number
 async function sendMessage(botToken: string, chatId: string, text: string, parseMode: string = 'HTML', keyboard?: any, autoDelete: boolean = true) {
   if (!botToken) return
 
-  // Delete previous bot message if exists
-  if (autoDelete) {
-    const lastMsgId = lastBotMessages.get(chatId)
+  // Delete previous bot message if exists (using database)
+  if (autoDelete && _supabaseAdmin) {
+    const lastMsgId = await getLastBotMessageId(chatId)
     if (lastMsgId) {
       await deleteMessage(botToken, chatId, lastMsgId)
     }
@@ -100,11 +149,16 @@ async function sendMessage(botToken: string, chatId: string, text: string, parse
     body: JSON.stringify(body),
   })
 
-  // Track the new message ID for future auto-delete
+  // Track the new message ID in database for future auto-delete
   try {
     const result = await response.json()
-    if (result.ok && result.result?.message_id) {
-      lastBotMessages.set(chatId, result.result.message_id)
+    if (result.ok && result.result?.message_id && _supabaseAdmin) {
+      if (autoDelete) {
+        await saveLastBotMessageId(chatId, result.result.message_id)
+      } else {
+        // If not auto-deleting, clear the tracking so next message doesn't delete this one
+        await clearLastBotMessageId(chatId)
+      }
     }
   } catch (e) {
     // Ignore parsing errors
@@ -115,9 +169,9 @@ async function sendMessage(botToken: string, chatId: string, text: string, parse
 async function sendMessageWithButtons(botToken: string, chatId: string, text: string, buttons: { text: string; callback_data: string }[][], autoDelete: boolean = true) {
   if (!botToken) return
 
-  // Delete previous bot message if exists
-  if (autoDelete) {
-    const lastMsgId = lastBotMessages.get(chatId)
+  // Delete previous bot message if exists (using database)
+  if (autoDelete && _supabaseAdmin) {
+    const lastMsgId = await getLastBotMessageId(chatId)
     if (lastMsgId) {
       await deleteMessage(botToken, chatId, lastMsgId)
     }
@@ -136,11 +190,15 @@ async function sendMessageWithButtons(botToken: string, chatId: string, text: st
     }),
   })
 
-  // Track the new message ID for future auto-delete
+  // Track the new message ID in database for future auto-delete
   try {
     const result = await response.json()
-    if (result.ok && result.result?.message_id) {
-      lastBotMessages.set(chatId, result.result.message_id)
+    if (result.ok && result.result?.message_id && _supabaseAdmin) {
+      if (autoDelete) {
+        await saveLastBotMessageId(chatId, result.result.message_id)
+      } else {
+        await clearLastBotMessageId(chatId)
+      }
     }
   } catch (e) {
     // Ignore parsing errors
@@ -534,6 +592,9 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
+    
+    // Set the global supabase client for auto-delete functionality
+    setSupabaseAdmin(supabaseAdmin)
 
     // Get bot token
     const botToken = await getBotToken(supabaseAdmin)

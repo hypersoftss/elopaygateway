@@ -427,6 +427,24 @@ export type Database = {
           },
         ]
       }
+      telegram_bot_messages: {
+        Row: {
+          chat_id: string
+          last_message_id: number
+          updated_at: string | null
+        }
+        Insert: {
+          chat_id: string
+          last_message_id: number
+          updated_at?: string | null
+        }
+        Update: {
+          chat_id?: string
+          last_message_id?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           account_holder_name: string | null
