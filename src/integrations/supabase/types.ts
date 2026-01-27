@@ -345,6 +345,7 @@ export type Database = {
           base_url: string
           created_at: string | null
           currency: string
+          daily_withdrawal_limit: number | null
           gateway_code: string
           gateway_name: string
           gateway_type: string
@@ -362,6 +363,7 @@ export type Database = {
           base_url: string
           created_at?: string | null
           currency: string
+          daily_withdrawal_limit?: number | null
           gateway_code: string
           gateway_name: string
           gateway_type: string
@@ -379,6 +381,7 @@ export type Database = {
           base_url?: string
           created_at?: string | null
           currency?: string
+          daily_withdrawal_limit?: number | null
           gateway_code?: string
           gateway_name?: string
           gateway_type?: string
@@ -615,6 +618,7 @@ export type Database = {
         Args: never
         Returns: {
           currency: string
+          daily_withdrawal_limit: number
           gateway_code: string
           gateway_id: string
           gateway_name: string
