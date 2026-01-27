@@ -42,6 +42,7 @@ interface AdminSettings {
   balance_threshold_inr: number;
   balance_threshold_pkr: number;
   balance_threshold_bdt: number;
+  no_auto_delete_commands: string | null;
 }
 
 
@@ -433,6 +434,7 @@ echo ""
           balance_threshold_inr: settingsData.balance_threshold_inr || 10000,
           balance_threshold_pkr: settingsData.balance_threshold_pkr || 50000,
           balance_threshold_bdt: settingsData.balance_threshold_bdt || 50000,
+          no_auto_delete_commands: settingsData.no_auto_delete_commands || '/help,/tg_id,/id,/chatid,/setmenu,/create_merchant,/broadcast',
         } as AdminSettings);
         setLogoPreview(settingsData.logo_url);
         setFaviconPreview(settingsData.favicon_url);
@@ -645,6 +647,7 @@ echo ""
           balance_threshold_inr: settings.balance_threshold_inr,
           balance_threshold_pkr: settings.balance_threshold_pkr,
           balance_threshold_bdt: settings.balance_threshold_bdt,
+          no_auto_delete_commands: settings.no_auto_delete_commands?.trim() || null,
         } as any)
         .eq('id', settings.id);
 
@@ -1165,6 +1168,40 @@ echo ""
                         />
                       </CardContent>
                     </Card>
+                  </div>
+                </div>
+
+                {/* Telegram Bot Auto-Delete Settings */}
+                <div className="pt-6 border-t">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    🤖 {language === 'zh' ? 'Telegram Bot 消息设置' : 'Telegram Bot Message Settings'}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    {language === 'zh' 
+                      ? '这些命令的回复不会被下一条命令自动删除（保留在聊天中）' 
+                      : 'Responses to these commands will NOT be auto-deleted by the next command (kept visible in chat)'}
+                  </p>
+                  <div className="space-y-3">
+                    <Label className="flex items-center gap-2">
+                      📝 {language === 'zh' ? '不自动删除的命令' : 'No Auto-Delete Commands'}
+                    </Label>
+                    <Input
+                      value={settings?.no_auto_delete_commands || '/help,/tg_id,/id,/chatid,/setmenu,/create_merchant,/broadcast'}
+                      onChange={(e) => setSettings(s => s ? { ...s, no_auto_delete_commands: e.target.value } : null)}
+                      placeholder="/help,/tg_id,/id,/chatid,/setmenu,/create_merchant,/broadcast"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {language === 'zh' 
+                        ? '用逗号分隔命令，例如: /help,/tg_id,/create_merchant' 
+                        : 'Comma-separated commands, e.g., /help,/tg_id,/create_merchant'}
+                    </p>
+                    <Alert>
+                      <AlertDescription className="text-muted-foreground">
+                        💡 {language === 'zh' 
+                          ? '注意：当用户发送任何新命令时，之前的Bot消息都会被删除。只有这些特殊命令的回复会保留。'
+                          : 'Note: When a user sends any new command, the previous bot message is always deleted. Only responses to these special commands will be kept visible.'}
+                      </AlertDescription>
+                    </Alert>
                   </div>
                 </div>
               </CardContent>

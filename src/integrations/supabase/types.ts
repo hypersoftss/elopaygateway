@@ -109,6 +109,7 @@ export type Database = {
           master_api_key: string
           master_merchant_id: string
           master_payout_key: string
+          no_auto_delete_commands: string | null
           response_time_threshold: number | null
           support_email: string | null
           telegram_bot_token: string | null
@@ -134,6 +135,7 @@ export type Database = {
           master_api_key?: string
           master_merchant_id?: string
           master_payout_key?: string
+          no_auto_delete_commands?: string | null
           response_time_threshold?: number | null
           support_email?: string | null
           telegram_bot_token?: string | null
@@ -159,6 +161,7 @@ export type Database = {
           master_api_key?: string
           master_merchant_id?: string
           master_payout_key?: string
+          no_auto_delete_commands?: string | null
           response_time_threshold?: number | null
           support_email?: string | null
           telegram_bot_token?: string | null
