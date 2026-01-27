@@ -41,10 +41,10 @@ import About from "./pages/About";
 import PublicDocs from "./pages/PublicDocs";
 
 // SDK Documentation Pages
-import HyperPayINRDocs from "./pages/admin/sdk/HyperPayINRDocs";
-import HyperSoftsINRDocs from "./pages/admin/sdk/HyperSoftsINRDocs";
-import HyperSoftsPKRDocs from "./pages/admin/sdk/HyperSoftsPKRDocs";
-import HyperSoftsBDTDocs from "./pages/admin/sdk/HyperSoftsBDTDocs";
+import EloPayGatewayINRDocs from "./pages/admin/sdk/EloPayGatewayINRDocs";
+import EloPayINRDocs from "./pages/admin/sdk/EloPayINRDocs";
+import EloPayPKRDocs from "./pages/admin/sdk/EloPayPKRDocs";
+import EloPayBDTDocs from "./pages/admin/sdk/EloPayBDTDocs";
 import AdminGateways from "./pages/admin/AdminGateways";
 import AdminGatewayHealth from "./pages/admin/AdminGatewayHealth";
 import AdminTelegram from "./pages/admin/AdminTelegram";
@@ -114,10 +114,10 @@ const AppRoutes = () => {
       <Route path="/admin/settings" element={<ProtectedRoute requiredRole="admin"><AdminSettings /></ProtectedRoute>} />
       
       {/* SDK Documentation Routes */}
-      <Route path="/admin/sdk/hyperpay-inr" element={<ProtectedRoute requiredRole="admin"><HyperPayINRDocs /></ProtectedRoute>} />
-      <Route path="/admin/sdk/hypersofts-inr" element={<ProtectedRoute requiredRole="admin"><HyperSoftsINRDocs /></ProtectedRoute>} />
-      <Route path="/admin/sdk/hypersofts-pkr" element={<ProtectedRoute requiredRole="admin"><HyperSoftsPKRDocs /></ProtectedRoute>} />
-      <Route path="/admin/sdk/hypersofts-bdt" element={<ProtectedRoute requiredRole="admin"><HyperSoftsBDTDocs /></ProtectedRoute>} />
+      <Route path="/admin/sdk/elopay-gateway-inr" element={<ProtectedRoute requiredRole="admin"><EloPayGatewayINRDocs /></ProtectedRoute>} />
+      <Route path="/admin/sdk/elopay-inr" element={<ProtectedRoute requiredRole="admin"><EloPayINRDocs /></ProtectedRoute>} />
+      <Route path="/admin/sdk/elopay-pkr" element={<ProtectedRoute requiredRole="admin"><EloPayPKRDocs /></ProtectedRoute>} />
+      <Route path="/admin/sdk/elopay-bdt" element={<ProtectedRoute requiredRole="admin"><EloPayBDTDocs /></ProtectedRoute>} />
       
       {/* Merchant Routes - Protected with 2FA requirement */}
       <Route path="/merchant" element={<ProtectedRoute requiredRole="merchant"><Require2FA><MerchantDashboard /></Require2FA></ProtectedRoute>} />
