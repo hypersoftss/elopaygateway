@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { 
   Store, 
   ArrowRight, 
@@ -12,473 +11,361 @@ import {
   Clock,
   CheckCircle2,
   Sparkles,
-  Wallet,
-  BadgeCheck,
-  CircleDollarSign,
   Shield,
-  Banknote,
-  Coins,
-  PiggyBank,
-  Receipt,
-  Landmark,
-  DollarSign,
-  Bitcoin
+  ChevronRight,
+  Users,
+  BarChart3,
+  Wallet,
+  ArrowUpRight,
+  Play
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { LanguageSwitch } from '@/components/LanguageSwitch';
 import { useTranslation } from '@/lib/i18n';
 import { useGatewaySettings } from '@/hooks/useGatewaySettings';
-import { ScrollReveal } from '@/hooks/useScrollReveal';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
+import { useState, useEffect } from 'react';
 
-// Enhanced floating particle component with 3D effects
-const FloatingParticle = ({ 
-  icon: Icon, 
-  className, 
-  delay = 0,
-  size = 'md',
-  opacity = 'medium'
-}: { 
-  icon: React.ElementType; 
-  className: string; 
-  delay?: number;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
-  opacity?: 'low' | 'medium' | 'high';
-}) => {
-  const sizeClasses = {
-    sm: 'h-4 w-4',
-    md: 'h-6 w-6',
-    lg: 'h-8 w-8',
-    xl: 'h-12 w-12',
-  };
+// Animated counter component
+const AnimatedCounter = ({ value, suffix = '' }: { value: string; suffix?: string }) => {
+  const [count, setCount] = useState(0);
+  const numValue = parseInt(value.replace(/[^0-9]/g, '')) || 0;
   
-  const opacityClasses = {
-    low: 'text-primary/10',
-    medium: 'text-primary/20',
-    high: 'text-primary/30',
-  };
-
-  return (
-    <div 
-      className={`absolute animate-float ${opacityClasses[opacity]} ${className}`}
-      style={{ 
-        animationDelay: `${delay}s`,
-        animationDuration: `${6 + delay}s`,
-      }}
-    >
-      <Icon className={sizeClasses[size]} />
-    </div>
-  );
+  useEffect(() => {
+    const duration = 2000;
+    const steps = 60;
+    const increment = numValue / steps;
+    let current = 0;
+    
+    const timer = setInterval(() => {
+      current += increment;
+      if (current >= numValue) {
+        setCount(numValue);
+        clearInterval(timer);
+      } else {
+        setCount(Math.floor(current));
+      }
+    }, duration / steps);
+    
+    return () => clearInterval(timer);
+  }, [numValue]);
+  
+  return <span>{count.toLocaleString()}{suffix}</span>;
 };
 
-// 3D Floating orb component
-const FloatingOrb = ({ 
-  className, 
-  size = 200,
-  color = 'primary',
-  delay = 0 
-}: { 
-  className: string; 
-  size?: number;
-  color?: 'primary' | 'secondary' | 'accent';
-  delay?: number;
-}) => {
-  const colorClasses = {
-    primary: 'from-primary/30 via-primary/10 to-transparent',
-    secondary: 'from-blue-500/20 via-blue-500/5 to-transparent',
-    accent: 'from-emerald-500/20 via-emerald-500/5 to-transparent',
-  };
-
-  return (
-    <div 
-      className={`absolute rounded-full bg-gradient-radial ${colorClasses[color]} blur-3xl animate-pulse ${className}`}
-      style={{ 
-        width: size, 
-        height: size,
-        animationDelay: `${delay}s`,
-        animationDuration: `${4 + delay}s`,
-      }}
-    />
-  );
-};
+// Floating gradient orb
+const GradientOrb = ({ className, delay = 0 }: { className: string; delay?: number }) => (
+  <div 
+    className={`absolute rounded-full blur-3xl animate-pulse ${className}`}
+    style={{ animationDelay: `${delay}s`, animationDuration: '4s' }}
+  />
+);
 
 const Index = () => {
   const { language } = useTranslation();
   const { settings, isLoading } = useGatewaySettings();
   const isEnglish = language === 'en';
 
-  // Use gateway name and logo from settings
-  const gatewayName = settings.gatewayName;
+  const gatewayName = settings.gatewayName || 'ELOPAY';
   const logoUrl = settings.logoUrl;
 
-  // Dynamic document meta
   useDocumentMeta({
-    title: gatewayName ? `${gatewayName} - ${isEnglish ? 'Professional Payment Gateway' : '专业支付网关'}` : undefined,
+    title: gatewayName ? `${gatewayName} - ${isEnglish ? 'Next-Gen Payment Gateway' : '新一代支付网关'}` : undefined,
     description: gatewayName 
       ? (isEnglish 
-          ? `${gatewayName} - Secure, fast, and reliable payment processing with instant settlement and enterprise-grade security.`
-          : `${gatewayName} - 安全、快速、可靠的支付处理，即时结算，企业级安全。`)
+          ? `${gatewayName} - The future of digital payments. Secure, instant, and borderless transactions.`
+          : `${gatewayName} - 数字支付的未来。安全、即时、无国界交易。`)
       : undefined,
-    ogTitle: gatewayName ? `${gatewayName} - ${isEnglish ? 'Payment Gateway' : '支付网关'}` : undefined,
-    ogDescription: gatewayName
-      ? (isEnglish
-          ? `Power your business with ${gatewayName}. Multi-channel payments, real-time analytics, and 24/7 support.`
-          : `使用${gatewayName}为您的业务赋能。多渠道支付、实时分析和全天候支持。`)
-      : undefined,
-    ogImage: logoUrl || undefined,
   });
 
   const features = [
     {
       icon: <Zap className="h-6 w-6" />,
-      title: isEnglish ? 'Instant Processing' : '即时处理',
-      description: isEnglish ? 'Lightning-fast transaction processing with real-time settlement' : '闪电般的交易处理速度，实时结算',
+      title: isEnglish ? 'Lightning Fast' : '闪电般快速',
+      description: isEnglish ? 'Process transactions in under 1 second with real-time settlement' : '1秒内处理交易，实时结算',
+      gradient: 'from-amber-500 to-orange-600',
+    },
+    {
+      icon: <Shield className="h-6 w-6" />,
+      title: isEnglish ? 'Bank-Grade Security' : '银行级安全',
+      description: isEnglish ? '256-bit encryption with advanced fraud detection' : '256位加密，高级欺诈检测',
+      gradient: 'from-emerald-500 to-teal-600',
     },
     {
       icon: <Globe className="h-6 w-6" />,
-      title: isEnglish ? 'Multi-Channel' : '多渠道支持',
-      description: isEnglish ? 'Support for bank transfers, e-wallets, and crypto payments' : '支持银行转账、电子钱包和加密货币支付',
+      title: isEnglish ? 'Multi-Channel' : '多渠道',
+      description: isEnglish ? 'UPI, bank transfers, e-wallets, and crypto support' : 'UPI、银行转账、电子钱包、加密货币',
+      gradient: 'from-blue-500 to-indigo-600',
     },
     {
-      icon: <Lock className="h-6 w-6" />,
-      title: isEnglish ? 'Enterprise Security' : '企业级安全',
-      description: isEnglish ? 'Bank-grade encryption with 2FA authentication' : '银行级加密，双重身份验证',
-    },
-    {
-      icon: <TrendingUp className="h-6 w-6" />,
-      title: isEnglish ? 'Real-time Analytics' : '实时分析',
-      description: isEnglish ? 'Comprehensive dashboard with live transaction insights' : '全面的仪表板，实时交易洞察',
+      icon: <BarChart3 className="h-6 w-6" />,
+      title: isEnglish ? 'Smart Analytics' : '智能分析',
+      description: isEnglish ? 'Real-time insights and comprehensive reporting' : '实时洞察和全面报告',
+      gradient: 'from-purple-500 to-pink-600',
     },
     {
       icon: <Clock className="h-6 w-6" />,
-      title: isEnglish ? '24/7 Availability' : '全天候服务',
-      description: isEnglish ? 'Round-the-clock payment processing with 99.9% uptime' : '全天候支付处理，99.9%正常运行时间',
+      title: isEnglish ? '99.9% Uptime' : '99.9%正常运行',
+      description: isEnglish ? 'Enterprise-grade infrastructure, always available' : '企业级基础设施，始终可用',
+      gradient: 'from-cyan-500 to-blue-600',
     },
     {
-      icon: <CreditCard className="h-6 w-6" />,
-      title: isEnglish ? 'Easy Integration' : '轻松集成',
-      description: isEnglish ? 'Simple API with comprehensive documentation' : '简单API，完善文档支持',
+      icon: <Users className="h-6 w-6" />,
+      title: isEnglish ? '24/7 Support' : '全天候支持',
+      description: isEnglish ? 'Dedicated support team at your service' : '专属支持团队为您服务',
+      gradient: 'from-rose-500 to-red-600',
     },
   ];
 
   const stats = [
-    { value: '99.9%', label: isEnglish ? 'Uptime' : '正常运行' },
-    { value: '<1s', label: isEnglish ? 'Processing' : '处理时间' },
-    { value: '24/7', label: isEnglish ? 'Support' : '技术支持' },
-    { value: '256-bit', label: isEnglish ? 'Encryption' : '加密保护' },
+    { value: '50', suffix: 'M+', label: isEnglish ? 'Transactions' : '交易笔数' },
+    { value: '99.9', suffix: '%', label: isEnglish ? 'Uptime' : '正常运行' },
+    { value: '500', suffix: '+', label: isEnglish ? 'Merchants' : '商户' },
+    { value: '3', suffix: '', label: isEnglish ? 'Countries' : '国家' },
+  ];
+
+  const trustedBy = [
+    { name: 'India', flag: '🇮🇳', currency: 'INR' },
+    { name: 'Pakistan', flag: '🇵🇰', currency: 'PKR' },
+    { name: 'Bangladesh', flag: '🇧🇩', currency: 'BDT' },
   ];
 
   return (
     <div className="min-h-screen bg-background overflow-hidden">
-      {/* Enhanced 3D Animated Background */}
-      <div className="fixed inset-0 -z-10 overflow-hidden" style={{ perspective: '1000px' }}>
-        {/* Base gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-primary/5" />
+      {/* Animated Background */}
+      <div className="fixed inset-0 -z-10">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-background to-background" />
+        <GradientOrb className="w-[600px] h-[600px] -top-48 -left-48 bg-primary/30" delay={0} />
+        <GradientOrb className="w-[500px] h-[500px] top-1/3 -right-32 bg-emerald-500/20" delay={1} />
+        <GradientOrb className="w-[400px] h-[400px] bottom-0 left-1/3 bg-blue-500/20" delay={2} />
         
-        {/* 3D Grid Effect */}
+        {/* Grid pattern */}
         <div 
-          className="absolute inset-0 opacity-[0.02]"
+          className="absolute inset-0 opacity-[0.015]"
           style={{
-            backgroundImage: `
-              linear-gradient(hsl(var(--primary)) 1px, transparent 1px),
-              linear-gradient(90deg, hsl(var(--primary)) 1px, transparent 1px)
-            `,
-            backgroundSize: '50px 50px',
-            transform: 'perspective(500px) rotateX(60deg)',
-            transformOrigin: 'center top',
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
           }}
         />
-        
-        {/* Floating Orbs - 3D depth effect */}
-        <FloatingOrb className="top-[-10%] left-[-5%]" size={400} color="primary" delay={0} />
-        <FloatingOrb className="top-[20%] right-[-10%]" size={350} color="secondary" delay={1.5} />
-        <FloatingOrb className="bottom-[-10%] left-[20%]" size={450} color="accent" delay={0.5} />
-        <FloatingOrb className="top-[50%] left-[50%] -translate-x-1/2 -translate-y-1/2" size={600} color="primary" delay={2} />
-        <FloatingOrb className="bottom-[10%] right-[10%]" size={250} color="secondary" delay={1} />
-        
-        {/* Floating Particles - Multiple sizes and opacities */}
-        {/* Large particles */}
-        <FloatingParticle icon={CreditCard} className="top-[8%] left-[8%]" delay={0} size="xl" opacity="high" />
-        <FloatingParticle icon={Wallet} className="top-[15%] right-[12%]" delay={1.5} size="lg" opacity="medium" />
-        <FloatingParticle icon={CircleDollarSign} className="top-[55%] left-[5%]" delay={0.5} size="xl" opacity="medium" />
-        <FloatingParticle icon={Shield} className="top-[35%] right-[8%]" delay={2} size="lg" opacity="high" />
-        
-        {/* Medium particles */}
-        <FloatingParticle icon={Banknote} className="bottom-[25%] left-[15%]" delay={1} size="md" opacity="medium" />
-        <FloatingParticle icon={BadgeCheck} className="bottom-[35%] right-[18%]" delay={2.5} size="md" opacity="high" />
-        <FloatingParticle icon={Globe} className="top-[25%] left-[22%]" delay={3} size="md" opacity="low" />
-        <FloatingParticle icon={Zap} className="bottom-[20%] right-[25%]" delay={0.8} size="lg" opacity="medium" />
-        <FloatingParticle icon={Coins} className="top-[45%] left-[12%]" delay={1.2} size="md" opacity="medium" />
-        <FloatingParticle icon={PiggyBank} className="top-[70%] right-[10%]" delay={2.2} size="lg" opacity="low" />
-        
-        {/* Small particles - scattered */}
-        <FloatingParticle icon={DollarSign} className="top-[12%] left-[35%]" delay={0.3} size="sm" opacity="low" />
-        <FloatingParticle icon={Receipt} className="top-[30%] right-[30%]" delay={1.8} size="sm" opacity="low" />
-        <FloatingParticle icon={Landmark} className="bottom-[40%] left-[30%]" delay={2.8} size="sm" opacity="medium" />
-        <FloatingParticle icon={Bitcoin} className="top-[60%] right-[35%]" delay={0.6} size="sm" opacity="low" />
-        <FloatingParticle icon={Lock} className="bottom-[15%] left-[40%]" delay={3.2} size="sm" opacity="low" />
-        <FloatingParticle icon={TrendingUp} className="top-[75%] left-[25%]" delay={1.4} size="sm" opacity="medium" />
-        <FloatingParticle icon={Clock} className="top-[20%] left-[60%]" delay={2.1} size="sm" opacity="low" />
-        <FloatingParticle icon={CreditCard} className="bottom-[60%] right-[40%]" delay={0.9} size="sm" opacity="low" />
-        
-        {/* Extra tiny sparkles */}
-        <FloatingParticle icon={Sparkles} className="top-[5%] right-[45%]" delay={1.6} size="sm" opacity="low" />
-        <FloatingParticle icon={Sparkles} className="bottom-[10%] left-[55%]" delay={2.4} size="sm" opacity="low" />
-        <FloatingParticle icon={Sparkles} className="top-[40%] left-[45%]" delay={0.4} size="sm" opacity="low" />
       </div>
 
-      {/* Header with glass effect */}
-      <header className="border-b border-border/50 bg-background/60 backdrop-blur-xl sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+      {/* Header */}
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/40 bg-background/60 backdrop-blur-xl">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {logoUrl ? (
-              <img 
-                src={logoUrl} 
-                alt="Logo" 
-                className="h-10 w-10 rounded-xl object-contain shadow-lg ring-2 ring-primary/20"
-              />
+              <img src={logoUrl} alt="Logo" className="h-9 w-9 rounded-xl object-contain" />
             ) : !isLoading ? (
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg shadow-primary/25 ring-2 ring-primary/20">
+              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg shadow-primary/25">
                 <Zap className="h-5 w-5 text-primary-foreground" />
               </div>
             ) : (
-              <div className="h-10 w-10 rounded-xl bg-muted animate-pulse" />
+              <div className="h-9 w-9 rounded-xl bg-muted animate-pulse" />
             )}
-            {gatewayName ? (
-              <span className="text-xl font-bold bg-gradient-to-r from-foreground via-foreground to-foreground/70 bg-clip-text">
-                {gatewayName}
-              </span>
-            ) : (
-              <div className="h-6 w-32 bg-muted rounded animate-pulse" />
-            )}
+            <span className="text-xl font-bold">{gatewayName}</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <ThemeToggle />
             <LanguageSwitch />
+            <Button asChild variant="default" size="sm" className="hidden sm:flex">
+              <Link to="/merchant-login">
+                {isEnglish ? 'Login' : '登录'}
+                <ArrowRight className="h-4 w-4 ml-1" />
+              </Link>
+            </Button>
           </div>
         </div>
       </header>
 
-      {/* Hero Section with 3D card effect */}
-      <section className="relative container mx-auto px-4 py-20 md:py-32">
-        <div className="max-w-4xl mx-auto text-center space-y-8">
-          {/* Badge with glow */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium text-primary animate-fade-in shadow-lg shadow-primary/10">
-            <Sparkles className="h-4 w-4" />
-            {isEnglish ? 'Professional Payment Gateway' : '专业支付网关'}
-          </div>
+      {/* Hero Section */}
+      <section className="relative pt-32 pb-20 md:pt-40 md:pb-32">
+        <div className="container mx-auto px-4">
+          <div className="max-w-5xl mx-auto text-center">
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium text-primary mb-8 animate-fade-in">
+              <Sparkles className="h-4 w-4" />
+              {isEnglish ? 'Trusted by 500+ businesses' : '500+企业信赖'}
+              <ChevronRight className="h-4 w-4" />
+            </div>
 
-          {/* Main Heading with 3D text effect */}
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-tight animate-fade-in">
-            {isEnglish ? (
-              <>
-                Power Your Business with
-                <br />
-                <span 
-                  className="bg-gradient-to-r from-primary via-primary/90 to-primary/70 bg-clip-text text-transparent drop-shadow-sm"
-                  style={{ 
-                    textShadow: '0 4px 12px hsl(var(--primary) / 0.3)',
-                  }}
-                >
-                  {gatewayName || <span className="inline-block h-12 w-48 bg-muted/50 rounded animate-pulse" />}
-                </span>
-              </>
-            ) : (
-              <>
-                <span 
-                  className="bg-gradient-to-r from-primary via-primary/90 to-primary/70 bg-clip-text text-transparent"
-                  style={{ 
-                    textShadow: '0 4px 12px hsl(var(--primary) / 0.3)',
-                  }}
-                >
-                  {gatewayName || <span className="inline-block h-12 w-48 bg-muted/50 rounded animate-pulse" />}
-                </span>
-                <br />
-                为您的业务赋能
-              </>
-            )}
-          </h1>
+            {/* Headline */}
+            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6 animate-fade-in">
+              {isEnglish ? (
+                <>
+                  The Future of
+                  <span className="block mt-2 bg-gradient-to-r from-primary via-blue-500 to-emerald-500 bg-clip-text text-transparent">
+                    Digital Payments
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="bg-gradient-to-r from-primary via-blue-500 to-emerald-500 bg-clip-text text-transparent">
+                    数字支付
+                  </span>
+                  <span className="block mt-2">的未来</span>
+                </>
+              )}
+            </h1>
 
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed animate-fade-in">
-            {isEnglish 
-              ? 'Secure, fast, and reliable payment processing solution with instant settlement, multi-channel support, and enterprise-grade security.'
-              : '安全、快速、可靠的支付处理解决方案，提供即时结算、多渠道支持和企业级安全保障。'}
-          </p>
+            {/* Subheadline */}
+            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 animate-fade-in leading-relaxed">
+              {isEnglish 
+                ? 'Accept payments from India, Pakistan & Bangladesh with instant settlement, zero hassle, and enterprise-grade security.'
+                : '接受来自印度、巴基斯坦和孟加拉国的付款，即时结算，零麻烦，企业级安全。'}
+            </p>
 
-          {/* CTA Button with 3D hover effect */}
-          <div className="flex items-center justify-center pt-4 animate-fade-in">
-            <Button 
-              asChild 
-              size="lg" 
-              className="h-16 px-12 text-lg font-semibold shadow-2xl shadow-primary/30 hover:shadow-primary/40 transition-all duration-300 hover:-translate-y-1 bg-gradient-to-r from-primary to-primary/90 border-t border-primary-foreground/20"
-            >
-              <Link to="/merchant-login">
-                <Store className="h-6 w-6 mr-3" />
-                {isEnglish ? 'Merchant Login' : '商户登录'}
-                <ArrowRight className="h-6 w-6 ml-3" />
-              </Link>
-            </Button>
-          </div>
-
-          {/* Stats with 3D cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-12 max-w-3xl mx-auto">
-            {stats.map((stat, index) => (
-              <div 
-                key={index} 
-                className="group text-center p-5 rounded-2xl bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-md border border-border/50 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 animate-fade-in"
-                style={{ 
-                  animationDelay: `${index * 0.1}s`,
-                  transform: 'perspective(1000px)',
-                }}
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16 animate-fade-in">
+              <Button 
+                asChild 
+                size="lg" 
+                className="h-14 px-8 text-lg font-semibold shadow-xl shadow-primary/25 hover:shadow-primary/40 transition-all hover:-translate-y-0.5"
               >
-                <div className="text-2xl md:text-3xl font-bold bg-gradient-to-br from-primary to-primary/70 bg-clip-text text-transparent">
-                  {stat.value}
+                <Link to="/merchant-login">
+                  <Store className="h-5 w-5 mr-2" />
+                  {isEnglish ? 'Start Accepting Payments' : '开始接受付款'}
+                  <ArrowRight className="h-5 w-5 ml-2" />
+                </Link>
+              </Button>
+              <Button 
+                asChild 
+                size="lg" 
+                variant="outline" 
+                className="h-14 px-8 text-lg font-semibold border-2 hover:-translate-y-0.5 transition-all"
+              >
+                <Link to="/docs">
+                  <Play className="h-5 w-5 mr-2" />
+                  {isEnglish ? 'View Documentation' : '查看文档'}
+                </Link>
+              </Button>
+            </div>
+
+            {/* Regions */}
+            <div className="flex flex-wrap items-center justify-center gap-6 animate-fade-in">
+              <span className="text-sm text-muted-foreground">{isEnglish ? 'Available in:' : '可用地区:'}</span>
+              {trustedBy.map((region, index) => (
+                <div 
+                  key={index}
+                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-card border border-border/50 shadow-sm"
+                >
+                  <span className="text-xl">{region.flag}</span>
+                  <span className="font-medium">{region.name}</span>
+                  <span className="text-xs text-muted-foreground">({region.currency})</span>
                 </div>
-                <div className="text-sm text-muted-foreground mt-1">{stat.label}</div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Stats Section */}
+      <section className="py-16 border-y border-border/40 bg-card/30 backdrop-blur-sm">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            {stats.map((stat, index) => (
+              <div key={index} className="text-center">
+                <div className="text-3xl md:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+                  <AnimatedCounter value={stat.value} suffix={stat.suffix} />
+                </div>
+                <div className="text-sm md:text-base text-muted-foreground mt-2">{stat.label}</div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Features Section with 3D grid */}
-      <section className="relative container mx-auto px-4 py-20">
-        <ScrollReveal>
+      {/* Features Section */}
+      <section className="py-20 md:py-32">
+        <div className="container mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              {isEnglish ? 'Why Choose Us' : '为什么选择我们'}
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
+              {isEnglish ? 'Everything You Need' : '您所需的一切'}
             </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               {isEnglish 
-                ? 'Everything you need to process payments efficiently and securely'
-                : '您所需的一切，高效安全地处理支付'}
+                ? 'Powerful features to help you accept payments and grow your business'
+                : '强大的功能帮助您接受付款并发展业务'}
             </p>
           </div>
-        </ScrollReveal>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-          {features.map((feature, index) => (
-            <ScrollReveal key={index} delay={index * 100}>
-              <Card 
-                className="group relative overflow-hidden border-border/50 bg-gradient-to-br from-card/90 to-card/50 backdrop-blur-md hover:border-primary/50 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-primary/10 h-full"
-                style={{ transform: 'perspective(1000px)' }}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+            {features.map((feature, index) => (
+              <div
+                key={index}
+                className="group relative p-6 rounded-2xl bg-card border border-border/50 hover:border-primary/30 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
               >
-                <CardContent className="p-6 relative z-10">
-                  <div className="mb-4 inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 text-primary group-hover:from-primary group-hover:to-primary/80 group-hover:text-primary-foreground transition-all duration-500 shadow-lg group-hover:shadow-primary/25 group-hover:scale-110">
-                    {feature.icon}
-                  </div>
-                  <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
-                </CardContent>
-                {/* 3D shine effect on hover */}
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                <div className="absolute -inset-px bg-gradient-to-br from-primary/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-lg" />
-              </Card>
-            </ScrollReveal>
-          ))}
-        </div>
-      </section>
-
-      {/* Merchant Portal Highlight with 3D effect */}
-      <section className="relative container mx-auto px-4 py-20">
-        <ScrollReveal>
-          <div className="max-w-2xl mx-auto" style={{ perspective: '1000px' }}>
-            <Link to="/merchant-login" className="group block">
-              <Card 
-                className="relative overflow-hidden border-2 border-primary/20 bg-gradient-to-br from-card via-card/80 to-primary/5 hover:border-primary/50 transition-all duration-700 hover:shadow-[0_25px_60px_-15px_hsl(var(--primary)/0.4)]"
-                style={{
-                  transform: 'rotateX(2deg)',
-                  transformStyle: 'preserve-3d',
-                }}
-              >
-                <CardContent className="p-10 text-center relative z-10">
-                  <div 
-                    className="w-28 h-28 rounded-3xl bg-gradient-to-br from-primary via-primary/90 to-primary/70 flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-primary/40 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500"
-                    style={{ transform: 'translateZ(20px)' }}
-                  >
-                    <Store className="w-14 h-14 text-primary-foreground" />
-                  </div>
-                  <h3 
-                    className="text-3xl font-bold mb-4"
-                    style={{ transform: 'translateZ(10px)' }}
-                  >
-                    {isEnglish ? 'Merchant Portal' : '商户入口'}
-                  </h3>
-                  <p className="text-muted-foreground mb-8 text-lg leading-relaxed">
-                    {isEnglish 
-                      ? 'Access your dashboard, view transactions, manage withdrawals, and integrate our API'
-                      : '访问您的仪表板、查看交易、管理提现并集成我们的API'}
-                  </p>
-                  <div className="inline-flex items-center gap-3 text-primary font-semibold text-xl bg-primary/10 px-6 py-3 rounded-full group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
-                    {isEnglish ? 'Login Now' : '立即登录'}
-                    <ArrowRight className="h-6 w-6 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </CardContent>
-                
-                {/* 3D glow effects */}
-                <div className="absolute -top-32 -right-32 w-80 h-80 bg-primary/20 rounded-full blur-3xl group-hover:bg-primary/30 transition-colors duration-700" />
-                <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-primary/10 rounded-full blur-3xl group-hover:bg-primary/20 transition-colors duration-700" />
-                <div className="absolute inset-0 bg-gradient-to-t from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              </Card>
-            </Link>
+                <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-r ${feature.gradient} text-white mb-4 shadow-lg group-hover:scale-110 transition-transform`}>
+                  {feature.icon}
+                </div>
+                <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
+                <ArrowUpRight className="absolute top-6 right-6 h-5 w-5 text-muted-foreground/30 group-hover:text-primary transition-colors" />
+              </div>
+            ))}
           </div>
-        </ScrollReveal>
-      </section>
-
-      {/* Trust Indicators with 3D badges */}
-      <section className="container mx-auto px-4 py-16">
-        <div className="flex flex-wrap items-center justify-center gap-6 text-muted-foreground">
-          {[
-            { icon: CheckCircle2, text: isEnglish ? 'SSL Encrypted' : 'SSL加密' },
-            { icon: CheckCircle2, text: isEnglish ? 'PCI Compliant' : 'PCI合规' },
-            { icon: CheckCircle2, text: isEnglish ? '2FA Security' : '双重认证' },
-            { icon: CheckCircle2, text: isEnglish ? 'Real-time Monitoring' : '实时监控' },
-          ].map((item, index) => (
-            <div 
-              key={index}
-              className="flex items-center gap-2 px-4 py-2 rounded-full bg-card/50 border border-border/50 backdrop-blur-sm hover:border-primary/30 hover:bg-primary/5 transition-all duration-300"
-            >
-              <item.icon className="h-5 w-5 text-primary" />
-              <span>{item.text}</span>
-            </div>
-          ))}
         </div>
       </section>
 
-      {/* Footer with glass effect */}
-      <footer className="border-t border-border/50 bg-card/30 backdrop-blur-xl py-8 mt-8">
+      {/* CTA Section */}
+      <section className="py-20 md:py-32">
+        <div className="container mx-auto px-4">
+          <div className="relative max-w-4xl mx-auto rounded-3xl overflow-hidden">
+            {/* Background gradient */}
+            <div className="absolute inset-0 bg-gradient-to-r from-primary via-blue-600 to-primary" />
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.05\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')]" />
+            
+            <div className="relative px-8 py-16 md:px-16 md:py-20 text-center">
+              <Wallet className="h-16 w-16 mx-auto mb-6 text-white/90" />
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4">
+                {isEnglish ? 'Ready to Get Started?' : '准备开始了吗？'}
+              </h2>
+              <p className="text-lg text-white/80 max-w-xl mx-auto mb-8">
+                {isEnglish 
+                  ? 'Join 500+ businesses already using our platform to accept payments seamlessly.'
+                  : '加入500+已经使用我们平台无缝接受付款的企业。'}
+              </p>
+              <Button 
+                asChild 
+                size="lg" 
+                variant="secondary"
+                className="h-14 px-10 text-lg font-semibold shadow-xl hover:-translate-y-0.5 transition-all"
+              >
+                <Link to="/merchant-login">
+                  {isEnglish ? 'Access Merchant Portal' : '访问商户门户'}
+                  <ArrowRight className="h-5 w-5 ml-2" />
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="py-8 border-t border-border/40">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               {logoUrl ? (
                 <img src={logoUrl} alt="Logo" className="h-8 w-8 rounded-lg object-contain" />
-              ) : !isLoading ? (
-                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
+              ) : (
+                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
                   <Zap className="h-4 w-4 text-primary-foreground" />
                 </div>
-              ) : (
-                <div className="h-8 w-8 rounded-lg bg-muted animate-pulse" />
               )}
               <span className="font-semibold">{gatewayName}</span>
             </div>
-            
-            <div className="flex items-center gap-6 text-sm">
-              <Link to="/about" className="text-muted-foreground hover:text-primary transition-colors">
-                {isEnglish ? 'About Us' : '关于我们'}
-              </Link>
-              <Link to="/docs" className="text-muted-foreground hover:text-primary transition-colors">
-                {isEnglish ? 'Documentation' : '开发文档'}
+            <p className="text-sm text-muted-foreground">
+              © {new Date().getFullYear()} {gatewayName}. {isEnglish ? 'All rights reserved.' : '保留所有权利。'}
+            </p>
+            <div className="flex items-center gap-4">
+              <Link to="/docs" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                {isEnglish ? 'Documentation' : '文档'}
               </Link>
               {settings.supportEmail && (
-                <a href={`mailto:${settings.supportEmail}`} className="text-muted-foreground hover:text-primary transition-colors">
-                  {isEnglish ? 'Contact' : '联系我们'}
+                <a href={`mailto:${settings.supportEmail}`} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  {isEnglish ? 'Support' : '支持'}
                 </a>
               )}
             </div>
-
-            <p className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} {gatewayName}. {isEnglish ? 'All rights reserved.' : '版权所有'}
-            </p>
           </div>
         </div>
       </footer>
