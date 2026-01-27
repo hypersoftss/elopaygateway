@@ -62,6 +62,7 @@ import { LanguageSwitch } from '@/components/LanguageSwitch';
 import { useTranslation } from '@/lib/i18n';
 import { useGatewaySettings } from '@/hooks/useGatewaySettings';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
+import { CookieConsent } from '@/components/CookieConsent';
 import { useState, useEffect } from 'react';
 
 // Partner logo component
@@ -1192,6 +1193,9 @@ const Index = () => {
       >
         <ArrowUp className="h-5 w-5" />
       </button>
+
+      {/* Cookie Consent Banner */}
+      <CookieConsent isEnglish={isEnglish} />
     </div>
   );
 };
