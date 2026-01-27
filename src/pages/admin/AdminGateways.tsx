@@ -462,7 +462,7 @@ const AdminGatewaysPage = () => {
                 <Input
                   value={newGateway.gateway_code}
                   onChange={(e) => setNewGateway(g => ({ ...g, gateway_code: e.target.value }))}
-                  placeholder="lgpay_inr"
+                  placeholder="ELOPAY_INR"
                 />
               </div>
               <div className="space-y-2">
@@ -506,7 +506,7 @@ const AdminGatewaysPage = () => {
               <Input
                 value={newGateway.base_url}
                 onChange={(e) => setNewGateway(g => ({ ...g, base_url: e.target.value }))}
-                placeholder="https://www.lg-pay.com"
+                placeholder="https://api.elopay.com"
               />
             </div>
 
