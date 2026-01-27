@@ -44,6 +44,7 @@ interface PaymentGateway {
   created_at: string;
   min_withdrawal_amount: number | null;
   max_withdrawal_amount: number | null;
+  daily_withdrawal_limit: number | null;
 }
 
 // Trade type options based on gateway type and currency
@@ -93,6 +94,7 @@ const AdminGatewaysPage = () => {
     trade_type: '',
     min_withdrawal_amount: 1000,
     max_withdrawal_amount: 50000,
+    daily_withdrawal_limit: 200000,
   });
 
   const fetchGateways = async () => {
@@ -132,6 +134,7 @@ const AdminGatewaysPage = () => {
             trade_type: newGateway.trade_type || null,
             min_withdrawal_amount: newGateway.min_withdrawal_amount || 1000,
             max_withdrawal_amount: newGateway.max_withdrawal_amount || 50000,
+            daily_withdrawal_limit: newGateway.daily_withdrawal_limit || 200000,
           })
           .eq('id', editingGateway.id);
         if (error) throw error;
@@ -154,6 +157,7 @@ const AdminGatewaysPage = () => {
             trade_type: newGateway.trade_type || null,
             min_withdrawal_amount: newGateway.min_withdrawal_amount || 1000,
             max_withdrawal_amount: newGateway.max_withdrawal_amount || 50000,
+            daily_withdrawal_limit: newGateway.daily_withdrawal_limit || 200000,
           });
         if (error) throw error;
         toast({
@@ -187,6 +191,7 @@ const AdminGatewaysPage = () => {
       trade_type: '',
       min_withdrawal_amount: 1000,
       max_withdrawal_amount: 50000,
+      daily_withdrawal_limit: 200000,
     });
   };
 
@@ -251,6 +256,7 @@ const AdminGatewaysPage = () => {
       trade_type: gateway.trade_type || '',
       min_withdrawal_amount: gateway.min_withdrawal_amount || 1000,
       max_withdrawal_amount: gateway.max_withdrawal_amount || 50000,
+      daily_withdrawal_limit: gateway.daily_withdrawal_limit || 200000,
     });
     setShowGatewayDialog(true);
   };
@@ -594,9 +600,20 @@ const AdminGatewaysPage = () => {
                 />
               </div>
             </div>
-            <p className="text-xs text-muted-foreground -mt-2">
-              {language === 'zh' ? '商户单笔提现金额限制' : 'Per-transaction withdrawal limits for merchants'}
-            </p>
+            
+            {/* Daily Withdrawal Limit */}
+            <div className="space-y-2">
+              <Label>{language === 'zh' ? '每日提现限额' : 'Daily Withdrawal Limit'}</Label>
+              <Input
+                type="number"
+                value={newGateway.daily_withdrawal_limit}
+                onChange={(e) => setNewGateway(g => ({ ...g, daily_withdrawal_limit: parseFloat(e.target.value) || 200000 }))}
+                placeholder="200000"
+              />
+              <p className="text-xs text-muted-foreground">
+                {language === 'zh' ? '商户每日总提现限额' : 'Maximum total withdrawal per merchant per day'}
+              </p>
+            </div>
           </div>
 
           <DialogFooter className="gap-2">

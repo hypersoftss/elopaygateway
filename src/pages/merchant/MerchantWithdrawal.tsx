@@ -20,6 +20,8 @@ interface MerchantData {
   hasWithdrawalPassword: boolean;
   min_withdrawal_amount: number;
   max_withdrawal_amount: number;
+  daily_withdrawal_limit: number;
+  todayWithdrawals: number;
 }
 
 // Currency symbols
@@ -96,11 +98,28 @@ const MerchantWithdrawal = () => {
       let currency = 'INR';
       let minWithdrawalAmount = 1000;
       let maxWithdrawalAmount = 50000;
+      let dailyWithdrawalLimit = 200000;
       if (gatewayData && gatewayData.length > 0) {
         currency = gatewayData[0].currency || 'INR';
         minWithdrawalAmount = Number(gatewayData[0].min_withdrawal_amount) || 1000;
         maxWithdrawalAmount = Number(gatewayData[0].max_withdrawal_amount) || 50000;
+        dailyWithdrawalLimit = Number(gatewayData[0].daily_withdrawal_limit) || 200000;
       }
+
+      // Calculate today's total withdrawal requests (pending + success)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayISO = today.toISOString();
+
+      const { data: todayTransactions } = await supabase
+        .from('transactions')
+        .select('amount')
+        .eq('merchant_id', user.merchantId)
+        .eq('transaction_type', 'payout')
+        .in('status', ['pending', 'success'])
+        .gte('created_at', todayISO);
+
+      const todayWithdrawals = todayTransactions?.reduce((sum, tx) => sum + Number(tx.amount), 0) || 0;
 
       if (data) {
         setMerchantData({
@@ -112,6 +131,8 @@ const MerchantWithdrawal = () => {
           hasWithdrawalPassword: !!(data.withdrawal_password_hash || data.withdrawal_password),
           min_withdrawal_amount: minWithdrawalAmount,
           max_withdrawal_amount: maxWithdrawalAmount,
+          daily_withdrawal_limit: dailyWithdrawalLimit,
+          todayWithdrawals,
         });
 
         // Set default method based on currency
@@ -183,6 +204,9 @@ const MerchantWithdrawal = () => {
     const amount = parseFloat(form.amount);
     const minAmount = merchantData.min_withdrawal_amount || 1000;
     const maxAmount = merchantData.max_withdrawal_amount || 50000;
+    const dailyLimit = merchantData.daily_withdrawal_limit || 200000;
+    const todayWithdrawals = merchantData.todayWithdrawals || 0;
+    const remainingDaily = dailyLimit - todayWithdrawals;
     
     if (amount <= 0) {
       toast({
@@ -206,6 +230,17 @@ const MerchantWithdrawal = () => {
       toast({
         title: language === 'zh' ? '错误' : 'Error',
         description: language === 'zh' ? `单笔最高提现金额为 ${currencySymbol}${maxAmount}` : `Maximum withdrawal amount per transaction is ${currencySymbol}${maxAmount}`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (amount > remainingDaily) {
+      toast({
+        title: language === 'zh' ? '错误' : 'Error',
+        description: language === 'zh' 
+          ? `已超出每日提现限额。剩余额度: ${currencySymbol}${remainingDaily.toLocaleString()}` 
+          : `Daily withdrawal limit exceeded. Remaining: ${currencySymbol}${remainingDaily.toLocaleString()}`,
         variant: 'destructive',
       });
       return;
@@ -602,11 +637,19 @@ const MerchantWithdrawal = () => {
                 const enteredAmount = parseFloat(form.amount) || 0;
                 const minAmount = merchantData.min_withdrawal_amount || 1000;
                 const maxAmount = merchantData.max_withdrawal_amount || 50000;
+                const dailyLimit = merchantData.daily_withdrawal_limit || 200000;
+                const todayWithdrawals = merchantData.todayWithdrawals || 0;
+                const remainingDaily = Math.max(0, dailyLimit - todayWithdrawals);
                 const availableBalance = merchantData.balance;
+                
                 const isBelowMinimum = form.amount && enteredAmount > 0 && enteredAmount < minAmount;
                 const isAboveMaximum = form.amount && enteredAmount > 0 && enteredAmount > maxAmount;
+                const isAboveDailyLimit = form.amount && enteredAmount > 0 && enteredAmount > remainingDaily;
                 const isAboveBalance = form.amount && enteredAmount > 0 && enteredAmount > availableBalance;
-                const hasError = isBelowMinimum || isAboveMaximum || isAboveBalance;
+                const hasError = isBelowMinimum || isAboveMaximum || isAboveDailyLimit || isAboveBalance;
+                
+                // Calculate the effective max for "Withdraw All" button
+                const effectiveMax = Math.min(availableBalance, maxAmount, remainingDaily);
                 
                 return (
                   <>
@@ -650,7 +693,19 @@ const MerchantWithdrawal = () => {
                         </span>
                       </div>
                     )}
-                    {isAboveBalance && !isBelowMinimum && !isAboveMaximum && (
+                    {isAboveDailyLimit && !isBelowMinimum && !isAboveMaximum && (
+                      <div className="flex items-center gap-2 text-destructive text-sm animate-in fade-in slide-in-from-top-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                        </svg>
+                        <span>
+                          {language === 'zh' 
+                            ? `超出每日限额。今日剩余: ${currencySymbol}${remainingDaily.toLocaleString()}` 
+                            : `Exceeds daily limit. Remaining today: ${currencySymbol}${remainingDaily.toLocaleString()}`}
+                        </span>
+                      </div>
+                    )}
+                    {isAboveBalance && !isBelowMinimum && !isAboveMaximum && !isAboveDailyLimit && (
                       <div className="flex items-center gap-2 text-destructive text-sm animate-in fade-in slide-in-from-top-1">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
                           <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
@@ -662,16 +717,27 @@ const MerchantWithdrawal = () => {
                         </span>
                       </div>
                     )}
-                    <div className="flex justify-between text-sm">
-                      <span className={hasError ? 'text-destructive font-medium' : 'text-muted-foreground'}>
-                        {language === 'zh' ? '限额' : 'Limit'}: {currencySymbol}{minAmount.toLocaleString()} - {currencySymbol}{maxAmount.toLocaleString()} • {language === 'zh' ? '可用' : 'Available'}: {currencySymbol}{availableBalance.toLocaleString()}
-                      </span>
-                      <button
-                        onClick={() => setForm({ ...form, amount: Math.min(availableBalance, maxAmount).toString() })}
-                        className="text-primary font-medium hover:underline"
-                      >
-                        {language === 'zh' ? '全部提现' : 'Withdraw All'}
-                      </button>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-sm">
+                        <span className={hasError ? 'text-destructive font-medium' : 'text-muted-foreground'}>
+                          {language === 'zh' ? '单笔' : 'Per tx'}: {currencySymbol}{minAmount.toLocaleString()} - {currencySymbol}{maxAmount.toLocaleString()} • {language === 'zh' ? '可用' : 'Available'}: {currencySymbol}{availableBalance.toLocaleString()}
+                        </span>
+                        <button
+                          onClick={() => setForm({ ...form, amount: effectiveMax > 0 ? effectiveMax.toString() : '' })}
+                          className="text-primary font-medium hover:underline"
+                          disabled={effectiveMax <= 0}
+                        >
+                          {language === 'zh' ? '全部提现' : 'Withdraw All'}
+                        </button>
+                      </div>
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>
+                          {language === 'zh' ? '今日已提' : 'Today'}: {currencySymbol}{todayWithdrawals.toLocaleString()} / {currencySymbol}{dailyLimit.toLocaleString()}
+                        </span>
+                        <span className={remainingDaily < minAmount ? 'text-destructive' : 'text-success'}>
+                          {language === 'zh' ? '剩余额度' : 'Remaining'}: {currencySymbol}{remainingDaily.toLocaleString()}
+                        </span>
+                      </div>
                     </div>
                   </>
                 );
