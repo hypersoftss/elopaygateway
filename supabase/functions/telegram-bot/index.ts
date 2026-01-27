@@ -134,7 +134,7 @@ function generatePassword(length: number = 12): string {
 
 // Format currency amount
 function formatAmount(amount: number, currency: string = 'INR'): string {
-  const symbols: Record<string, string> = { INR: '₹', PKR: 'Rs.', BDT: '৳' }
+  const symbols: Record<string, string> = { INR: '₹', PKR: 'Rs.', BDT: '৳', USDT: '$' }
   const symbol = symbols[currency] || '₹'
   return `${symbol}${amount.toLocaleString('en-IN')}`
 }
@@ -189,6 +189,268 @@ async function checkGatewayHealth(supabaseAdmin: any): Promise<{ total: number; 
   return { total, active, details: gateways || [] }
 }
 
+// ============= ADVANCED ANALYTICS FUNCTIONS =============
+
+// Get weekly stats for a merchant or all merchants
+async function getWeeklyStats(supabaseAdmin: any, merchantId?: string) {
+  const weekAgo = new Date()
+  weekAgo.setDate(weekAgo.getDate() - 7)
+  
+  let query = supabaseAdmin
+    .from('transactions')
+    .select('amount, fee, status, transaction_type, created_at')
+    .gte('created_at', weekAgo.toISOString())
+  
+  if (merchantId) {
+    query = query.eq('merchant_id', merchantId)
+  }
+  
+  const { data: transactions } = await query
+  
+  const stats = {
+    totalPayin: 0, successPayin: 0, failedPayin: 0, pendingPayin: 0,
+    totalPayout: 0, successPayout: 0, failedPayout: 0, pendingPayout: 0,
+    payinAmount: 0, payoutAmount: 0, feeCollected: 0,
+    dailyData: {} as Record<string, { payin: number; payout: number; orders: number }>
+  }
+  
+  transactions?.forEach((tx: any) => {
+    const date = new Date(tx.created_at).toISOString().split('T')[0]
+    if (!stats.dailyData[date]) {
+      stats.dailyData[date] = { payin: 0, payout: 0, orders: 0 }
+    }
+    stats.dailyData[date].orders++
+    
+    if (tx.transaction_type === 'payin') {
+      stats.totalPayin++
+      if (tx.status === 'success') { stats.successPayin++; stats.payinAmount += tx.amount; stats.dailyData[date].payin += tx.amount }
+      else if (tx.status === 'failed') stats.failedPayin++
+      else stats.pendingPayin++
+    } else {
+      stats.totalPayout++
+      if (tx.status === 'success') { stats.successPayout++; stats.payoutAmount += tx.amount; stats.dailyData[date].payout += tx.amount }
+      else if (tx.status === 'failed') stats.failedPayout++
+      else stats.pendingPayout++
+    }
+    if (tx.status === 'success' && tx.fee) stats.feeCollected += tx.fee
+  })
+  
+  return stats
+}
+
+// Get monthly stats
+async function getMonthlyStats(supabaseAdmin: any, merchantId?: string) {
+  const monthAgo = new Date()
+  monthAgo.setMonth(monthAgo.getMonth() - 1)
+  
+  let query = supabaseAdmin
+    .from('transactions')
+    .select('amount, fee, status, transaction_type, created_at')
+    .gte('created_at', monthAgo.toISOString())
+  
+  if (merchantId) {
+    query = query.eq('merchant_id', merchantId)
+  }
+  
+  const { data: transactions } = await query
+  
+  let payinSuccess = 0, payinTotal = 0, payoutSuccess = 0, payoutTotal = 0
+  let payinAmount = 0, payoutAmount = 0, feeCollected = 0
+  const weeklyData: Record<string, { payin: number; payout: number }> = {}
+  
+  transactions?.forEach((tx: any) => {
+    const week = `W${Math.ceil((new Date().getDate() - new Date(tx.created_at).getDate() + 1) / 7)}`
+    if (!weeklyData[week]) weeklyData[week] = { payin: 0, payout: 0 }
+    
+    if (tx.transaction_type === 'payin') {
+      payinTotal++
+      if (tx.status === 'success') { payinSuccess++; payinAmount += tx.amount; weeklyData[week].payin += tx.amount }
+    } else {
+      payoutTotal++
+      if (tx.status === 'success') { payoutSuccess++; payoutAmount += tx.amount; weeklyData[week].payout += tx.amount }
+    }
+    if (tx.status === 'success' && tx.fee) feeCollected += tx.fee
+  })
+  
+  return { payinSuccess, payinTotal, payoutSuccess, payoutTotal, payinAmount, payoutAmount, feeCollected, weeklyData }
+}
+
+// Get peak hours analysis
+async function getPeakHoursAnalysis(supabaseAdmin: any) {
+  const weekAgo = new Date()
+  weekAgo.setDate(weekAgo.getDate() - 7)
+  
+  const { data: transactions } = await supabaseAdmin
+    .from('transactions')
+    .select('amount, status, transaction_type, created_at')
+    .eq('status', 'success')
+    .gte('created_at', weekAgo.toISOString())
+  
+  const hourlyData: Record<number, { count: number; amount: number }> = {}
+  for (let i = 0; i < 24; i++) hourlyData[i] = { count: 0, amount: 0 }
+  
+  transactions?.forEach((tx: any) => {
+    const hour = new Date(tx.created_at).getHours()
+    hourlyData[hour].count++
+    hourlyData[hour].amount += tx.amount
+  })
+  
+  // Find peak hours
+  const sorted = Object.entries(hourlyData)
+    .sort((a, b) => b[1].amount - a[1].amount)
+    .slice(0, 5)
+  
+  return { hourlyData, peakHours: sorted }
+}
+
+// Get comparison stats (today vs yesterday, this week vs last week)
+async function getComparisonStats(supabaseAdmin: any) {
+  const now = new Date()
+  const todayStart = new Date(now.setHours(0, 0, 0, 0))
+  const yesterdayStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000)
+  const thisWeekStart = new Date(now.setDate(now.getDate() - now.getDay()))
+  const lastWeekStart = new Date(thisWeekStart.getTime() - 7 * 24 * 60 * 60 * 1000)
+  const lastWeekEnd = thisWeekStart
+  
+  const [todayTx, yesterdayTx, thisWeekTx, lastWeekTx] = await Promise.all([
+    supabaseAdmin.from('transactions').select('amount, status, transaction_type').gte('created_at', todayStart.toISOString()),
+    supabaseAdmin.from('transactions').select('amount, status, transaction_type').gte('created_at', yesterdayStart.toISOString()).lt('created_at', todayStart.toISOString()),
+    supabaseAdmin.from('transactions').select('amount, status, transaction_type').gte('created_at', thisWeekStart.toISOString()),
+    supabaseAdmin.from('transactions').select('amount, status, transaction_type').gte('created_at', lastWeekStart.toISOString()).lt('created_at', lastWeekEnd.toISOString()),
+  ])
+  
+  const calcStats = (txs: any[]) => {
+    let payin = 0, payout = 0, orders = 0
+    txs?.forEach((tx: any) => {
+      orders++
+      if (tx.status === 'success') {
+        if (tx.transaction_type === 'payin') payin += tx.amount
+        else payout += tx.amount
+      }
+    })
+    return { payin, payout, orders }
+  }
+  
+  return {
+    today: calcStats(todayTx.data || []),
+    yesterday: calcStats(yesterdayTx.data || []),
+    thisWeek: calcStats(thisWeekTx.data || []),
+    lastWeek: calcStats(lastWeekTx.data || []),
+  }
+}
+
+// ============= SECURITY & ALERT FUNCTIONS =============
+
+// Check for suspicious activity
+async function checkSuspiciousActivity(supabaseAdmin: any, merchantId: string) {
+  const hourAgo = new Date()
+  hourAgo.setHours(hourAgo.getHours() - 1)
+  
+  const { data: recentTx } = await supabaseAdmin
+    .from('transactions')
+    .select('amount, status, transaction_type, created_at')
+    .eq('merchant_id', merchantId)
+    .gte('created_at', hourAgo.toISOString())
+  
+  const alerts: string[] = []
+  
+  // Check for high failure rate
+  const failedCount = recentTx?.filter((tx: any) => tx.status === 'failed').length || 0
+  const totalCount = recentTx?.length || 0
+  if (totalCount >= 5 && failedCount / totalCount > 0.5) {
+    alerts.push(`⚠️ High failure rate: ${Math.round(failedCount / totalCount * 100)}% in last hour`)
+  }
+  
+  // Check for unusual volume
+  const totalAmount = recentTx?.filter((tx: any) => tx.status === 'success').reduce((sum: number, tx: any) => sum + tx.amount, 0) || 0
+  if (totalAmount > 500000) {
+    alerts.push(`⚠️ High volume: ${formatINR(totalAmount)} in last hour`)
+  }
+  
+  // Check for rapid transactions
+  if (totalCount > 50) {
+    alerts.push(`⚠️ Rapid transactions: ${totalCount} in last hour`)
+  }
+  
+  return alerts
+}
+
+// Check low balance alerts
+async function checkLowBalanceAlerts(supabaseAdmin: any, adminSettings: any) {
+  const { data: merchants } = await supabaseAdmin
+    .from('merchants')
+    .select('merchant_name, balance, telegram_chat_id, payment_gateways(currency)')
+    .eq('is_active', true)
+  
+  const alerts: { merchant: string; balance: number; currency: string; chatId: string }[] = []
+  
+  const thresholds: Record<string, number> = {
+    INR: adminSettings?.balance_threshold_inr || 10000,
+    PKR: adminSettings?.balance_threshold_pkr || 50000,
+    BDT: adminSettings?.balance_threshold_bdt || 50000,
+  }
+  
+  merchants?.forEach((m: any) => {
+    const currency = m.payment_gateways?.currency || 'INR'
+    const threshold = thresholds[currency] || 10000
+    if (m.balance < threshold) {
+      alerts.push({
+        merchant: m.merchant_name,
+        balance: m.balance,
+        currency,
+        chatId: m.telegram_chat_id
+      })
+    }
+  })
+  
+  return alerts
+}
+
+// Check for large transactions
+async function getLargeTransactions(supabaseAdmin: any, adminSettings: any, hours: number = 24) {
+  const since = new Date()
+  since.setHours(since.getHours() - hours)
+  
+  const payinThreshold = adminSettings?.large_payin_threshold || 100000
+  const payoutThreshold = adminSettings?.large_payout_threshold || 50000
+  
+  const { data: largePayins } = await supabaseAdmin
+    .from('transactions')
+    .select('order_no, amount, status, created_at, merchants(merchant_name)')
+    .eq('transaction_type', 'payin')
+    .gte('amount', payinThreshold)
+    .gte('created_at', since.toISOString())
+    .order('amount', { ascending: false })
+    .limit(10)
+  
+  const { data: largePayouts } = await supabaseAdmin
+    .from('transactions')
+    .select('order_no, amount, status, created_at, merchants(merchant_name)')
+    .eq('transaction_type', 'payout')
+    .gte('amount', payoutThreshold)
+    .gte('created_at', since.toISOString())
+    .order('amount', { ascending: false })
+    .limit(10)
+  
+  return { largePayins: largePayins || [], largePayouts: largePayouts || [] }
+}
+
+// Generate success rate chart (text-based)
+function generateTextChart(data: Record<string, number>, title: string): string {
+  const max = Math.max(...Object.values(data), 1)
+  let chart = `📊 <b>${title}</b>\n\n`
+  
+  Object.entries(data).forEach(([key, value]) => {
+    const barLength = Math.round((value / max) * 10)
+    const bar = '█'.repeat(barLength) + '░'.repeat(10 - barLength)
+    chart += `${key}: ${bar} ${value}\n`
+  })
+  
+  return chart
+}
+
+// ============= MAIN HANDLER =============
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -217,13 +479,12 @@ Deno.serve(async (req) => {
     // Get admin settings
     const { data: adminSettings } = await supabaseAdmin
       .from('admin_settings')
-      .select('admin_telegram_chat_id, gateway_name, gateway_domain, default_payin_fee, default_payout_fee')
+      .select('*')
       .limit(1)
       .maybeSingle()
 
     const adminChatId = adminSettings?.admin_telegram_chat_id
     const gatewayName = adminSettings?.gateway_name || 'ELOPAY'
-    // Remove trailing slash to prevent double slashes in URLs
     const rawDomain = adminSettings?.gateway_domain || 'https://gateway.hyperdeveloper.store'
     const gatewayDomain = rawDomain.replace(/\/+$/, '')
 
@@ -236,10 +497,9 @@ Deno.serve(async (req) => {
       
       await answerCallbackQuery(botToken, callbackQuery.id)
       
-      // Parse callback data
       const [action, ...params] = callbackData.split(':')
       
-      // Handle different callback actions
+      // ============ MERCHANT DETAIL CALLBACK ============
       if (action === 'merchant_detail') {
         const accountNo = params[0]
         const { data: merchant } = await supabaseAdmin
@@ -265,12 +525,20 @@ Deno.serve(async (req) => {
           await editMessage(botToken, chatId, messageId, msg, {
             inline_keyboard: [
               [
-                { text: '📊 Today Stats', callback_data: `merchant_today:${accountNo}` },
+                { text: '📊 Today', callback_data: `merchant_today:${accountNo}` },
+                { text: '📈 Weekly', callback_data: `merchant_weekly:${accountNo}` },
+              ],
+              [
                 { text: '📋 History', callback_data: `merchant_history:${accountNo}` },
+                { text: '⚠️ Alerts', callback_data: `merchant_alerts:${accountNo}` },
               ],
               [
                 { text: '🔐 Reset 2FA', callback_data: `reset_2fa:${accountNo}` },
                 { text: '🔑 Reset Pass', callback_data: `reset_pass:${accountNo}` },
+              ],
+              [
+                { text: merchant.is_active ? '🔴 Disable' : '🟢 Enable', callback_data: `toggle_merchant:${accountNo}` },
+                { text: '🔒 Freeze', callback_data: `freeze_merchant:${accountNo}` },
               ],
               [{ text: '« Back to List', callback_data: 'merchants_list:0' }],
             ],
@@ -278,6 +546,194 @@ Deno.serve(async (req) => {
         }
       }
       
+      // ============ MERCHANT WEEKLY CALLBACK ============
+      else if (action === 'merchant_weekly') {
+        const accountNo = params[0]
+        const { data: merchant } = await supabaseAdmin
+          .from('merchants')
+          .select('id, merchant_name, payment_gateways(currency)')
+          .eq('account_number', accountNo)
+          .maybeSingle()
+        
+        if (merchant) {
+          const stats = await getWeeklyStats(supabaseAdmin, merchant.id)
+          const gateway = merchant.payment_gateways as unknown as { currency: string } | null
+          const currency = gateway?.currency || 'INR'
+          
+          const payinRate = stats.totalPayin ? Math.round(stats.successPayin / stats.totalPayin * 100) : 0
+          const payoutRate = stats.totalPayout ? Math.round(stats.successPayout / stats.totalPayout * 100) : 0
+          
+          let msg = `📈 <b>${merchant.merchant_name} - Weekly</b>\n\n`
+          msg += `━━━ 📥 PAY-IN ━━━\n`
+          msg += `Orders: ${stats.totalPayin} | ✅ ${stats.successPayin} | ❌ ${stats.failedPayin}\n`
+          msg += `Amount: ${formatAmount(stats.payinAmount, currency)}\n`
+          msg += `Rate: ${payinRate}%\n\n`
+          msg += `━━━ 📤 PAY-OUT ━━━\n`
+          msg += `Orders: ${stats.totalPayout} | ✅ ${stats.successPayout} | ❌ ${stats.failedPayout}\n`
+          msg += `Amount: ${formatAmount(stats.payoutAmount, currency)}\n`
+          msg += `Rate: ${payoutRate}%\n\n`
+          msg += `━━━ 💰 FEES ━━━\n`
+          msg += `Collected: ${formatAmount(stats.feeCollected, currency)}`
+          
+          await editMessage(botToken, chatId, messageId, msg, {
+            inline_keyboard: [
+              [
+                { text: '📅 Monthly', callback_data: `merchant_monthly:${accountNo}` },
+              ],
+              [{ text: '« Back', callback_data: `merchant_detail:${accountNo}` }],
+            ],
+          })
+        }
+      }
+      
+      // ============ MERCHANT MONTHLY CALLBACK ============
+      else if (action === 'merchant_monthly') {
+        const accountNo = params[0]
+        const { data: merchant } = await supabaseAdmin
+          .from('merchants')
+          .select('id, merchant_name, payment_gateways(currency)')
+          .eq('account_number', accountNo)
+          .maybeSingle()
+        
+        if (merchant) {
+          const stats = await getMonthlyStats(supabaseAdmin, merchant.id)
+          const gateway = merchant.payment_gateways as unknown as { currency: string } | null
+          const currency = gateway?.currency || 'INR'
+          
+          const payinRate = stats.payinTotal ? Math.round(stats.payinSuccess / stats.payinTotal * 100) : 0
+          const payoutRate = stats.payoutTotal ? Math.round(stats.payoutSuccess / stats.payoutTotal * 100) : 0
+          
+          let msg = `📅 <b>${merchant.merchant_name} - Monthly</b>\n\n`
+          msg += `━━━ 📥 PAY-IN ━━━\n`
+          msg += `Success: ${stats.payinSuccess}/${stats.payinTotal}\n`
+          msg += `Amount: ${formatAmount(stats.payinAmount, currency)}\n`
+          msg += `Rate: ${payinRate}%\n\n`
+          msg += `━━━ 📤 PAY-OUT ━━━\n`
+          msg += `Success: ${stats.payoutSuccess}/${stats.payoutTotal}\n`
+          msg += `Amount: ${formatAmount(stats.payoutAmount, currency)}\n`
+          msg += `Rate: ${payoutRate}%\n\n`
+          msg += `━━━ 💰 FEES ━━━\n`
+          msg += `Collected: ${formatAmount(stats.feeCollected, currency)}`
+          
+          await editMessage(botToken, chatId, messageId, msg, {
+            inline_keyboard: [[{ text: '« Back', callback_data: `merchant_weekly:${accountNo}` }]],
+          })
+        }
+      }
+      
+      // ============ MERCHANT ALERTS CALLBACK ============
+      else if (action === 'merchant_alerts') {
+        const accountNo = params[0]
+        const { data: merchant } = await supabaseAdmin
+          .from('merchants')
+          .select('id, merchant_name')
+          .eq('account_number', accountNo)
+          .maybeSingle()
+        
+        if (merchant) {
+          const alerts = await checkSuspiciousActivity(supabaseAdmin, merchant.id)
+          
+          let msg = `⚠️ <b>${merchant.merchant_name} - Alerts</b>\n\n`
+          if (alerts.length > 0) {
+            alerts.forEach(alert => { msg += `${alert}\n` })
+          } else {
+            msg += `✅ No suspicious activity detected\n\n`
+            msg += `<i>Monitoring: failure rate, volume, rapid transactions</i>`
+          }
+          
+          await editMessage(botToken, chatId, messageId, msg, {
+            inline_keyboard: [[{ text: '« Back', callback_data: `merchant_detail:${accountNo}` }]],
+          })
+        }
+      }
+      
+      // ============ TOGGLE MERCHANT CALLBACK ============
+      else if (action === 'toggle_merchant') {
+        const accountNo = params[0]
+        const { data: merchant } = await supabaseAdmin
+          .from('merchants')
+          .select('is_active, merchant_name, telegram_chat_id')
+          .eq('account_number', accountNo)
+          .maybeSingle()
+        
+        if (merchant) {
+          const newStatus = !merchant.is_active
+          await supabaseAdmin.from('merchants').update({ is_active: newStatus }).eq('account_number', accountNo)
+          
+          const statusText = newStatus ? '✅ Enabled' : '🔴 Disabled'
+          await editMessage(botToken, chatId, messageId, `${statusText} <b>${merchant.merchant_name}</b>`, {
+            inline_keyboard: [[{ text: '« Back', callback_data: `merchant_detail:${accountNo}` }]],
+          })
+          
+          if (merchant.telegram_chat_id) {
+            await sendMessage(botToken, merchant.telegram_chat_id, 
+              `${statusText} by admin\n\n${newStatus ? 'You can now process transactions.' : 'Your account has been suspended.'}`)
+          }
+        }
+      }
+      
+      // ============ FREEZE MERCHANT CALLBACK ============
+      else if (action === 'freeze_merchant') {
+        const accountNo = params[0]
+        const { data: merchant } = await supabaseAdmin
+          .from('merchants')
+          .select('balance, frozen_balance, merchant_name, telegram_chat_id')
+          .eq('account_number', accountNo)
+          .maybeSingle()
+        
+        if (merchant) {
+          const totalBalance = (merchant.balance || 0) + (merchant.frozen_balance || 0)
+          await supabaseAdmin.from('merchants')
+            .update({ balance: 0, frozen_balance: totalBalance })
+            .eq('account_number', accountNo)
+          
+          await editMessage(botToken, chatId, messageId, 
+            `🔒 <b>Balance Frozen</b>\n\n` +
+            `Merchant: ${merchant.merchant_name}\n` +
+            `Frozen: ${formatINR(totalBalance)}`, {
+            inline_keyboard: [
+              [{ text: '🔓 Unfreeze', callback_data: `unfreeze_merchant:${accountNo}` }],
+              [{ text: '« Back', callback_data: `merchant_detail:${accountNo}` }],
+            ],
+          })
+          
+          if (merchant.telegram_chat_id) {
+            await sendMessage(botToken, merchant.telegram_chat_id, 
+              `🔒 <b>Balance Frozen</b>\n\nYour balance has been frozen by admin. Contact support for assistance.`)
+          }
+        }
+      }
+      
+      // ============ UNFREEZE MERCHANT CALLBACK ============
+      else if (action === 'unfreeze_merchant') {
+        const accountNo = params[0]
+        const { data: merchant } = await supabaseAdmin
+          .from('merchants')
+          .select('balance, frozen_balance, merchant_name, telegram_chat_id')
+          .eq('account_number', accountNo)
+          .maybeSingle()
+        
+        if (merchant) {
+          const totalBalance = (merchant.balance || 0) + (merchant.frozen_balance || 0)
+          await supabaseAdmin.from('merchants')
+            .update({ balance: totalBalance, frozen_balance: 0 })
+            .eq('account_number', accountNo)
+          
+          await editMessage(botToken, chatId, messageId, 
+            `🔓 <b>Balance Unfrozen</b>\n\n` +
+            `Merchant: ${merchant.merchant_name}\n` +
+            `Available: ${formatINR(totalBalance)}`, {
+            inline_keyboard: [[{ text: '« Back', callback_data: `merchant_detail:${accountNo}` }]],
+          })
+          
+          if (merchant.telegram_chat_id) {
+            await sendMessage(botToken, merchant.telegram_chat_id, 
+              `🔓 <b>Balance Unfrozen</b>\n\nYour balance is now available for withdrawals.`)
+          }
+        }
+      }
+      
+      // ============ MERCHANT TODAY CALLBACK ============
       else if (action === 'merchant_today') {
         const accountNo = params[0]
         const { data: merchant } = await supabaseAdmin
@@ -325,6 +781,7 @@ Deno.serve(async (req) => {
         }
       }
       
+      // ============ MERCHANT HISTORY CALLBACK ============
       else if (action === 'merchant_history') {
         const accountNo = params[0]
         const { data: merchant } = await supabaseAdmin
@@ -356,6 +813,7 @@ Deno.serve(async (req) => {
         }
       }
       
+      // ============ RESET 2FA CALLBACK ============
       else if (action === 'reset_2fa') {
         const accountNo = params[0]
         await supabaseAdmin
@@ -368,6 +826,7 @@ Deno.serve(async (req) => {
         })
       }
       
+      // ============ RESET PASS CALLBACK ============
       else if (action === 'reset_pass') {
         const accountNo = params[0]
         const { data: merchant } = await supabaseAdmin
@@ -392,6 +851,7 @@ Deno.serve(async (req) => {
         }
       }
       
+      // ============ MERCHANTS LIST CALLBACK ============
       else if (action === 'merchants_list') {
         const page = parseInt(params[0]) || 0
         const limit = 5
@@ -415,7 +875,6 @@ Deno.serve(async (req) => {
           buttons.push([{ text: `👤 ${m.merchant_name}`, callback_data: `merchant_detail:${m.account_number}` }])
         })
         
-        // Pagination buttons
         const navButtons: { text: string; callback_data: string }[] = []
         if (page > 0) navButtons.push({ text: '« Prev', callback_data: `merchants_list:${page - 1}` })
         if (page < totalPages - 1) navButtons.push({ text: 'Next »', callback_data: `merchants_list:${page + 1}` })
@@ -424,6 +883,7 @@ Deno.serve(async (req) => {
         await editMessage(botToken, chatId, messageId, msg, { inline_keyboard: buttons })
       }
       
+      // ============ DASHBOARD CALLBACK ============
       else if (action === 'dashboard') {
         const today = new Date()
         today.setHours(0, 0, 0, 0)
@@ -466,11 +926,222 @@ Deno.serve(async (req) => {
               { text: '📋 Merchants', callback_data: 'merchants_list:0' },
               { text: '⏳ Pending', callback_data: 'pending_all' },
             ],
+            [
+              { text: '📈 Analytics', callback_data: 'admin_analytics' },
+              { text: '⚠️ Alerts', callback_data: 'admin_alerts' },
+            ],
             [{ text: '🔄 Refresh', callback_data: 'dashboard' }],
           ],
         })
       }
       
+      // ============ ADMIN ANALYTICS CALLBACK ============
+      else if (action === 'admin_analytics') {
+        const comparison = await getComparisonStats(supabaseAdmin)
+        const todayChange = comparison.yesterday.payin ? Math.round((comparison.today.payin - comparison.yesterday.payin) / comparison.yesterday.payin * 100) : 0
+        const weekChange = comparison.lastWeek.payin ? Math.round((comparison.thisWeek.payin - comparison.lastWeek.payin) / comparison.lastWeek.payin * 100) : 0
+        
+        const todayIcon = todayChange >= 0 ? '📈' : '📉'
+        const weekIcon = weekChange >= 0 ? '📈' : '📉'
+        
+        let msg = `📈 <b>Analytics Dashboard</b>\n\n`
+        msg += `━━━ 📅 TODAY vs YESTERDAY ━━━\n`
+        msg += `Pay-In: ${formatINR(comparison.today.payin)} ${todayIcon} ${todayChange >= 0 ? '+' : ''}${todayChange}%\n`
+        msg += `Pay-Out: ${formatINR(comparison.today.payout)}\n`
+        msg += `Orders: ${comparison.today.orders}\n\n`
+        msg += `━━━ 📆 THIS WEEK vs LAST ━━━\n`
+        msg += `Pay-In: ${formatINR(comparison.thisWeek.payin)} ${weekIcon} ${weekChange >= 0 ? '+' : ''}${weekChange}%\n`
+        msg += `Pay-Out: ${formatINR(comparison.thisWeek.payout)}\n`
+        msg += `Orders: ${comparison.thisWeek.orders}`
+        
+        await editMessage(botToken, chatId, messageId, msg, {
+          inline_keyboard: [
+            [
+              { text: '📊 Weekly Report', callback_data: 'weekly_report' },
+              { text: '📅 Monthly', callback_data: 'monthly_report' },
+            ],
+            [
+              { text: '⏰ Peak Hours', callback_data: 'peak_hours' },
+              { text: '🏆 Top Merchants', callback_data: 'top_merchants' },
+            ],
+            [{ text: '« Back', callback_data: 'dashboard' }],
+          ],
+        })
+      }
+      
+      // ============ WEEKLY REPORT CALLBACK ============
+      else if (action === 'weekly_report') {
+        const stats = await getWeeklyStats(supabaseAdmin)
+        const payinRate = stats.totalPayin ? Math.round(stats.successPayin / stats.totalPayin * 100) : 0
+        const payoutRate = stats.totalPayout ? Math.round(stats.successPayout / stats.totalPayout * 100) : 0
+        
+        let msg = `📊 <b>Weekly Report</b>\n\n`
+        msg += `━━━ 📥 PAY-IN (7 days) ━━━\n`
+        msg += `Total: ${stats.totalPayin} | ✅ ${stats.successPayin} | ❌ ${stats.failedPayin} | ⏳ ${stats.pendingPayin}\n`
+        msg += `Amount: ${formatINR(stats.payinAmount)}\n`
+        msg += `Success Rate: ${payinRate}%\n\n`
+        msg += `━━━ 📤 PAY-OUT (7 days) ━━━\n`
+        msg += `Total: ${stats.totalPayout} | ✅ ${stats.successPayout} | ❌ ${stats.failedPayout} | ⏳ ${stats.pendingPayout}\n`
+        msg += `Amount: ${formatINR(stats.payoutAmount)}\n`
+        msg += `Success Rate: ${payoutRate}%\n\n`
+        msg += `━━━ 💰 REVENUE ━━━\n`
+        msg += `Fees Collected: ${formatINR(stats.feeCollected)}`
+        
+        await editMessage(botToken, chatId, messageId, msg, {
+          inline_keyboard: [[{ text: '« Back', callback_data: 'admin_analytics' }]],
+        })
+      }
+      
+      // ============ MONTHLY REPORT CALLBACK ============
+      else if (action === 'monthly_report') {
+        const stats = await getMonthlyStats(supabaseAdmin)
+        const payinRate = stats.payinTotal ? Math.round(stats.payinSuccess / stats.payinTotal * 100) : 0
+        const payoutRate = stats.payoutTotal ? Math.round(stats.payoutSuccess / stats.payoutTotal * 100) : 0
+        
+        let msg = `📅 <b>Monthly Report (30 days)</b>\n\n`
+        msg += `━━━ 📥 PAY-IN ━━━\n`
+        msg += `Success: ${stats.payinSuccess}/${stats.payinTotal} (${payinRate}%)\n`
+        msg += `Amount: ${formatINR(stats.payinAmount)}\n\n`
+        msg += `━━━ 📤 PAY-OUT ━━━\n`
+        msg += `Success: ${stats.payoutSuccess}/${stats.payoutTotal} (${payoutRate}%)\n`
+        msg += `Amount: ${formatINR(stats.payoutAmount)}\n\n`
+        msg += `━━━ 💰 REVENUE ━━━\n`
+        msg += `Fees Collected: ${formatINR(stats.feeCollected)}`
+        
+        await editMessage(botToken, chatId, messageId, msg, {
+          inline_keyboard: [[{ text: '« Back', callback_data: 'admin_analytics' }]],
+        })
+      }
+      
+      // ============ PEAK HOURS CALLBACK ============
+      else if (action === 'peak_hours') {
+        const analysis = await getPeakHoursAnalysis(supabaseAdmin)
+        
+        let msg = `⏰ <b>Peak Hours (Last 7 Days)</b>\n\n`
+        msg += `━━━ 🏆 TOP 5 HOURS ━━━\n`
+        analysis.peakHours.forEach(([hour, data], i) => {
+          msg += `${i + 1}. ${hour}:00 - ${parseInt(hour) + 1}:00\n`
+          msg += `   ${(data as any).count} orders | ${formatINR((data as any).amount)}\n`
+        })
+        msg += `\n<i>💡 Schedule payouts during off-peak hours for better success rates</i>`
+        
+        await editMessage(botToken, chatId, messageId, msg, {
+          inline_keyboard: [[{ text: '« Back', callback_data: 'admin_analytics' }]],
+        })
+      }
+      
+      // ============ TOP MERCHANTS CALLBACK ============
+      else if (action === 'top_merchants') {
+        const weekAgo = new Date()
+        weekAgo.setDate(weekAgo.getDate() - 7)
+        
+        const { data: transactions } = await supabaseAdmin
+          .from('transactions')
+          .select('amount, merchant_id, merchants(merchant_name)')
+          .eq('status', 'success')
+          .gte('created_at', weekAgo.toISOString())
+        
+        const merchantVolumes: Record<string, { name: string; volume: number }> = {}
+        transactions?.forEach((tx: any) => {
+          const name = (tx.merchants as any)?.merchant_name || 'Unknown'
+          if (!merchantVolumes[tx.merchant_id]) {
+            merchantVolumes[tx.merchant_id] = { name, volume: 0 }
+          }
+          merchantVolumes[tx.merchant_id].volume += tx.amount
+        })
+        
+        const sorted = Object.entries(merchantVolumes)
+          .sort((a, b) => b[1].volume - a[1].volume)
+          .slice(0, 10)
+        
+        let msg = `🏆 <b>Top Merchants (7 Days)</b>\n\n`
+        sorted.forEach(([_, data], i) => {
+          const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`
+          msg += `${medal} <b>${data.name}</b>\n`
+          msg += `   Volume: ${formatINR(data.volume)}\n\n`
+        })
+        
+        await editMessage(botToken, chatId, messageId, msg, {
+          inline_keyboard: [[{ text: '« Back', callback_data: 'admin_analytics' }]],
+        })
+      }
+      
+      // ============ ADMIN ALERTS CALLBACK ============
+      else if (action === 'admin_alerts') {
+        const lowBalanceAlerts = await checkLowBalanceAlerts(supabaseAdmin, adminSettings)
+        const largeTransactions = await getLargeTransactions(supabaseAdmin, adminSettings)
+        
+        let msg = `⚠️ <b>System Alerts</b>\n\n`
+        
+        // Low balance alerts
+        msg += `━━━ 💰 LOW BALANCE ━━━\n`
+        if (lowBalanceAlerts.length > 0) {
+          lowBalanceAlerts.slice(0, 5).forEach(alert => {
+            msg += `⚠️ ${alert.merchant}: ${formatAmount(alert.balance, alert.currency)}\n`
+          })
+          if (lowBalanceAlerts.length > 5) msg += `...and ${lowBalanceAlerts.length - 5} more\n`
+        } else {
+          msg += `✅ All merchants have sufficient balance\n`
+        }
+        
+        // Large transactions
+        msg += `\n━━━ 💎 LARGE TRANSACTIONS (24h) ━━━\n`
+        if (largeTransactions.largePayins.length > 0 || largeTransactions.largePayouts.length > 0) {
+          msg += `📥 Large Pay-Ins: ${largeTransactions.largePayins.length}\n`
+          msg += `📤 Large Pay-Outs: ${largeTransactions.largePayouts.length}\n`
+        } else {
+          msg += `No large transactions in last 24 hours\n`
+        }
+        
+        await editMessage(botToken, chatId, messageId, msg, {
+          inline_keyboard: [
+            [
+              { text: '💎 Large Tx Details', callback_data: 'large_tx_details' },
+            ],
+            [
+              { text: '🔄 Refresh', callback_data: 'admin_alerts' },
+              { text: '« Back', callback_data: 'dashboard' },
+            ],
+          ],
+        })
+      }
+      
+      // ============ LARGE TX DETAILS CALLBACK ============
+      else if (action === 'large_tx_details') {
+        const largeTransactions = await getLargeTransactions(supabaseAdmin, adminSettings)
+        
+        let msg = `💎 <b>Large Transactions (24h)</b>\n\n`
+        
+        msg += `━━━ 📥 LARGE PAY-INS ━━━\n`
+        if (largeTransactions.largePayins.length > 0) {
+          largeTransactions.largePayins.slice(0, 5).forEach((tx: any, i: number) => {
+            const statusIcon = tx.status === 'success' ? '✅' : tx.status === 'failed' ? '❌' : '⏳'
+            msg += `${i + 1}. ${statusIcon} ${formatINR(tx.amount)}\n`
+            msg += `   ${(tx.merchants as any)?.merchant_name || 'N/A'}\n`
+            msg += `   ${timeAgo(tx.created_at)}\n\n`
+          })
+        } else {
+          msg += `No large pay-ins\n\n`
+        }
+        
+        msg += `━━━ 📤 LARGE PAY-OUTS ━━━\n`
+        if (largeTransactions.largePayouts.length > 0) {
+          largeTransactions.largePayouts.slice(0, 5).forEach((tx: any, i: number) => {
+            const statusIcon = tx.status === 'success' ? '✅' : tx.status === 'failed' ? '❌' : '⏳'
+            msg += `${i + 1}. ${statusIcon} ${formatINR(tx.amount)}\n`
+            msg += `   ${(tx.merchants as any)?.merchant_name || 'N/A'}\n`
+            msg += `   ${timeAgo(tx.created_at)}\n\n`
+          })
+        } else {
+          msg += `No large pay-outs\n`
+        }
+        
+        await editMessage(botToken, chatId, messageId, msg, {
+          inline_keyboard: [[{ text: '« Back', callback_data: 'admin_alerts' }]],
+        })
+      }
+      
+      // ============ PENDING ALL CALLBACK ============
       else if (action === 'pending_all') {
         const { data: pendingTx } = await supabaseAdmin
           .from('transactions')
@@ -505,6 +1176,138 @@ Deno.serve(async (req) => {
         })
       }
       
+      // ============ MY TODAY (MERCHANT) CALLBACK ============
+      else if (action === 'my_today') {
+        const merchantByChat = await findMerchantByChatId(supabaseAdmin, chatId)
+        if (merchantByChat) {
+          const today = new Date()
+          today.setHours(0, 0, 0, 0)
+          const currency = merchantByChat.payment_gateways?.currency || 'INR'
+          
+          const { data: transactions } = await supabaseAdmin
+            .from('transactions')
+            .select('amount, status, transaction_type')
+            .eq('merchant_id', merchantByChat.id)
+            .gte('created_at', today.toISOString())
+          
+          let payinCount = 0, payinSuccess = 0, payinAmount = 0
+          let payoutCount = 0, payoutSuccess = 0, payoutAmount = 0
+          
+          transactions?.forEach((tx: any) => {
+            if (tx.transaction_type === 'payin') {
+              payinCount++
+              if (tx.status === 'success') { payinSuccess++; payinAmount += tx.amount }
+            } else {
+              payoutCount++
+              if (tx.status === 'success') { payoutSuccess++; payoutAmount += tx.amount }
+            }
+          })
+          
+          const msg = `📊 <b>${merchantByChat.merchant_name} - Today</b>\n\n` +
+            `━━━ 📥 PAY-IN ━━━\n` +
+            `Orders: ${payinCount} | Success: ${payinSuccess}\n` +
+            `Amount: ${formatAmount(payinAmount, currency)}\n\n` +
+            `━━━ 📤 PAY-OUT ━━━\n` +
+            `Orders: ${payoutCount} | Success: ${payoutSuccess}\n` +
+            `Amount: ${formatAmount(payoutAmount, currency)}`
+          
+          await editMessage(botToken, chatId, messageId, msg, {
+            inline_keyboard: [[{ text: '« Back', callback_data: 'my_dashboard' }]],
+          })
+        }
+      }
+      
+      // ============ MY WITHDRAW CALLBACK ============
+      else if (action === 'my_withdraw') {
+        const merchantByChat = await findMerchantByChatId(supabaseAdmin, chatId)
+        if (merchantByChat) {
+          const currency = merchantByChat.payment_gateways?.currency || 'INR'
+          
+          await editMessage(botToken, chatId, messageId, 
+            `💸 <b>Withdrawal</b>\n\n` +
+            `Available: ${formatAmount(merchantByChat.balance || 0, currency)}\n\n` +
+            `To request withdrawal:\n` +
+            `1. Go to dashboard: ${gatewayDomain}/merchant\n` +
+            `2. Navigate to Withdrawal page\n` +
+            `3. Enter amount and withdrawal password\n\n` +
+            `<i>⚠️ Minimum withdrawal: ${formatAmount(1000, currency)}</i>`, {
+            inline_keyboard: [[{ text: '« Back', callback_data: 'my_dashboard' }]],
+          })
+        }
+      }
+      
+      // ============ MY DASHBOARD CALLBACK ============
+      else if (action === 'my_dashboard') {
+        const merchantByChat = await findMerchantByChatId(supabaseAdmin, chatId)
+        if (merchantByChat) {
+          const currency = merchantByChat.payment_gateways?.currency || 'INR'
+          const total = (merchantByChat.balance || 0) + (merchantByChat.frozen_balance || 0)
+          
+          await editMessage(botToken, chatId, messageId, 
+            `💰 <b>${merchantByChat.merchant_name}</b>\n\n` +
+            `💵 Available: ${formatAmount(merchantByChat.balance || 0, currency)}\n` +
+            `🧊 Frozen: ${formatAmount(merchantByChat.frozen_balance || 0, currency)}\n` +
+            `📊 Total: ${formatAmount(total, currency)}`, {
+            inline_keyboard: [
+              [
+                { text: '📊 Today', callback_data: 'my_today' },
+                { text: '💸 Withdraw', callback_data: 'my_withdraw' },
+              ],
+              [
+                { text: '📈 Weekly', callback_data: 'my_weekly' },
+                { text: '💳 Fees', callback_data: 'my_fees' },
+              ],
+            ],
+          })
+        }
+      }
+      
+      // ============ MY WEEKLY CALLBACK ============
+      else if (action === 'my_weekly') {
+        const merchantByChat = await findMerchantByChatId(supabaseAdmin, chatId)
+        if (merchantByChat) {
+          const stats = await getWeeklyStats(supabaseAdmin, merchantByChat.id)
+          const currency = merchantByChat.payment_gateways?.currency || 'INR'
+          
+          const payinRate = stats.totalPayin ? Math.round(stats.successPayin / stats.totalPayin * 100) : 0
+          const payoutRate = stats.totalPayout ? Math.round(stats.successPayout / stats.totalPayout * 100) : 0
+          
+          let msg = `📈 <b>${merchantByChat.merchant_name} - Weekly</b>\n\n`
+          msg += `━━━ 📥 PAY-IN ━━━\n`
+          msg += `Orders: ${stats.totalPayin} | ✅ ${stats.successPayin}\n`
+          msg += `Amount: ${formatAmount(stats.payinAmount, currency)}\n`
+          msg += `Rate: ${payinRate}%\n\n`
+          msg += `━━━ 📤 PAY-OUT ━━━\n`
+          msg += `Orders: ${stats.totalPayout} | ✅ ${stats.successPayout}\n`
+          msg += `Amount: ${formatAmount(stats.payoutAmount, currency)}\n`
+          msg += `Rate: ${payoutRate}%`
+          
+          await editMessage(botToken, chatId, messageId, msg, {
+            inline_keyboard: [[{ text: '« Back', callback_data: 'my_dashboard' }]],
+          })
+        }
+      }
+      
+      // ============ MY FEES CALLBACK ============
+      else if (action === 'my_fees') {
+        const merchantByChat = await findMerchantByChatId(supabaseAdmin, chatId)
+        if (merchantByChat) {
+          const currency = merchantByChat.payment_gateways?.currency || 'INR'
+          
+          const msg = `💳 <b>${merchantByChat.merchant_name} - Fees</b>\n\n` +
+            `📥 Payin Fee: <b>${merchantByChat.payin_fee}%</b>\n` +
+            `📤 Payout Fee: <b>${merchantByChat.payout_fee}%</b>\n\n` +
+            `━━━ EXAMPLE ━━━\n` +
+            `For ${formatAmount(10000, currency)} payin:\n` +
+            `• Fee: ${formatAmount(10000 * merchantByChat.payin_fee / 100, currency)}\n` +
+            `• You receive: ${formatAmount(10000 - (10000 * merchantByChat.payin_fee / 100), currency)}`
+          
+          await editMessage(botToken, chatId, messageId, msg, {
+            inline_keyboard: [[{ text: '« Back', callback_data: 'my_dashboard' }]],
+          })
+        }
+      }
+      
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
@@ -537,23 +1340,31 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // ============ /setmenu - Setup bot commands menu ============
+    // ============ /setmenu - Setup bot commands menu (ENHANCED) ============
     if (command === '/setmenu' && isAdmin) {
       const merchantCommands = [
         { command: 'me', description: '👤 My account info & balance' },
         { command: 'mybalance', description: '💰 Check my balance' },
         { command: 'today', description: '📊 Today\'s transaction summary' },
+        { command: 'weekly', description: '📈 Weekly analytics report' },
         { command: 'history', description: '📋 Recent transactions' },
         { command: 'pending', description: '⏳ My pending transactions' },
         { command: 'status', description: '🔍 Check order status' },
         { command: 'withdraw', description: '💸 Request withdrawal' },
         { command: 'fees', description: '💳 View my fee rates' },
+        { command: 'alerts', description: '⚠️ Check my account alerts' },
         { command: 'tg_id', description: '🆔 Get chat/group ID' },
         { command: 'help', description: '❓ Show help menu' },
       ]
 
       const adminCommands = [
         { command: 'dashboard', description: '📊 Quick dashboard view' },
+        { command: 'analytics', description: '📈 Advanced analytics' },
+        { command: 'weekly_report', description: '📊 Weekly stats report' },
+        { command: 'monthly_report', description: '📅 Monthly stats report' },
+        { command: 'peak_hours', description: '⏰ Peak transaction hours' },
+        { command: 'alerts', description: '⚠️ System alerts & warnings' },
+        { command: 'large_tx', description: '💎 Large transactions' },
         { command: 'create_merchant', description: '➕ Create new merchant' },
         { command: 'merchants', description: '📋 List all merchants' },
         { command: 'merchant', description: '👤 View merchant details' },
@@ -567,6 +1378,7 @@ Deno.serve(async (req) => {
         { command: 'set_gateway', description: '🌐 Assign gateway' },
         { command: 'set_telegram', description: '📱 Set Telegram group' },
         { command: 'toggle', description: '🔄 Enable/disable merchant' },
+        { command: 'freeze', description: '🔒 Freeze merchant balance' },
         { command: 'add_balance', description: '➕ Add merchant balance' },
         { command: 'deduct_balance', description: '➖ Deduct merchant balance' },
         { command: 'reset_2fa', description: '🔐 Reset 2FA' },
@@ -629,7 +1441,16 @@ Deno.serve(async (req) => {
           `📤 Payout: ${m.payout_fee}%\n\n` +
           `🌐 Dashboard: ${gatewayDomain}/merchant`
 
-        await sendMessage(botToken, chatId, msg)
+        await sendMessageWithButtons(botToken, chatId, msg, [
+          [
+            { text: '📊 Today', callback_data: 'my_today' },
+            { text: '📈 Weekly', callback_data: 'my_weekly' },
+          ],
+          [
+            { text: '💳 Fees', callback_data: 'my_fees' },
+            { text: '💸 Withdraw', callback_data: 'my_withdraw' },
+          ],
+        ])
         return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
       }
 
@@ -643,8 +1464,51 @@ Deno.serve(async (req) => {
           `🧊 Frozen: ${formatAmount(m.frozen_balance || 0, currency)}\n` +
           `━━━━━━━━━━━━━━━━━━\n` +
           `📊 Total: ${formatAmount(total, currency)}`,
-          [[{ text: '📊 Today Stats', callback_data: 'my_today' }, { text: '💸 Withdraw', callback_data: 'my_withdraw' }]]
+          [
+            [{ text: '📊 Today Stats', callback_data: 'my_today' }, { text: '💸 Withdraw', callback_data: 'my_withdraw' }],
+            [{ text: '📈 Weekly', callback_data: 'my_weekly' }],
+          ]
         )
+        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+
+      // /weekly - Merchant weekly stats
+      if (command === '/weekly' || command === '/week') {
+        const stats = await getWeeklyStats(supabaseAdmin, m.id)
+        
+        const payinRate = stats.totalPayin ? Math.round(stats.successPayin / stats.totalPayin * 100) : 0
+        const payoutRate = stats.totalPayout ? Math.round(stats.successPayout / stats.totalPayout * 100) : 0
+        
+        let msg = `📈 <b>${m.merchant_name} - Weekly</b>\n\n`
+        msg += `━━━ 📥 PAY-IN ━━━\n`
+        msg += `Orders: ${stats.totalPayin} | ✅ ${stats.successPayin} | ❌ ${stats.failedPayin}\n`
+        msg += `Amount: ${formatAmount(stats.payinAmount, currency)}\n`
+        msg += `Rate: ${payinRate}%\n\n`
+        msg += `━━━ 📤 PAY-OUT ━━━\n`
+        msg += `Orders: ${stats.totalPayout} | ✅ ${stats.successPayout} | ❌ ${stats.failedPayout}\n`
+        msg += `Amount: ${formatAmount(stats.payoutAmount, currency)}\n`
+        msg += `Rate: ${payoutRate}%`
+        
+        await sendMessage(botToken, chatId, msg)
+        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+
+      // /alerts - Merchant alerts
+      if (command === '/alerts') {
+        const alerts = await checkSuspiciousActivity(supabaseAdmin, m.id)
+        
+        let msg = `⚠️ <b>${m.merchant_name} - Alerts</b>\n\n`
+        if (alerts.length > 0) {
+          alerts.forEach(alert => { msg += `${alert}\n\n` })
+        } else {
+          msg += `✅ No alerts at this time\n\n`
+          msg += `<i>We monitor:</i>\n`
+          msg += `• Failure rates\n`
+          msg += `• Unusual volume\n`
+          msg += `• Rapid transactions`
+        }
+        
+        await sendMessage(botToken, chatId, msg)
         return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
       }
 
@@ -824,100 +1688,112 @@ Deno.serve(async (req) => {
         pendingTx.forEach((tx: any, i: number) => {
           const icon = tx.transaction_type === 'payin' ? '📥' : '📤'
           msg += `${i + 1}. ${icon} ⏳ ${formatAmount(tx.amount, currency)}\n`
-          msg += `   <code>${tx.order_no}</code> | ${timeAgo(tx.created_at)}\n\n`
+          msg += `   <code>${tx.order_no}</code>\n`
+          msg += `   ${timeAgo(tx.created_at)}\n\n`
         })
 
         await sendMessage(botToken, chatId, msg)
         return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
       }
 
-      // /start or /help for merchant
-      if (command === '/start' || command === '/help') {
-        await sendMessageWithButtons(botToken, chatId,
-          `🤖 <b>${gatewayName} Bot</b>\n\n` +
-          `👋 Welcome <b>${m.merchant_name}</b>!\n\n` +
-          `<b>━━━ QUICK COMMANDS ━━━</b>\n\n` +
-          `<code>/me</code> - Account details\n` +
-          `<code>/mybalance</code> - Check balance\n` +
-          `<code>/today</code> - Today's summary\n` +
-          `<code>/pending</code> - Pending transactions\n` +
-          `<code>/history</code> - Recent transactions\n` +
-          `<code>/status [order]</code> - Order status\n` +
-          `<code>/fees</code> - View fee rates\n\n` +
-          `━━━━━━━━━━━━━━━━━━━━━\n` +
-          `🆔 ID: <code>${m.account_number}</code>\n` +
-          `🌐 Dashboard: ${gatewayDomain}/merchant`,
-          [
-            [{ text: '💰 Balance', callback_data: 'my_balance' }, { text: '📊 Today', callback_data: 'my_today' }],
-            [{ text: '⏳ Pending', callback_data: 'my_pending' }, { text: '📋 History', callback_data: 'my_history' }],
-          ]
-        )
-        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-      }
-
-      await sendMessage(botToken, chatId, `❓ Unknown command.\n\nType /help for available commands.`)
-      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-    }
-
-    // ============ ADMIN HELP ============
-    if (command === '/start' || command === '/help') {
-      if (!isAdmin) {
+      // /withdraw - Show withdrawal info
+      if (command === '/withdraw') {
         await sendMessage(botToken, chatId, 
-          `⛔ <b>Access Denied</b>\n\n` +
-          `Your Chat ID: <code>${chatId}</code>\n\n` +
-          `<i>Contact admin to link this group.</i>`
+          `💸 <b>Withdrawal</b>\n\n` +
+          `Available: ${formatAmount(m.balance || 0, currency)}\n\n` +
+          `To request withdrawal:\n` +
+          `1. Go to dashboard: ${gatewayDomain}/merchant\n` +
+          `2. Navigate to Withdrawal page\n` +
+          `3. Enter amount and withdrawal password\n\n` +
+          `<i>⚠️ Minimum withdrawal: ${formatAmount(1000, currency)}</i>`
         )
         return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
       }
 
-      await sendMessageWithButtons(botToken, chatId,
-        `🤖 <b>${gatewayName} Admin Bot</b>\n\n` +
-        `<b>━━━ MERCHANT MANAGEMENT ━━━</b>\n` +
-        `<code>/create_merchant</code> - Create merchant\n` +
-        `<code>/merchants</code> - List all\n` +
-        `<code>/merchant [id]</code> - View details\n` +
-        `<code>/search [name]</code> - Search\n\n` +
-        `<b>━━━ BALANCE & FEES ━━━</b>\n` +
-        `<code>/balance [id]</code> - Check balance\n` +
-        `<code>/add_balance [id] [amount]</code>\n` +
-        `<code>/deduct_balance [id] [amount]</code>\n` +
-        `<code>/set_fee [id] [payin%] [payout%]</code>\n\n` +
-        `<b>━━━ TRANSACTIONS ━━━</b>\n` +
-        `<code>/pending</code> - All pending\n` +
-        `<code>/today [id]</code> - Today's stats\n` +
-        `<code>/history [id]</code> - History\n` +
-        `<code>/status [order]</code> - Order status\n\n` +
-        `<b>━━━ ACTIONS ━━━</b>\n` +
-        `<code>/toggle [id]</code> - Enable/disable\n` +
-        `<code>/set_gateway [id] [code]</code>\n` +
-        `<code>/set_telegram [id] [group]</code>\n` +
-        `<code>/reset_2fa [id]</code>\n` +
-        `<code>/reset_password [id]</code>\n` +
-        `<code>/reset_withdrawal [id]</code>\n\n` +
-        `<b>━━━ REPORTS ━━━</b>\n` +
-        `<code>/stats</code> - System stats\n` +
-        `<code>/gateways</code> - Gateway status\n` +
-        `<code>/top</code> - Top merchants\n` +
-        `<code>/broadcast [msg]</code> - Message all\n\n` +
-        `💡 Use /setmenu for command suggestions`,
-        [
-          [{ text: '📊 Dashboard', callback_data: 'dashboard' }],
-          [{ text: '📋 Merchants', callback_data: 'merchants_list:0' }, { text: '⏳ Pending', callback_data: 'pending_all' }],
-        ]
-      )
-      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      // /help - Merchant help
+      if (command === '/help' || command === '/start') {
+        const msg = `🤖 <b>${gatewayName} Bot</b>\n\n` +
+          `━━━ 💰 BALANCE ━━━\n` +
+          `/me - Full account info\n` +
+          `/mybalance - Quick balance check\n` +
+          `/fees - View fee structure\n\n` +
+          `━━━ 📊 ANALYTICS ━━━\n` +
+          `/today - Today's summary\n` +
+          `/weekly - Weekly report\n` +
+          `/history - Recent transactions\n` +
+          `/alerts - Account alerts\n\n` +
+          `━━━ 🔍 ORDERS ━━━\n` +
+          `/pending - Pending orders\n` +
+          `/status [order] - Check status\n\n` +
+          `━━━ 💸 WITHDRAWAL ━━━\n` +
+          `/withdraw - Withdrawal info\n\n` +
+          `━━━ 🔧 UTILITY ━━━\n` +
+          `/tg_id - Get chat ID\n\n` +
+          `🌐 Dashboard: ${gatewayDomain}/merchant`
+
+        await sendMessage(botToken, chatId, msg)
+        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
     }
 
-    // ============ ADMIN ONLY COMMANDS ============
-    if (!isAdmin) {
+    // ============ ADMIN COMMANDS ============
+    if (!isAdmin && !isMerchantGroup) {
       await sendMessage(botToken, chatId, 
-        `⛔ <b>Access Denied</b>\n\nYour Chat ID: <code>${chatId}</code>`
+        `❓ <b>Unknown Command</b>\n\n` +
+        `This group is not registered.\n\n` +
+        `Contact admin to link your merchant account.\n\n` +
+        `/tg_id - Get this chat ID`
       )
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // ============ /dashboard - Quick dashboard ============
-    if (command === '/dashboard' || command === '/dash') {
+    // ============ /help - Admin help (ENHANCED) ============
+    if (command === '/help' || command === '/start') {
+      const msg = `🤖 <b>${gatewayName} Admin Bot</b>\n\n` +
+        `━━━ 📊 DASHBOARD ━━━\n` +
+        `/dashboard - Quick overview\n` +
+        `/analytics - Advanced analytics\n` +
+        `/weekly_report - Weekly stats\n` +
+        `/monthly_report - Monthly stats\n` +
+        `/peak_hours - Peak transaction hours\n` +
+        `/stats - System statistics\n\n` +
+        `━━━ ⚠️ MONITORING ━━━\n` +
+        `/alerts - System alerts\n` +
+        `/large_tx - Large transactions\n` +
+        `/pending - Pending transactions\n\n` +
+        `━━━ 👥 MERCHANTS ━━━\n` +
+        `/create_merchant - Create new\n` +
+        `/merchants - List all\n` +
+        `/merchant [id] - View details\n` +
+        `/search [name] - Search\n` +
+        `/toggle [id] - Enable/disable\n` +
+        `/freeze [id] - Freeze balance\n\n` +
+        `━━━ 💰 BALANCE ━━━\n` +
+        `/balance [id] - Check balance\n` +
+        `/add_balance [id] [amt] - Add\n` +
+        `/deduct_balance [id] [amt] - Deduct\n\n` +
+        `━━━ ⚙️ SETTINGS ━━━\n` +
+        `/set_fee [id] [in%] [out%] - Set fees\n` +
+        `/set_gateway [id] [code] - Assign gateway\n` +
+        `/set_telegram [id] [group] - Set TG group\n\n` +
+        `━━━ 🔐 SECURITY ━━━\n` +
+        `/reset_2fa [id] - Reset 2FA\n` +
+        `/reset_password [id] - Reset password\n` +
+        `/reset_withdrawal [id] - Reset withdrawal\n\n` +
+        `━━━ 📢 COMMUNICATION ━━━\n` +
+        `/broadcast [msg] - Send to all\n` +
+        `/gateways - Gateway status\n` +
+        `/top - Top merchants\n\n` +
+        `━━━ 🔧 UTILITY ━━━\n` +
+        `/setmenu - Update bot menu\n` +
+        `/tg_id - Get chat ID`
+
+      await sendMessage(botToken, chatId, msg)
+      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    // ============ /dashboard - Admin dashboard ============
+    if (command === '/dashboard') {
       const today = new Date()
       today.setHours(0, 0, 0, 0)
       
@@ -930,18 +1806,13 @@ Deno.serve(async (req) => {
         .from('merchants')
         .select('balance, is_active')
       
-      const { data: pendingCount } = await supabaseAdmin
-        .from('transactions')
-        .select('id', { count: 'exact', head: true })
-        .eq('status', 'pending')
-      
-      let payinSuccess = 0, payoutSuccess = 0, payinOrders = 0, payoutOrders = 0
+      let payinTotal = 0, payinSuccess = 0, payoutTotal = 0, payoutSuccess = 0
       todayTx?.forEach((tx: any) => {
         if (tx.transaction_type === 'payin') {
-          payinOrders++
+          payinTotal++
           if (tx.status === 'success') payinSuccess += tx.amount
         } else {
-          payoutOrders++
+          payoutTotal++
           if (tx.status === 'success') payoutSuccess += tx.amount
         }
       })
@@ -952,40 +1823,256 @@ Deno.serve(async (req) => {
       await sendMessageWithButtons(botToken, chatId,
         `📊 <b>Dashboard</b>\n\n` +
         `━━━ 📅 TODAY ━━━\n` +
-        `📥 Pay-In: ${formatINR(payinSuccess)} (${payinOrders})\n` +
-        `📤 Pay-Out: ${formatINR(payoutSuccess)} (${payoutOrders})\n\n` +
-        `━━━ 💰 SYSTEM ━━━\n` +
-        `Total Balance: ${formatINR(totalBalance)}\n` +
-        `Active Merchants: ${activeCount}/${merchants?.length || 0}\n` +
-        `Pending Orders: ${pendingCount || 0}`,
+        `📥 Pay-In: ${formatINR(payinSuccess)} (${payinTotal} orders)\n` +
+        `📤 Pay-Out: ${formatINR(payoutSuccess)} (${payoutTotal} orders)\n\n` +
+        `━━━ 💰 BALANCE ━━━\n` +
+        `Total: ${formatINR(totalBalance)}\n\n` +
+        `━━━ 👥 MERCHANTS ━━━\n` +
+        `Active: ${activeCount}/${merchants?.length || 0}`,
         [
-          [{ text: '📋 Merchants', callback_data: 'merchants_list:0' }, { text: '⏳ Pending', callback_data: 'pending_all' }],
+          [
+            { text: '📋 Merchants', callback_data: 'merchants_list:0' },
+            { text: '⏳ Pending', callback_data: 'pending_all' },
+          ],
+          [
+            { text: '📈 Analytics', callback_data: 'admin_analytics' },
+            { text: '⚠️ Alerts', callback_data: 'admin_alerts' },
+          ],
           [{ text: '🔄 Refresh', callback_data: 'dashboard' }],
         ]
       )
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // ============ /gateways - Gateway status ============
-    if (command === '/gateways' || command === '/gateway') {
-      const { total, active, details } = await checkGatewayHealth(supabaseAdmin)
+    // ============ /analytics - Advanced analytics ============
+    if (command === '/analytics') {
+      const comparison = await getComparisonStats(supabaseAdmin)
+      const todayChange = comparison.yesterday.payin ? Math.round((comparison.today.payin - comparison.yesterday.payin) / comparison.yesterday.payin * 100) : 0
+      const weekChange = comparison.lastWeek.payin ? Math.round((comparison.thisWeek.payin - comparison.lastWeek.payin) / comparison.lastWeek.payin * 100) : 0
       
-      let msg = `🌐 <b>Gateway Status</b>\n\n`
-      msg += `Total: ${total} | Active: ${active}\n\n`
+      const todayIcon = todayChange >= 0 ? '📈' : '📉'
+      const weekIcon = weekChange >= 0 ? '📈' : '📉'
       
-      details.forEach((g: any) => {
-        const status = g.is_active ? '✅' : '❌'
-        const typeLabel = g.gateway_code?.startsWith('hypersofts') ? 'ELOPAY' : 'ELOPAY GATEWAY'
-        msg += `${status} <b>${g.gateway_name}</b>\n`
-        msg += `   Code: <code>${g.gateway_code}</code>\n`
-        msg += `   Type: ${typeLabel} | ${g.currency}\n\n`
-      })
+      await sendMessageWithButtons(botToken, chatId,
+        `📈 <b>Analytics Dashboard</b>\n\n` +
+        `━━━ 📅 TODAY vs YESTERDAY ━━━\n` +
+        `Pay-In: ${formatINR(comparison.today.payin)} ${todayIcon} ${todayChange >= 0 ? '+' : ''}${todayChange}%\n` +
+        `Pay-Out: ${formatINR(comparison.today.payout)}\n` +
+        `Orders: ${comparison.today.orders}\n\n` +
+        `━━━ 📆 THIS WEEK vs LAST ━━━\n` +
+        `Pay-In: ${formatINR(comparison.thisWeek.payin)} ${weekIcon} ${weekChange >= 0 ? '+' : ''}${weekChange}%\n` +
+        `Pay-Out: ${formatINR(comparison.thisWeek.payout)}\n` +
+        `Orders: ${comparison.thisWeek.orders}`,
+        [
+          [
+            { text: '📊 Weekly Report', callback_data: 'weekly_report' },
+            { text: '📅 Monthly', callback_data: 'monthly_report' },
+          ],
+          [
+            { text: '⏰ Peak Hours', callback_data: 'peak_hours' },
+            { text: '🏆 Top Merchants', callback_data: 'top_merchants' },
+          ],
+        ]
+      )
+      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    // ============ /weekly_report - Weekly stats ============
+    if (command === '/weekly_report' || command === '/weekly') {
+      const stats = await getWeeklyStats(supabaseAdmin)
+      const payinRate = stats.totalPayin ? Math.round(stats.successPayin / stats.totalPayin * 100) : 0
+      const payoutRate = stats.totalPayout ? Math.round(stats.successPayout / stats.totalPayout * 100) : 0
+      
+      let msg = `📊 <b>Weekly Report</b>\n\n`
+      msg += `━━━ 📥 PAY-IN (7 days) ━━━\n`
+      msg += `Total: ${stats.totalPayin} | ✅ ${stats.successPayin} | ❌ ${stats.failedPayin} | ⏳ ${stats.pendingPayin}\n`
+      msg += `Amount: ${formatINR(stats.payinAmount)}\n`
+      msg += `Success Rate: ${payinRate}%\n\n`
+      msg += `━━━ 📤 PAY-OUT (7 days) ━━━\n`
+      msg += `Total: ${stats.totalPayout} | ✅ ${stats.successPayout} | ❌ ${stats.failedPayout} | ⏳ ${stats.pendingPayout}\n`
+      msg += `Amount: ${formatINR(stats.payoutAmount)}\n`
+      msg += `Success Rate: ${payoutRate}%\n\n`
+      msg += `━━━ 💰 REVENUE ━━━\n`
+      msg += `Fees Collected: ${formatINR(stats.feeCollected)}`
       
       await sendMessage(botToken, chatId, msg)
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // ============ /toggle [account_no] - Enable/disable merchant ============
+    // ============ /monthly_report - Monthly stats ============
+    if (command === '/monthly_report' || command === '/monthly') {
+      const stats = await getMonthlyStats(supabaseAdmin)
+      const payinRate = stats.payinTotal ? Math.round(stats.payinSuccess / stats.payinTotal * 100) : 0
+      const payoutRate = stats.payoutTotal ? Math.round(stats.payoutSuccess / stats.payoutTotal * 100) : 0
+      
+      let msg = `📅 <b>Monthly Report (30 days)</b>\n\n`
+      msg += `━━━ 📥 PAY-IN ━━━\n`
+      msg += `Success: ${stats.payinSuccess}/${stats.payinTotal} (${payinRate}%)\n`
+      msg += `Amount: ${formatINR(stats.payinAmount)}\n\n`
+      msg += `━━━ 📤 PAY-OUT ━━━\n`
+      msg += `Success: ${stats.payoutSuccess}/${stats.payoutTotal} (${payoutRate}%)\n`
+      msg += `Amount: ${formatINR(stats.payoutAmount)}\n\n`
+      msg += `━━━ 💰 REVENUE ━━━\n`
+      msg += `Fees Collected: ${formatINR(stats.feeCollected)}`
+      
+      await sendMessage(botToken, chatId, msg)
+      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    // ============ /peak_hours - Peak hours analysis ============
+    if (command === '/peak_hours' || command === '/peak') {
+      const analysis = await getPeakHoursAnalysis(supabaseAdmin)
+      
+      let msg = `⏰ <b>Peak Hours (Last 7 Days)</b>\n\n`
+      msg += `━━━ 🏆 TOP 5 HOURS ━━━\n`
+      analysis.peakHours.forEach(([hour, data], i) => {
+        msg += `${i + 1}. ${hour}:00 - ${parseInt(hour) + 1}:00\n`
+        msg += `   ${(data as any).count} orders | ${formatINR((data as any).amount)}\n`
+      })
+      msg += `\n<i>💡 Schedule payouts during off-peak hours for better success rates</i>`
+      
+      await sendMessage(botToken, chatId, msg)
+      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    // ============ /alerts - System alerts ============
+    if (command === '/alerts') {
+      const lowBalanceAlerts = await checkLowBalanceAlerts(supabaseAdmin, adminSettings)
+      const largeTransactions = await getLargeTransactions(supabaseAdmin, adminSettings)
+      
+      let msg = `⚠️ <b>System Alerts</b>\n\n`
+      
+      msg += `━━━ 💰 LOW BALANCE ━━━\n`
+      if (lowBalanceAlerts.length > 0) {
+        lowBalanceAlerts.slice(0, 5).forEach(alert => {
+          msg += `⚠️ ${alert.merchant}: ${formatAmount(alert.balance, alert.currency)}\n`
+        })
+        if (lowBalanceAlerts.length > 5) msg += `...and ${lowBalanceAlerts.length - 5} more\n`
+      } else {
+        msg += `✅ All merchants have sufficient balance\n`
+      }
+      
+      msg += `\n━━━ 💎 LARGE TRANSACTIONS (24h) ━━━\n`
+      if (largeTransactions.largePayins.length > 0 || largeTransactions.largePayouts.length > 0) {
+        msg += `📥 Large Pay-Ins: ${largeTransactions.largePayins.length}\n`
+        msg += `📤 Large Pay-Outs: ${largeTransactions.largePayouts.length}\n`
+      } else {
+        msg += `No large transactions in last 24 hours\n`
+      }
+      
+      await sendMessageWithButtons(botToken, chatId, msg, [
+        [{ text: '💎 View Large Tx', callback_data: 'large_tx_details' }],
+      ])
+      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    // ============ /large_tx - Large transactions ============
+    if (command === '/large_tx' || command === '/largetx') {
+      const largeTransactions = await getLargeTransactions(supabaseAdmin, adminSettings)
+      
+      let msg = `💎 <b>Large Transactions (24h)</b>\n\n`
+      
+      msg += `━━━ 📥 LARGE PAY-INS ━━━\n`
+      if (largeTransactions.largePayins.length > 0) {
+        largeTransactions.largePayins.slice(0, 5).forEach((tx: any, i: number) => {
+          const statusIcon = tx.status === 'success' ? '✅' : tx.status === 'failed' ? '❌' : '⏳'
+          msg += `${i + 1}. ${statusIcon} ${formatINR(tx.amount)}\n`
+          msg += `   ${(tx.merchants as any)?.merchant_name || 'N/A'}\n`
+          msg += `   ${timeAgo(tx.created_at)}\n\n`
+        })
+      } else {
+        msg += `No large pay-ins\n\n`
+      }
+      
+      msg += `━━━ 📤 LARGE PAY-OUTS ━━━\n`
+      if (largeTransactions.largePayouts.length > 0) {
+        largeTransactions.largePayouts.slice(0, 5).forEach((tx: any, i: number) => {
+          const statusIcon = tx.status === 'success' ? '✅' : tx.status === 'failed' ? '❌' : '⏳'
+          msg += `${i + 1}. ${statusIcon} ${formatINR(tx.amount)}\n`
+          msg += `   ${(tx.merchants as any)?.merchant_name || 'N/A'}\n`
+          msg += `   ${timeAgo(tx.created_at)}\n\n`
+        })
+      } else {
+        msg += `No large pay-outs\n`
+      }
+      
+      await sendMessage(botToken, chatId, msg)
+      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    // ============ /freeze [account_no] - Freeze merchant balance ============
+    if (command === '/freeze') {
+      if (!args[0]) {
+        await sendMessage(botToken, chatId, '❌ Usage: <code>/freeze [account_no]</code>')
+        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+
+      const { data: merchant } = await supabaseAdmin
+        .from('merchants')
+        .select('balance, frozen_balance, merchant_name, telegram_chat_id')
+        .eq('account_number', args[0])
+        .maybeSingle()
+      
+      if (!merchant) {
+        await sendMessage(botToken, chatId, '❌ Merchant not found')
+        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+
+      const totalBalance = (merchant.balance || 0) + (merchant.frozen_balance || 0)
+      await supabaseAdmin.from('merchants')
+        .update({ balance: 0, frozen_balance: totalBalance })
+        .eq('account_number', args[0])
+      
+      await sendMessage(botToken, chatId, 
+        `🔒 <b>Balance Frozen</b>\n\n` +
+        `Merchant: ${merchant.merchant_name}\n` +
+        `Frozen: ${formatINR(totalBalance)}`
+      )
+      
+      if (merchant.telegram_chat_id) {
+        await sendMessage(botToken, merchant.telegram_chat_id, 
+          `🔒 <b>Balance Frozen</b>\n\nYour balance has been frozen by admin. Contact support for assistance.`)
+      }
+      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    // ============ /unfreeze [account_no] - Unfreeze merchant balance ============
+    if (command === '/unfreeze') {
+      if (!args[0]) {
+        await sendMessage(botToken, chatId, '❌ Usage: <code>/unfreeze [account_no]</code>')
+        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+
+      const { data: merchant } = await supabaseAdmin
+        .from('merchants')
+        .select('balance, frozen_balance, merchant_name, telegram_chat_id')
+        .eq('account_number', args[0])
+        .maybeSingle()
+      
+      if (!merchant) {
+        await sendMessage(botToken, chatId, '❌ Merchant not found')
+        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+
+      const totalBalance = (merchant.balance || 0) + (merchant.frozen_balance || 0)
+      await supabaseAdmin.from('merchants')
+        .update({ balance: totalBalance, frozen_balance: 0 })
+        .eq('account_number', args[0])
+      
+      await sendMessage(botToken, chatId, 
+        `🔓 <b>Balance Unfrozen</b>\n\n` +
+        `Merchant: ${merchant.merchant_name}\n` +
+        `Available: ${formatINR(totalBalance)}`
+      )
+      
+      if (merchant.telegram_chat_id) {
+        await sendMessage(botToken, merchant.telegram_chat_id, 
+          `🔓 <b>Balance Unfrozen</b>\n\nYour balance is now available for withdrawals.`)
+      }
+      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    // ============ /toggle [account_no] ============
     if (command === '/toggle') {
       if (!args[0]) {
         await sendMessage(botToken, chatId, '❌ Usage: <code>/toggle [account_no]</code>')
@@ -994,7 +2081,7 @@ Deno.serve(async (req) => {
 
       const { data: merchant } = await supabaseAdmin
         .from('merchants')
-        .select('is_active, merchant_name')
+        .select('is_active, merchant_name, telegram_chat_id')
         .eq('account_number', args[0])
         .maybeSingle()
       
@@ -1011,6 +2098,11 @@ Deno.serve(async (req) => {
       
       const statusText = newStatus ? '✅ Enabled' : '❌ Disabled'
       await sendMessage(botToken, chatId, `${statusText} merchant <b>${merchant.merchant_name}</b>`)
+      
+      if (merchant.telegram_chat_id) {
+        await sendMessage(botToken, merchant.telegram_chat_id, 
+          `${statusText} by admin\n\n${newStatus ? 'You can now process transactions.' : 'Your account has been suspended.'}`)
+      }
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
@@ -1314,7 +2406,6 @@ Deno.serve(async (req) => {
       const finalPayinFee = customPayinFee ?? (adminSettings?.default_payin_fee || 9)
       const finalPayoutFee = customPayoutFee ?? (adminSettings?.default_payout_fee || 4)
 
-      // Hash the withdrawal password for secure storage
       const withdrawalPasswordHash = await createPasswordHash(withdrawalPassword)
 
       const { data: merchant, error: merchantError } = await supabaseAdmin
@@ -1327,7 +2418,7 @@ Deno.serve(async (req) => {
           payout_fee: finalPayoutFee,
           telegram_chat_id: groupId,
           callback_url: callbackUrl,
-          withdrawal_password_hash: withdrawalPasswordHash, // Store hashed password
+          withdrawal_password_hash: withdrawalPasswordHash,
           gateway_id: gatewayId,
           is_active: true,
         })
@@ -1378,7 +2469,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // ============ EXISTING ADMIN COMMANDS (simplified) ============
+    // ============ REMAINING ADMIN COMMANDS ============
     
     // /search
     if (command === '/search') {
@@ -1477,18 +2568,26 @@ Deno.serve(async (req) => {
         [
           [
             { text: '📊 Today', callback_data: `merchant_today:${args[0]}` },
+            { text: '📈 Weekly', callback_data: `merchant_weekly:${args[0]}` },
+          ],
+          [
             { text: '📋 History', callback_data: `merchant_history:${args[0]}` },
+            { text: '⚠️ Alerts', callback_data: `merchant_alerts:${args[0]}` },
           ],
           [
             { text: '🔐 Reset 2FA', callback_data: `reset_2fa:${args[0]}` },
             { text: '🔑 Reset Pass', callback_data: `reset_pass:${args[0]}` },
+          ],
+          [
+            { text: merchant.is_active ? '🔴 Disable' : '🟢 Enable', callback_data: `toggle_merchant:${args[0]}` },
+            { text: '🔒 Freeze', callback_data: `freeze_merchant:${args[0]}` },
           ],
         ]
       )
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // /balance, /pending, /today, /history, /status, /stats, /top - simplified versions
+    // /balance, /pending, /today, /history, /status, /stats, /gateways, /top
     if (command === '/balance') {
       if (!args[0]) {
         await sendMessage(botToken, chatId, '❌ Usage: <code>/balance [account_no]</code>')
@@ -1561,10 +2660,27 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
+    if (command === '/gateways') {
+      const health = await checkGatewayHealth(supabaseAdmin)
+      let msg = `🌐 <b>Gateway Status</b>\n\n`
+      msg += `Active: ${health.active}/${health.total}\n\n`
+      health.details.forEach((g: any) => {
+        const status = g.is_active ? '✅' : '❌'
+        msg += `${status} <b>${g.gateway_name}</b>\n`
+        msg += `   Code: <code>${g.gateway_code}</code>\n`
+        msg += `   Currency: ${g.currency}\n\n`
+      })
+      await sendMessage(botToken, chatId, msg)
+      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
     if (command === '/top') {
       const { data: merchants } = await supabaseAdmin.from('merchants').select('merchant_name, balance').order('balance', { ascending: false }).limit(10)
       let msg = `🏆 <b>Top Merchants</b>\n\n`
-      merchants?.forEach((m: any, i: number) => { msg += `${i + 1}. <b>${m.merchant_name}</b>\n   ${formatINR(m.balance || 0)}\n\n` })
+      merchants?.forEach((m: any, i: number) => { 
+        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`
+        msg += `${medal} <b>${m.merchant_name}</b>\n   ${formatINR(m.balance || 0)}\n\n` 
+      })
       await sendMessage(botToken, chatId, msg)
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
@@ -1602,7 +2718,6 @@ Deno.serve(async (req) => {
     if (command === '/reset_withdrawal') {
       if (!args[0]) { await sendMessage(botToken, chatId, '❌ Usage: <code>/reset_withdrawal [account_no]</code>'); return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }) }
       const newPassword = generateWithdrawalPassword()
-      // Hash the new password for secure storage
       const newPasswordHash = await createPasswordHash(newPassword)
       const { data: merchant } = await supabaseAdmin.from('merchants').update({ withdrawal_password_hash: newPasswordHash, withdrawal_password: null }).eq('account_number', args[0]).select('merchant_name, telegram_chat_id').maybeSingle()
       if (!merchant) { await sendMessage(botToken, chatId, '❌ Merchant not found'); return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }) }
