@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Copy, Smartphone, AlertTriangle } from 'lucide-react';
+import { Copy, Smartphone, AlertTriangle, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { useGatewaySettings } from '@/hooks/useGatewaySettings';
 
@@ -118,9 +118,22 @@ money: X    // Will stay pending (no callback)`;
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">ELOPAY_BDT</h1>
-            <p className="text-muted-foreground">ELOPAY Bangladesh - Nagad & bKash Integration</p>
+          <div className="flex items-center gap-4">
+            {settings.logoUrl ? (
+              <img 
+                src={settings.logoUrl} 
+                alt="ELOPAY" 
+                className="w-14 h-14 rounded-xl object-contain shadow-lg ring-2 ring-emerald-500/30" 
+              />
+            ) : (
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg">
+                <Zap className="h-7 w-7 text-white" />
+              </div>
+            )}
+            <div>
+              <h1 className="text-2xl font-bold">ELOPAY_BDT</h1>
+              <p className="text-muted-foreground">ELOPAY Bangladesh - Nagad & bKash Integration</p>
+            </div>
           </div>
           <Badge variant="default" className="bg-emerald-600">🇧🇩 Bangladesh</Badge>
         </div>

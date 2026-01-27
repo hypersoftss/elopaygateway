@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Copy, AlertTriangle } from 'lucide-react';
+import { Copy, AlertTriangle, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { useGatewaySettings } from '@/hooks/useGatewaySettings';
 
@@ -101,9 +101,22 @@ Content-Type: application/json
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">ELOPAYGATEWAY_INR</h1>
-            <p className="text-muted-foreground">ELOPAY GATEWAY India - Payment Gateway Integration</p>
+          <div className="flex items-center gap-4">
+            {settings.logoUrl ? (
+              <img 
+                src={settings.logoUrl} 
+                alt="ELOPAY" 
+                className="w-14 h-14 rounded-xl object-contain shadow-lg ring-2 ring-orange-500/30" 
+              />
+            ) : (
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg">
+                <Zap className="h-7 w-7 text-white" />
+              </div>
+            )}
+            <div>
+              <h1 className="text-2xl font-bold">ELOPAYGATEWAY_INR</h1>
+              <p className="text-muted-foreground">ELOPAY GATEWAY India - Payment Gateway Integration</p>
+            </div>
           </div>
           <Badge variant="default" className="bg-orange-500">🇮🇳 India Only</Badge>
         </div>
