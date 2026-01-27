@@ -17,6 +17,7 @@ const TABLES_TO_EXPORT = [
   'admin_notifications',
   'merchant_activity_logs',
   'gateway_balance_history',
+  'telegram_bot_messages',
 ];
 
 // Helper to escape SQL string values
@@ -35,11 +36,14 @@ const generateInsertStatement = (tableName: string, row: Record<string, any>): s
   return `INSERT INTO public.${tableName} (${columns.join(', ')}) VALUES (${values.join(', ')}) ON CONFLICT DO NOTHING;`;
 };
 
-// Complete schema SQL
+// Complete schema SQL - FULLY UPDATED WITH ALL COLUMNS
 const SCHEMA_SQL = `
--- ================================================
+-- ================================================================
 -- ELOPAY GATEWAY - COMPLETE DATABASE SCHEMA
--- ================================================
+-- ================================================================
+-- This is a COMPLETE export that can be imported into any fresh
+-- Supabase/PostgreSQL database to recreate the entire system.
+-- ================================================================
 
 -- ==================== ENUMS ====================
 DO $$ BEGIN
@@ -105,14 +109,60 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.get_gateway_branding()
+RETURNS TABLE(gateway_name text, logo_url text, favicon_url text, support_email text, gateway_domain text)
+LANGUAGE sql
+STABLE SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+  SELECT 
+    gateway_name,
+    logo_url,
+    favicon_url,
+    support_email,
+    gateway_domain
+  FROM public.admin_settings
+  LIMIT 1;
+$$;
+
+CREATE OR REPLACE FUNCTION public.get_my_gateway()
+RETURNS TABLE(
+  gateway_id uuid, 
+  gateway_code text, 
+  gateway_name text, 
+  gateway_type text, 
+  currency text, 
+  min_withdrawal_amount numeric, 
+  max_withdrawal_amount numeric, 
+  daily_withdrawal_limit numeric
+)
+LANGUAGE sql
+STABLE SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+  SELECT
+    pg.id as gateway_id,
+    pg.gateway_code,
+    pg.gateway_name,
+    pg.gateway_type,
+    pg.currency,
+    COALESCE(pg.min_withdrawal_amount, 1000) as min_withdrawal_amount,
+    COALESCE(pg.max_withdrawal_amount, 50000) as max_withdrawal_amount,
+    COALESCE(pg.daily_withdrawal_limit, 200000) as daily_withdrawal_limit
+  FROM public.merchants m
+  JOIN public.payment_gateways pg ON pg.id = m.gateway_id
+  WHERE m.user_id = auth.uid()
+  LIMIT 1;
+$$;
+
 -- ==================== TABLES ====================
 
 -- admin_settings
 CREATE TABLE IF NOT EXISTS public.admin_settings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  master_merchant_id text NOT NULL DEFAULT '100888140',
-  master_api_key text NOT NULL DEFAULT 'ab76fe01039a5a5aff089d193da40a40',
-  master_payout_key text NOT NULL DEFAULT 'D7EF0E76DE29CD13E6128D722C1F6270',
+  master_merchant_id text NOT NULL DEFAULT 'CHANGE_ME_MERCHANT_ID',
+  master_api_key text NOT NULL DEFAULT 'CHANGE_ME_API_KEY',
+  master_payout_key text NOT NULL DEFAULT 'CHANGE_ME_PAYOUT_KEY',
   default_payin_fee numeric DEFAULT 9.0,
   default_payout_fee numeric DEFAULT 4.0,
   gateway_name text DEFAULT 'PayGate',
@@ -130,6 +180,8 @@ CREATE TABLE IF NOT EXISTS public.admin_settings (
   balance_threshold_inr numeric DEFAULT 10000,
   balance_threshold_pkr numeric DEFAULT 50000,
   balance_threshold_bdt numeric DEFAULT 50000,
+  response_time_threshold integer DEFAULT 3000,
+  no_auto_delete_commands text DEFAULT '/help,/tg_id,/id,/chatid,/setmenu,/create_merchant,/broadcast',
   updated_at timestamptz DEFAULT now()
 );
 
@@ -164,6 +216,9 @@ CREATE TABLE IF NOT EXISTS public.payment_gateways (
   payout_key text,
   trade_type text,
   is_active boolean DEFAULT true,
+  min_withdrawal_amount numeric DEFAULT 1000,
+  max_withdrawal_amount numeric DEFAULT 50000,
+  daily_withdrawal_limit numeric DEFAULT 200000,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
@@ -188,6 +243,7 @@ CREATE TABLE IF NOT EXISTS public.merchants (
   trade_type text,
   telegram_chat_id text,
   withdrawal_password text,
+  withdrawal_password_hash text,
   notify_new_transactions boolean DEFAULT true,
   notify_status_updates boolean DEFAULT true,
   notify_balance_changes boolean DEFAULT true,
@@ -268,6 +324,37 @@ CREATE TABLE IF NOT EXISTS public.gateway_balance_history (
   checked_at timestamptz DEFAULT now()
 );
 
+-- telegram_bot_messages
+CREATE TABLE IF NOT EXISTS public.telegram_bot_messages (
+  chat_id text PRIMARY KEY,
+  last_message_id bigint NOT NULL,
+  updated_at timestamptz DEFAULT now()
+);
+
+-- ==================== VIEWS ====================
+
+-- Public view for gateway branding (no sensitive data)
+CREATE OR REPLACE VIEW public.gateway_branding AS
+SELECT 
+  gateway_name,
+  logo_url,
+  favicon_url,
+  support_email,
+  gateway_domain
+FROM public.admin_settings
+LIMIT 1;
+
+-- Public view for payment links (no merchant_id exposed)
+CREATE OR REPLACE VIEW public.public_payment_links AS
+SELECT 
+  link_code,
+  amount,
+  description,
+  trade_type,
+  is_active,
+  expires_at
+FROM public.payment_links;
+
 -- ==================== TRIGGERS ====================
 DROP TRIGGER IF EXISTS update_merchants_updated_at ON public.merchants;
 CREATE TRIGGER update_merchants_updated_at
@@ -295,12 +382,13 @@ ALTER TABLE public.payment_links ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.admin_notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.merchant_activity_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.gateway_balance_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.telegram_bot_messages ENABLE ROW LEVEL SECURITY;
 
 -- ==================== RLS POLICIES ====================
 
 -- admin_settings policies
-DROP POLICY IF EXISTS "Anyone can view gateway branding" ON public.admin_settings;
-CREATE POLICY "Anyone can view gateway branding" ON public.admin_settings FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Admin can view all settings" ON public.admin_settings;
+CREATE POLICY "Admin can view all settings" ON public.admin_settings FOR SELECT USING (has_role(auth.uid(), 'admin'));
 
 DROP POLICY IF EXISTS "Admin can insert settings" ON public.admin_settings;
 CREATE POLICY "Admin can insert settings" ON public.admin_settings FOR INSERT WITH CHECK (has_role(auth.uid(), 'admin'));
@@ -360,8 +448,10 @@ DROP POLICY IF EXISTS "Admin can delete transactions" ON public.transactions;
 CREATE POLICY "Admin can delete transactions" ON public.transactions FOR DELETE USING (has_role(auth.uid(), 'admin'));
 
 -- payment_links policies
-DROP POLICY IF EXISTS "Public can view active links" ON public.payment_links;
-CREATE POLICY "Public can view active links" ON public.payment_links FOR SELECT USING (is_active = true);
+DROP POLICY IF EXISTS "Merchants can view own links" ON public.payment_links;
+CREATE POLICY "Merchants can view own links" ON public.payment_links FOR SELECT USING (
+  merchant_id IN (SELECT id FROM merchants WHERE user_id = auth.uid()) OR has_role(auth.uid(), 'admin')
+);
 
 DROP POLICY IF EXISTS "Merchants can manage own links" ON public.payment_links;
 CREATE POLICY "Merchants can manage own links" ON public.payment_links FOR ALL USING (
@@ -389,20 +479,28 @@ CREATE POLICY "Admin can insert merchant logs" ON public.merchant_activity_logs 
 DROP POLICY IF EXISTS "Admin can view gateway history" ON public.gateway_balance_history;
 CREATE POLICY "Admin can view gateway history" ON public.gateway_balance_history FOR SELECT USING (has_role(auth.uid(), 'admin'));
 
+-- telegram_bot_messages policies
+DROP POLICY IF EXISTS "Service role can manage bot messages" ON public.telegram_bot_messages;
+CREATE POLICY "Service role can manage bot messages" ON public.telegram_bot_messages FOR ALL USING (true) WITH CHECK (true);
+
 -- ==================== STORAGE ====================
 INSERT INTO storage.buckets (id, name, public) 
 VALUES ('gateway-assets', 'gateway-assets', true)
 ON CONFLICT (id) DO NOTHING;
 
+DROP POLICY IF EXISTS "Public can view gateway assets" ON storage.objects;
 CREATE POLICY "Public can view gateway assets" ON storage.objects 
 FOR SELECT USING (bucket_id = 'gateway-assets');
 
+DROP POLICY IF EXISTS "Admin can upload gateway assets" ON storage.objects;
 CREATE POLICY "Admin can upload gateway assets" ON storage.objects 
 FOR INSERT WITH CHECK (bucket_id = 'gateway-assets' AND has_role(auth.uid(), 'admin'));
 
+DROP POLICY IF EXISTS "Admin can update gateway assets" ON storage.objects;
 CREATE POLICY "Admin can update gateway assets" ON storage.objects 
 FOR UPDATE USING (bucket_id = 'gateway-assets' AND has_role(auth.uid(), 'admin'));
 
+DROP POLICY IF EXISTS "Admin can delete gateway assets" ON storage.objects;
 CREATE POLICY "Admin can delete gateway assets" ON storage.objects 
 FOR DELETE USING (bucket_id = 'gateway-assets' AND has_role(auth.uid(), 'admin'));
 
@@ -469,12 +567,13 @@ Deno.serve(async (req) => {
     lines.push('-- ');
     lines.push('-- This file contains EVERYTHING needed to recreate the database:');
     lines.push('--   1. ENUMS (app_role, transaction_status, transaction_type)');
-    lines.push('--   2. FUNCTIONS (has_role, generate_account_number, update_updated_at)');
-    lines.push('--   3. TABLES (all 10 tables with proper structure)');
-    lines.push('--   4. TRIGGERS (auto update timestamps)');
-    lines.push('--   5. ROW LEVEL SECURITY policies');
-    lines.push('--   6. STORAGE bucket and policies');
-    lines.push('--   7. DATA (all rows from all tables)');
+    lines.push('--   2. FUNCTIONS (has_role, generate_account_number, get_my_gateway, etc.)');
+    lines.push('--   3. TABLES (all tables with proper structure)');
+    lines.push('--   4. VIEWS (gateway_branding, public_payment_links)');
+    lines.push('--   5. TRIGGERS (auto update timestamps)');
+    lines.push('--   6. ROW LEVEL SECURITY policies');
+    lines.push('--   7. STORAGE bucket and policies');
+    lines.push('--   8. DATA (all rows from all tables)');
     lines.push('-- ');
     lines.push('-- HOW TO USE:');
     lines.push('--   1. Create a new Supabase project');
@@ -499,11 +598,11 @@ Deno.serve(async (req) => {
     for (const tableName of TABLES_TO_EXPORT) {
       console.log(`Exporting table: ${tableName}`);
       
-      // Fetch all rows from the table
+      // Fetch all rows from the table (use limit of 10000 for safety)
       const { data: rows, error } = await supabase
         .from(tableName)
         .select('*')
-        .order('created_at', { ascending: true });
+        .limit(10000);
 
       if (error) {
         console.error(`Error fetching ${tableName}:`, error.message);
@@ -522,7 +621,17 @@ Deno.serve(async (req) => {
       
       if (rows && rows.length > 0) {
         for (const row of rows) {
-          lines.push(generateInsertStatement(tableName, row));
+          // For admin_settings, mask sensitive API keys for safety
+          if (tableName === 'admin_settings') {
+            const safeRow = { ...row };
+            if (safeRow.master_api_key) safeRow.master_api_key = 'CHANGE_ME_API_KEY';
+            if (safeRow.master_payout_key) safeRow.master_payout_key = 'CHANGE_ME_PAYOUT_KEY';
+            if (safeRow.master_merchant_id) safeRow.master_merchant_id = 'CHANGE_ME_MERCHANT_ID';
+            if (safeRow.telegram_bot_token) safeRow.telegram_bot_token = 'CHANGE_ME_BOT_TOKEN';
+            lines.push(generateInsertStatement(tableName, safeRow));
+          } else {
+            lines.push(generateInsertStatement(tableName, row));
+          }
         }
       } else {
         lines.push(`-- No data in ${tableName}`);
@@ -540,19 +649,25 @@ Deno.serve(async (req) => {
       lines.push(`--   ${table}: ${count} rows`);
     }
     lines.push('-- ');
+    lines.push('-- IMPORTANT NOTES:');
+    lines.push('--   - Sensitive API keys in admin_settings are masked - update them after import');
+    lines.push('--   - User IDs in user_roles/merchants reference auth.users - recreate users first');
+    lines.push('--   - After import, create admin via /setup-admin or manually insert into user_roles');
+    lines.push('-- ');
     lines.push('-- NEXT STEPS:');
-    lines.push('--   1. Deploy frontend code to hosting (Vercel, Netlify, etc.)');
+    lines.push('--   1. Deploy frontend code to hosting (Vercel, Netlify, VPS, etc.)');
     lines.push('--   2. Deploy edge functions: supabase functions deploy');
     lines.push('--   3. Update .env with new Supabase URL and keys');
     lines.push('--   4. Create admin user and run /setup-admin');
+    lines.push('--   5. Update admin_settings with your real API keys');
     lines.push('-- ================================================================');
     lines.push('');
     lines.push('-- Export completed successfully!');
 
     const sqlContent = lines.join('\n');
-    const filename = `elopay_complete_${timestamp.split('T')[0]}.sql`;
+    const filename = `elopay_complete_backup_${timestamp.split('T')[0]}.sql`;
 
-    console.log(`Export complete: ${totalRows} total rows, schema + RLS + data included`);
+    console.log(`Export complete: ${totalRows} total rows, full schema + RLS + views + data included`);
 
     return new Response(sqlContent, {
       headers: {
