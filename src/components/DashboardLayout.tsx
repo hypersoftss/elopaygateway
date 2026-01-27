@@ -243,12 +243,12 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           <img src={settings.logoUrl} alt="Logo" className="h-8 w-8 object-contain rounded" />
         ) : (
           <div className="h-8 w-8 rounded bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-primary-foreground font-bold text-sm">
-            {settings.gatewayName?.charAt(0) || 'P'}
+            {(settings.gatewayName || 'ELOPAY').charAt(0)}
           </div>
         )}
         {!collapsed && (
           <div>
-            <span className="font-bold text-lg">{settings.gatewayName}</span>
+            <span className="font-bold text-lg">{settings.gatewayName || 'ELOPAY'}</span>
             <p className="text-xs text-muted-foreground">
               {isAdmin ? (language === 'zh' ? '管理后台' : 'Admin Panel') : (language === 'zh' ? '商户中心' : 'Merchant Portal')}
             </p>
@@ -321,10 +321,10 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                 <img src={settings.logoUrl} alt="Logo" className="h-6 w-6 object-contain rounded" />
               ) : (
                 <div className="h-6 w-6 rounded bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-primary-foreground font-bold text-xs">
-                  {settings.gatewayName?.charAt(0) || 'P'}
+                  {(settings.gatewayName || 'ELOPAY').charAt(0)}
                 </div>
               )}
-              <span className="font-bold text-sm">{settings.gatewayName}</span>
+              <span className="font-bold text-sm">{settings.gatewayName || 'ELOPAY'}</span>
             </div>
           </div>
 
