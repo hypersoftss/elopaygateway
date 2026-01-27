@@ -20,6 +20,7 @@ interface Merchant {
   api_key: string;
   payout_key: string;
   balance: number;
+  payout_fee: number;
   trade_type: string | null;
   gateway_id: string | null;
   gateway_type: string | null;
@@ -62,7 +63,7 @@ const AdminApiTesting = () => {
       const { data, error } = await supabase
         .from('merchants')
         .select(`
-          id, account_number, merchant_name, api_key, payout_key, balance, trade_type, gateway_id,
+          id, account_number, merchant_name, api_key, payout_key, balance, payout_fee, trade_type, gateway_id,
           payment_gateways (gateway_type, gateway_code, currency)
         `)
         .order('merchant_name');
@@ -106,6 +107,21 @@ const AdminApiTesting = () => {
       case 'INR':
       default: return '₹';
     }
+  };
+
+  const getEstimatedPayoutFee = (merchant: Merchant | null, amountStr: string) => {
+    if (!merchant) return 0;
+    const amount = Number(amountStr);
+    if (!Number.isFinite(amount) || amount <= 0) return 0;
+    const feePct = Number(merchant.payout_fee ?? 0);
+    if (!Number.isFinite(feePct) || feePct <= 0) return 0;
+    return (amount * feePct) / 100;
+  };
+
+  const getEstimatedTotalDeduction = (merchant: Merchant | null, amountStr: string) => {
+    const amount = Number(amountStr);
+    if (!Number.isFinite(amount) || amount <= 0) return 0;
+    return amount + getEstimatedPayoutFee(merchant, amountStr);
   };
 
   const getTradeTypeOptions = (merchant: Merchant | null) => {
@@ -633,7 +649,7 @@ const AdminApiTesting = () => {
                 {/* Balance Warning */}
                 {selectedMerchant && (
                   <div className={`p-4 rounded-lg border ${
-                    (selectedMerchant.balance || 0) < parseFloat(payoutAmount || '0') 
+                    (selectedMerchant.balance || 0) < getEstimatedTotalDeduction(selectedMerchant, payoutAmount || '0')
                       ? 'bg-destructive/10 border-destructive/30' 
                       : 'bg-[hsl(var(--success))]/10 border-[hsl(var(--success))]/30'
                   }`}>
@@ -643,14 +659,25 @@ const AdminApiTesting = () => {
                           {language === 'zh' ? '可用余额' : 'Available Balance'}
                         </p>
                         <p className={`text-2xl font-bold ${
-                          (selectedMerchant.balance || 0) < parseFloat(payoutAmount || '0')
+                          (selectedMerchant.balance || 0) < getEstimatedTotalDeduction(selectedMerchant, payoutAmount || '0')
                             ? 'text-destructive'
                             : 'text-[hsl(var(--success))]'
                         }`}>
                           {getCurrencySymbol(selectedMerchant)}{(selectedMerchant.balance || 0).toLocaleString()}
                         </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {(() => {
+                            const fee = getEstimatedPayoutFee(selectedMerchant, payoutAmount || '0');
+                            const total = getEstimatedTotalDeduction(selectedMerchant, payoutAmount || '0');
+                            if (!total) return '';
+                            const sym = getCurrencySymbol(selectedMerchant);
+                            return language === 'zh'
+                              ? `预计扣款: ${sym}${total.toLocaleString()} (含手续费 ${sym}${fee.toLocaleString()})`
+                              : `Estimated deduction: ${sym}${total.toLocaleString()} (fee ${sym}${fee.toLocaleString()})`;
+                          })()}
+                        </p>
                       </div>
-                      {(selectedMerchant.balance || 0) < parseFloat(payoutAmount || '0') && (
+                      {(selectedMerchant.balance || 0) < getEstimatedTotalDeduction(selectedMerchant, payoutAmount || '0') && (
                         <div className="text-right">
                           <p className="text-sm font-semibold text-destructive">
                             ⚠️ {language === 'zh' ? '余额不足!' : 'Insufficient Balance!'}
@@ -793,7 +820,11 @@ const AdminApiTesting = () => {
                 <Button 
                   className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white" 
                   onClick={submitPayoutRequest}
-                  disabled={isSubmittingPayout || !payoutSignature}
+                  disabled={
+                    isSubmittingPayout ||
+                    !payoutSignature ||
+                    (selectedMerchant ? (selectedMerchant.balance || 0) < getEstimatedTotalDeduction(selectedMerchant, payoutAmount || '0') : false)
+                  }
                 >
                   <Play className="h-4 w-4 mr-2" />
                   {isSubmittingPayout ? t('common.loading') : (language === 'zh' ? '发送Payout请求' : 'Send Payout Request')}
