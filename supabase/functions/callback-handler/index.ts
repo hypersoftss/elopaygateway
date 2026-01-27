@@ -238,12 +238,31 @@ Deno.serve(async (req) => {
           })
           .eq('id', transaction.merchant_id)
 
-        await sendTelegramNotification(supabaseAdmin, 'payin_success', transaction.merchant_id, {
-          orderNo: transaction.order_no,
-          amount: transaction.amount,
-          fee: transaction.fee,
-          netAmount: transaction.net_amount,
-        })
+        // Get admin settings for large transaction threshold
+        const { data: adminSettings } = await supabaseAdmin
+          .from('admin_settings')
+          .select('large_payin_threshold')
+          .limit(1)
+          .maybeSingle()
+        
+        const largePayinThreshold = adminSettings?.large_payin_threshold || 100000
+
+        // Send appropriate notification based on amount
+        if (transaction.amount >= largePayinThreshold) {
+          await sendTelegramNotification(supabaseAdmin, 'large_payin_success', transaction.merchant_id, {
+            orderNo: transaction.order_no,
+            amount: transaction.amount,
+            fee: transaction.fee,
+            netAmount: transaction.net_amount,
+          })
+        } else {
+          await sendTelegramNotification(supabaseAdmin, 'payin_success', transaction.merchant_id, {
+            orderNo: transaction.order_no,
+            amount: transaction.amount,
+            fee: transaction.fee,
+            netAmount: transaction.net_amount,
+          })
+        }
       } else if (transaction.transaction_type === 'payin' && newStatus === 'failed') {
         await sendTelegramNotification(supabaseAdmin, 'payin_failed', transaction.merchant_id, {
           orderNo: transaction.order_no,
@@ -251,6 +270,15 @@ Deno.serve(async (req) => {
         })
       } else if (transaction.transaction_type === 'payout') {
         const unfreezeAmount = transaction.amount + (transaction.fee || 0)
+        
+        // Get admin settings for large transaction threshold
+        const { data: payoutSettings } = await supabaseAdmin
+          .from('admin_settings')
+          .select('large_payout_threshold')
+          .limit(1)
+          .maybeSingle()
+        
+        const largePayoutThreshold = payoutSettings?.large_payout_threshold || 50000
         
         if (newStatus === 'success') {
           await supabaseAdmin
@@ -260,11 +288,20 @@ Deno.serve(async (req) => {
             })
             .eq('id', transaction.merchant_id)
 
-          await sendTelegramNotification(supabaseAdmin, 'payout_success', transaction.merchant_id, {
-            orderNo: transaction.order_no,
-            amount: transaction.amount,
-            bankName: transaction.bank_name,
-          })
+          // Send appropriate notification based on amount
+          if (transaction.amount >= largePayoutThreshold) {
+            await sendTelegramNotification(supabaseAdmin, 'large_payout_success', transaction.merchant_id, {
+              orderNo: transaction.order_no,
+              amount: transaction.amount,
+              bankName: transaction.bank_name,
+            })
+          } else {
+            await sendTelegramNotification(supabaseAdmin, 'payout_success', transaction.merchant_id, {
+              orderNo: transaction.order_no,
+              amount: transaction.amount,
+              bankName: transaction.bank_name,
+            })
+          }
         } else if (newStatus === 'failed') {
           await supabaseAdmin
             .from('merchants')
@@ -407,12 +444,30 @@ Deno.serve(async (req) => {
           })
           .eq('id', transaction.merchant_id)
 
-        await sendTelegramNotification(supabaseAdmin, 'payin_success', transaction.merchant_id, {
-          orderNo: transaction.order_no,
-          amount: transaction.amount,
-          fee: transaction.fee,
-          netAmount: transaction.net_amount,
-        })
+        // Get admin settings for large transaction threshold
+        const { data: payinSettings } = await supabaseAdmin
+          .from('admin_settings')
+          .select('large_payin_threshold')
+          .limit(1)
+          .maybeSingle()
+        
+        const largePayinThreshold = payinSettings?.large_payin_threshold || 100000
+
+        if (transaction.amount >= largePayinThreshold) {
+          await sendTelegramNotification(supabaseAdmin, 'large_payin_success', transaction.merchant_id, {
+            orderNo: transaction.order_no,
+            amount: transaction.amount,
+            fee: transaction.fee,
+            netAmount: transaction.net_amount,
+          })
+        } else {
+          await sendTelegramNotification(supabaseAdmin, 'payin_success', transaction.merchant_id, {
+            orderNo: transaction.order_no,
+            amount: transaction.amount,
+            fee: transaction.fee,
+            netAmount: transaction.net_amount,
+          })
+        }
       } else if (newStatus === 'failed' && transaction.transaction_type === 'payin') {
         await sendTelegramNotification(supabaseAdmin, 'payin_failed', transaction.merchant_id, {
           orderNo: transaction.order_no,
@@ -423,6 +478,15 @@ Deno.serve(async (req) => {
       if (transaction.transaction_type === 'payout') {
         const unfreezeAmount = transaction.amount + (transaction.fee || 0)
         
+        // Get admin settings for large transaction threshold
+        const { data: payoutSettings } = await supabaseAdmin
+          .from('admin_settings')
+          .select('large_payout_threshold')
+          .limit(1)
+          .maybeSingle()
+        
+        const largePayoutThreshold = payoutSettings?.large_payout_threshold || 50000
+        
         if (newStatus === 'success') {
           await supabaseAdmin
             .from('merchants')
@@ -431,11 +495,19 @@ Deno.serve(async (req) => {
             })
             .eq('id', transaction.merchant_id)
 
-          await sendTelegramNotification(supabaseAdmin, 'payout_success', transaction.merchant_id, {
-            orderNo: transaction.order_no,
-            amount: transaction.amount,
-            bankName: transaction.bank_name,
-          })
+          if (transaction.amount >= largePayoutThreshold) {
+            await sendTelegramNotification(supabaseAdmin, 'large_payout_success', transaction.merchant_id, {
+              orderNo: transaction.order_no,
+              amount: transaction.amount,
+              bankName: transaction.bank_name,
+            })
+          } else {
+            await sendTelegramNotification(supabaseAdmin, 'payout_success', transaction.merchant_id, {
+              orderNo: transaction.order_no,
+              amount: transaction.amount,
+              bankName: transaction.bank_name,
+            })
+          }
         } else if (newStatus === 'failed') {
           await supabaseAdmin
             .from('merchants')

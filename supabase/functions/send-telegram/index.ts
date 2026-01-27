@@ -249,6 +249,61 @@ Deno.serve(async (req) => {
           `⏰ Time: ${timestamp}`
         break
 
+      case 'large_payin_alert':
+        adminMessage = `🚨 <b>LARGE PAY-IN ALERT</b> 🚨\n\n` +
+          `💎 Amount: ₹${data.amount?.toLocaleString?.() || data.amount}\n` +
+          `👤 Merchant: ${merchantName} (${accountNumber})\n` +
+          `📋 Order: ${data.orderNo}\n` +
+          `🔖 Merchant Order: ${data.merchantOrderNo || 'N/A'}\n` +
+          `📊 Status: Pending\n` +
+          `⏰ Time: ${timestamp}\n\n` +
+          `<i>⚠️ This transaction exceeds the large payin threshold</i>`
+        break
+
+      case 'large_payout_alert':
+        adminMessage = `🚨 <b>LARGE PAYOUT ALERT</b> 🚨\n\n` +
+          `💎 Amount: ₹${data.amount?.toLocaleString?.() || data.amount}\n` +
+          `👤 Merchant: ${merchantName} (${accountNumber})\n` +
+          `🏦 Bank: ${data.bankName || 'N/A'}\n` +
+          `💳 Account: ${data.accountNumber || 'N/A'}\n` +
+          `📋 Order: ${data.orderNo}\n` +
+          `📊 Status: Pending Approval\n` +
+          `⏰ Time: ${timestamp}\n\n` +
+          `<i>⚠️ This transaction exceeds the large payout threshold</i>`
+        break
+
+      case 'large_payin_success':
+        adminMessage = `✅🚨 <b>LARGE PAY-IN SUCCESS</b>\n\n` +
+          `💎 Amount: ₹${data.amount?.toLocaleString?.() || data.amount}\n` +
+          `💸 Fee: ₹${data.fee || 0}\n` +
+          `💵 Net: ₹${data.netAmount || data.amount}\n` +
+          `👤 Merchant: ${merchantName} (${accountNumber})\n` +
+          `📋 Order: ${data.orderNo}\n` +
+          `⏰ Time: ${timestamp}`
+        
+        merchantMessage = `✅🎉 <b>Large Pay-In Successful!</b>\n\n` +
+          `💎 Amount: ₹${data.amount?.toLocaleString?.() || data.amount}\n` +
+          `💸 Fee: ₹${data.fee || 0}\n` +
+          `💵 Net Credited: ₹${data.netAmount || data.amount}\n` +
+          `📋 Order: ${data.orderNo}\n` +
+          `⏰ Time: ${timestamp}`
+        break
+
+      case 'large_payout_success':
+        adminMessage = `✅🚨 <b>LARGE PAYOUT SUCCESS</b>\n\n` +
+          `💎 Amount: ₹${data.amount?.toLocaleString?.() || data.amount}\n` +
+          `👤 Merchant: ${merchantName} (${accountNumber})\n` +
+          `🏦 Bank: ${data.bankName || 'N/A'}\n` +
+          `📋 Order: ${data.orderNo}\n` +
+          `⏰ Time: ${timestamp}`
+        
+        merchantMessage = `✅🎉 <b>Large Payout Successful!</b>\n\n` +
+          `💎 Amount: ₹${data.amount?.toLocaleString?.() || data.amount}\n` +
+          `🏦 Bank: ${data.bankName || 'N/A'}\n` +
+          `📋 Order: ${data.orderNo}\n` +
+          `⏰ Time: ${timestamp}`
+        break
+
       default:
         console.log('Unknown notification type:', type)
     }
