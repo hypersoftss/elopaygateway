@@ -1,5 +1,11 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 import { 
   Store, 
   ArrowRight, 
@@ -19,7 +25,13 @@ import {
   ArrowUpRight,
   Play,
   Star,
-  Quote
+  Quote,
+  HelpCircle,
+  Building2,
+  Landmark,
+  Smartphone,
+  CircleDollarSign,
+  ShieldCheck
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { LanguageSwitch } from '@/components/LanguageSwitch';
@@ -27,6 +39,31 @@ import { useTranslation } from '@/lib/i18n';
 import { useGatewaySettings } from '@/hooks/useGatewaySettings';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 import { useState, useEffect } from 'react';
+
+// Partner logo component
+const PartnerLogo = ({ icon: Icon, name }: { icon: React.ElementType; name: string }) => (
+  <div className="flex items-center gap-3 px-6 py-3 rounded-xl bg-card/50 border border-border/30 backdrop-blur-sm shrink-0">
+    <Icon className="h-6 w-6 text-primary" />
+    <span className="font-semibold text-foreground/80 whitespace-nowrap">{name}</span>
+  </div>
+);
+
+// Infinite scroll marquee component
+const LogoMarquee = ({ children, direction = 'left' }: { children: React.ReactNode; direction?: 'left' | 'right' }) => (
+  <div className="flex overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]">
+    <div 
+      className={`flex gap-6 animate-marquee ${direction === 'right' ? 'animate-marquee-reverse' : ''}`}
+      style={{ 
+        animationDuration: '30s',
+        animationTimingFunction: 'linear',
+        animationIterationCount: 'infinite',
+      }}
+    >
+      {children}
+      {children}
+    </div>
+  </div>
+);
 
 // Animated counter component
 const AnimatedCounter = ({ value, suffix = '' }: { value: string; suffix?: string }) => {
@@ -441,6 +478,133 @@ const Index = () => {
                 {isEnglish ? '4.9/5 average rating' : '4.9/5 平均评分'}
               </span>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Partner Logos Carousel */}
+      <section className="py-16 border-y border-border/40 bg-card/20 overflow-hidden">
+        <div className="container mx-auto px-4 mb-10">
+          <div className="text-center">
+            <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+              {isEnglish ? 'Trusted Payment Methods' : '信任的支付方式'}
+            </p>
+          </div>
+        </div>
+        
+        {/* First row - left scroll */}
+        <div className="mb-6">
+          <LogoMarquee direction="left">
+            <PartnerLogo icon={Landmark} name="Bank Transfer" />
+            <PartnerLogo icon={Smartphone} name="JazzCash" />
+            <PartnerLogo icon={CreditCard} name="Easypaisa" />
+            <PartnerLogo icon={CircleDollarSign} name="bKash" />
+            <PartnerLogo icon={Wallet} name="Nagad" />
+            <PartnerLogo icon={Building2} name="UPI" />
+            <PartnerLogo icon={ShieldCheck} name="IMPS" />
+            <PartnerLogo icon={Globe} name="NEFT" />
+          </LogoMarquee>
+        </div>
+        
+        {/* Second row - right scroll */}
+        <LogoMarquee direction="right">
+          <PartnerLogo icon={CreditCard} name="Visa" />
+          <PartnerLogo icon={CreditCard} name="Mastercard" />
+          <PartnerLogo icon={Building2} name="RTGS" />
+          <PartnerLogo icon={Smartphone} name="PhonePe" />
+          <PartnerLogo icon={Wallet} name="Paytm" />
+          <PartnerLogo icon={CircleDollarSign} name="Google Pay" />
+          <PartnerLogo icon={Landmark} name="Net Banking" />
+          <PartnerLogo icon={ShieldCheck} name="USDT" />
+        </LogoMarquee>
+      </section>
+
+      {/* FAQ Section */}
+      <section className="py-20 md:py-32">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium text-primary mb-6">
+              <HelpCircle className="h-4 w-4" />
+              {isEnglish ? 'FAQ' : '常见问题'}
+            </div>
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
+              {isEnglish ? 'Frequently Asked Questions' : '常见问题解答'}
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              {isEnglish 
+                ? 'Everything you need to know about our payment gateway'
+                : '关于我们支付网关您需要了解的一切'}
+            </p>
+          </div>
+
+          <div className="max-w-3xl mx-auto">
+            <Accordion type="single" collapsible className="space-y-4">
+              <AccordionItem value="item-1" className="border border-border/50 rounded-xl px-6 bg-card/50 backdrop-blur-sm">
+                <AccordionTrigger className="text-left font-semibold hover:no-underline py-5">
+                  {isEnglish ? 'How do I integrate the payment gateway?' : '如何集成支付网关？'}
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground pb-5">
+                  {isEnglish 
+                    ? 'Integration is simple! We provide comprehensive API documentation with code examples in PHP, JavaScript, and other languages. Most merchants complete integration within a day. Our support team is available 24/7 to assist you.'
+                    : '集成非常简单！我们提供全面的API文档，包含PHP、JavaScript和其他语言的代码示例。大多数商户在一天内完成集成。我们的支持团队全天候为您提供帮助。'}
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-2" className="border border-border/50 rounded-xl px-6 bg-card/50 backdrop-blur-sm">
+                <AccordionTrigger className="text-left font-semibold hover:no-underline py-5">
+                  {isEnglish ? 'What payment methods are supported?' : '支持哪些支付方式？'}
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground pb-5">
+                  {isEnglish 
+                    ? 'We support a wide range of payment methods including UPI, bank transfers (IMPS, NEFT, RTGS), e-wallets (JazzCash, Easypaisa, bKash, Nagad), and USDT cryptocurrency. Payment options vary by region.'
+                    : '我们支持广泛的支付方式，包括UPI、银行转账（IMPS、NEFT、RTGS）、电子钱包（JazzCash、Easypaisa、bKash、Nagad）和USDT加密货币。支付选项因地区而异。'}
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-3" className="border border-border/50 rounded-xl px-6 bg-card/50 backdrop-blur-sm">
+                <AccordionTrigger className="text-left font-semibold hover:no-underline py-5">
+                  {isEnglish ? 'How fast are settlements?' : '结算速度有多快？'}
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground pb-5">
+                  {isEnglish 
+                    ? 'We offer instant settlement for most transactions. Your funds are available in your merchant balance immediately after a successful payment, and you can withdraw to your bank account anytime.'
+                    : '我们为大多数交易提供即时结算。成功付款后，您的资金立即可用于商户余额，您可以随时提现到银行账户。'}
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-4" className="border border-border/50 rounded-xl px-6 bg-card/50 backdrop-blur-sm">
+                <AccordionTrigger className="text-left font-semibold hover:no-underline py-5">
+                  {isEnglish ? 'What are the fees?' : '费用是多少？'}
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground pb-5">
+                  {isEnglish 
+                    ? 'Our fees are competitive and transparent. We charge a small percentage per transaction for payins and a flat fee for payouts. Volume discounts are available for high-volume merchants. Contact us for a custom quote.'
+                    : '我们的费用具有竞争力且透明。我们对代收收取少量百分比，对代付收取固定费用。高交易量商户可享受批量折扣。联系我们获取定制报价。'}
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-5" className="border border-border/50 rounded-xl px-6 bg-card/50 backdrop-blur-sm">
+                <AccordionTrigger className="text-left font-semibold hover:no-underline py-5">
+                  {isEnglish ? 'Is my data secure?' : '我的数据安全吗？'}
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground pb-5">
+                  {isEnglish 
+                    ? 'Absolutely. We use 256-bit SSL encryption, implement strict 2FA authentication, and follow industry best practices for data security. Your sensitive information is never stored on our servers and all transactions are monitored for fraud.'
+                    : '绝对安全。我们使用256位SSL加密，实施严格的双重身份验证，并遵循数据安全的行业最佳实践。您的敏感信息永远不会存储在我们的服务器上，所有交易都会受到欺诈监控。'}
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-6" className="border border-border/50 rounded-xl px-6 bg-card/50 backdrop-blur-sm">
+                <AccordionTrigger className="text-left font-semibold hover:no-underline py-5">
+                  {isEnglish ? 'Which countries do you support?' : '您支持哪些国家？'}
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground pb-5">
+                  {isEnglish 
+                    ? 'We currently support merchants accepting payments in India (INR), Pakistan (PKR), and Bangladesh (BDT). Each region has localized payment methods optimized for the local market.'
+                    : '我们目前支持在印度（INR）、巴基斯坦（PKR）和孟加拉国（BDT）接受付款的商户。每个地区都有针对当地市场优化的本地化支付方式。'}
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </div>
         </div>
       </section>
