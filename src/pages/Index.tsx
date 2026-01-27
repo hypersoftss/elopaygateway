@@ -285,19 +285,35 @@ const Index = () => {
       </div>
 
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/40 bg-background/60 backdrop-blur-xl">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+      <header className={`fixed top-0 left-0 right-0 z-50 border-b transition-all duration-300 ${
+        showBackToTop 
+          ? 'border-border/60 bg-background/90 backdrop-blur-xl shadow-lg shadow-black/5' 
+          : 'border-border/40 bg-background/60 backdrop-blur-xl'
+      }`}>
+        <div className={`container mx-auto px-4 flex items-center justify-between transition-all duration-300 ${
+          showBackToTop ? 'h-14' : 'h-16'
+        }`}>
           <div className="flex items-center gap-3">
             {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className="h-9 w-9 rounded-xl object-contain" />
+              <img src={logoUrl} alt="Logo" className={`rounded-xl object-contain transition-all duration-300 ${
+                showBackToTop ? 'h-7 w-7' : 'h-9 w-9'
+              }`} />
             ) : !isLoading ? (
-              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg shadow-primary/25">
-                <Zap className="h-5 w-5 text-primary-foreground" />
+              <div className={`rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg shadow-primary/25 transition-all duration-300 ${
+                showBackToTop ? 'h-7 w-7' : 'h-9 w-9'
+              }`}>
+                <Zap className={`text-primary-foreground transition-all duration-300 ${
+                  showBackToTop ? 'h-4 w-4' : 'h-5 w-5'
+                }`} />
               </div>
             ) : (
-              <div className="h-9 w-9 rounded-xl bg-muted animate-pulse" />
+              <div className={`rounded-xl bg-muted animate-pulse transition-all duration-300 ${
+                showBackToTop ? 'h-7 w-7' : 'h-9 w-9'
+              }`} />
             )}
-            <span className="text-xl font-bold">{gatewayName}</span>
+            <span className={`font-bold transition-all duration-300 ${
+              showBackToTop ? 'text-lg' : 'text-xl'
+            }`}>{gatewayName}</span>
           </div>
           
           {/* Desktop Navigation Links */}
