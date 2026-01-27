@@ -22,7 +22,7 @@ interface BalanceThresholds {
   bdt: number
 }
 
-// Pure JavaScript MD5 implementation (crypto.subtle doesn't support MD5 in Deno)
+// Pure JavaScript MD5 implementation
 function md5(message: string): string {
   function rotateLeft(x: number, n: number): number {
     return (x << n) | (x >>> (32 - n));
@@ -138,8 +138,8 @@ function md5(message: string): string {
   return wordToHex(a) + wordToHex(b) + wordToHex(c) + wordToHex(d);
 }
 
-// LG Pay signature generation (ASCII sorted MD5)
-function generateLGPaySign(params: Record<string, string>, apiKey: string): string {
+// HYPERSOFTS (LG Pay) signature generation (ASCII sorted MD5)
+function generateHyperSoftsSign(params: Record<string, string>, apiKey: string): string {
   const sortedKeys = Object.keys(params).sort()
   const signStr = sortedKeys
     .filter(key => params[key] !== '' && params[key] !== undefined && params[key] !== null)
@@ -149,8 +149,9 @@ function generateLGPaySign(params: Record<string, string>, apiKey: string): stri
   return md5(finalStr).toUpperCase()
 }
 
-async function checkLGPayBalance(gateway: any): Promise<GatewayBalance> {
-  const baseUrl = gateway.base_url || 'https://lgpay.co'
+// HYPERSOFTS balance check
+async function checkHyperSoftsBalance(gateway: any): Promise<GatewayBalance> {
+  const baseUrl = gateway.base_url?.replace(/\/$/, '') || 'https://openapi.lgpayments.co'
   const timestamp = Math.floor(Date.now() / 1000).toString()
   
   const params: Record<string, string> = {
@@ -158,20 +159,39 @@ async function checkLGPayBalance(gateway: any): Promise<GatewayBalance> {
     timestamp,
   }
   
-  const sign = generateLGPaySign(params, gateway.api_key)
+  const sign = generateHyperSoftsSign(params, gateway.api_key)
   params.sign = sign
 
   try {
+    console.log(`Checking HYPERSOFTS balance for ${gateway.gateway_code} at ${baseUrl}/api/balance`)
+    
     const response = await fetch(`${baseUrl}/api/balance`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(params),
     })
 
-    const result = await response.json()
-    console.log(`LG Pay balance response for ${gateway.gateway_code}:`, result)
+    const responseText = await response.text()
+    console.log(`HYPERSOFTS raw response for ${gateway.gateway_code}:`, responseText)
+    
+    let result: any
+    try {
+      result = JSON.parse(responseText)
+    } catch {
+      return {
+        gateway_id: gateway.id,
+        gateway_name: gateway.gateway_name,
+        gateway_code: gateway.gateway_code,
+        currency: gateway.currency,
+        balance: null,
+        status: 'error',
+        message: 'Invalid JSON response from gateway',
+        last_checked: new Date().toISOString(),
+      }
+    }
 
-    if (result.code === 200 || result.code === '200') {
+    // HYPERSOFTS uses status: 1 for success
+    if (result.status === 1 || result.status === '1' || result.code === 200 || result.code === '200') {
       const balance = parseFloat(result.data?.balance || result.balance || '0')
       return {
         gateway_id: gateway.id,
@@ -184,6 +204,7 @@ async function checkLGPayBalance(gateway: any): Promise<GatewayBalance> {
         last_checked: new Date().toISOString(),
       }
     } else {
+      // API responded but with error
       return {
         gateway_id: gateway.id,
         gateway_name: gateway.gateway_name,
@@ -191,12 +212,12 @@ async function checkLGPayBalance(gateway: any): Promise<GatewayBalance> {
         currency: gateway.currency,
         balance: null,
         status: 'error',
-        message: result.msg || result.message || 'Failed to fetch balance',
+        message: result.msg || result.message || 'API error - check credentials',
         last_checked: new Date().toISOString(),
       }
     }
   } catch (error) {
-    console.error(`Error checking LG Pay balance for ${gateway.gateway_code}:`, error)
+    console.error(`Error checking HYPERSOFTS balance for ${gateway.gateway_code}:`, error)
     return {
       gateway_id: gateway.id,
       gateway_name: gateway.gateway_name,
@@ -210,29 +231,62 @@ async function checkLGPayBalance(gateway: any): Promise<GatewayBalance> {
   }
 }
 
-async function checkBondPayBalance(gateway: any): Promise<GatewayBalance> {
-  const baseUrl = gateway.base_url || 'https://api.bond-pays.com'
+// HYPER PAY (BondPay) balance check
+async function checkHyperPayBalance(gateway: any): Promise<GatewayBalance> {
+  const baseUrl = gateway.base_url?.replace(/\/$/, '') || 'https://api.bond-pays.com'
   
   try {
-    // BondPay balance check (using their balance API)
+    console.log(`Checking HYPERPAY balance for ${gateway.gateway_code} at ${baseUrl}`)
+    
+    // Try the balance query endpoint
     const timestamp = Math.floor(Date.now() / 1000).toString()
-    const signStr = gateway.app_id + timestamp + gateway.api_key
-    const sign = md5(signStr)
+    const signStr = `app_id=${gateway.app_id}&timestamp=${timestamp}&key=${gateway.api_key}`
+    const sign = md5(signStr).toUpperCase()
 
-    const response = await fetch(`${baseUrl}/api/balance`, {
+    const response = await fetch(`${baseUrl}/api/merchant/balance`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        merchant_id: gateway.app_id,
+        app_id: gateway.app_id,
         timestamp,
         sign,
       }),
     })
 
-    const result = await response.json()
-    console.log(`BondPay balance response for ${gateway.gateway_code}:`, result)
+    const responseText = await response.text()
+    console.log(`HYPERPAY raw response for ${gateway.gateway_code}:`, responseText)
+    
+    // Check if response is HTML (error page)
+    if (responseText.startsWith('<!DOCTYPE') || responseText.startsWith('<html')) {
+      return {
+        gateway_id: gateway.id,
+        gateway_name: gateway.gateway_name,
+        gateway_code: gateway.gateway_code,
+        currency: gateway.currency,
+        balance: null,
+        status: 'error',
+        message: 'Gateway returned HTML - balance API may not be available',
+        last_checked: new Date().toISOString(),
+      }
+    }
+    
+    let result: any
+    try {
+      result = JSON.parse(responseText)
+    } catch {
+      return {
+        gateway_id: gateway.id,
+        gateway_name: gateway.gateway_name,
+        gateway_code: gateway.gateway_code,
+        currency: gateway.currency,
+        balance: null,
+        status: 'error',
+        message: 'Invalid JSON response from gateway',
+        last_checked: new Date().toISOString(),
+      }
+    }
 
-    if (result.code === 200 || result.status === 'success') {
+    if (result.code === 200 || result.code === '200' || result.status === 'success' || result.status === 1) {
       const balance = parseFloat(result.data?.balance || result.balance || '0')
       return {
         gateway_id: gateway.id,
@@ -252,12 +306,12 @@ async function checkBondPayBalance(gateway: any): Promise<GatewayBalance> {
         currency: gateway.currency,
         balance: null,
         status: 'error',
-        message: result.msg || result.message || 'Failed to fetch balance',
+        message: result.msg || result.message || 'API error - check credentials',
         last_checked: new Date().toISOString(),
       }
     }
   } catch (error) {
-    console.error(`Error checking BondPay balance for ${gateway.gateway_code}:`, error)
+    console.error(`Error checking HYPERPAY balance for ${gateway.gateway_code}:`, error)
     return {
       gateway_id: gateway.id,
       gateway_name: gateway.gateway_name,
@@ -276,7 +330,7 @@ function getThresholdForCurrency(currency: string, thresholds: BalanceThresholds
     case 'INR': return thresholds.inr
     case 'PKR': return thresholds.pkr
     case 'BDT': return thresholds.bdt
-    default: return thresholds.inr // Default to INR threshold
+    default: return thresholds.inr
   }
 }
 
@@ -384,11 +438,11 @@ Deno.serve(async (req) => {
 
       // HYPER SOFTS (lgpay/hypersofts) gateway types
       if (gateway.gateway_type === 'lgpay' || gateway.gateway_type === 'hypersofts') {
-        balance = await checkLGPayBalance(gateway)
+        balance = await checkHyperSoftsBalance(gateway)
       } 
       // HYPER PAY (bondpay/hyperpay) gateway types
       else if (gateway.gateway_type === 'bondpay' || gateway.gateway_type === 'hyperpay') {
-        balance = await checkBondPayBalance(gateway)
+        balance = await checkHyperPayBalance(gateway)
       } else {
         balance = {
           gateway_id: gateway.id,
@@ -397,7 +451,7 @@ Deno.serve(async (req) => {
           currency: gateway.currency,
           balance: null,
           status: 'error',
-          message: 'Unknown gateway type',
+          message: `Unknown gateway type: ${gateway.gateway_type}`,
           last_checked: new Date().toISOString(),
         }
       }
