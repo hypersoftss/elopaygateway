@@ -39,6 +39,8 @@ import PaymentFailed from "./pages/PaymentFailed";
 import NotFound from "./pages/NotFound";
 import About from "./pages/About";
 import PublicDocs from "./pages/PublicDocs";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsConditions from "./pages/TermsConditions";
 
 // SDK Documentation Pages
 import EloPayGatewayINRDocs from "./pages/admin/sdk/EloPayGatewayINRDocs";
@@ -97,6 +99,8 @@ const AppRoutes = () => {
       <Route path="/payment-failed" element={<PaymentFailed />} />
       <Route path="/about" element={<About />} />
       <Route path="/docs" element={<PublicDocs />} />
+      <Route path="/privacy" element={<PrivacyPolicy />} />
+      <Route path="/terms" element={<TermsConditions />} />
       
       {/* Admin Routes */}
       <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />

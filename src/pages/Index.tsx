@@ -1158,6 +1158,12 @@ const Index = () => {
               © {new Date().getFullYear()} {gatewayName}. {isEnglish ? 'All rights reserved.' : '保留所有权利。'}
             </p>
             <div className="flex items-center gap-4">
+              <Link to="/privacy" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                {isEnglish ? 'Privacy Policy' : '隐私政策'}
+              </Link>
+              <Link to="/terms" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                {isEnglish ? 'Terms & Conditions' : '服务条款'}
+              </Link>
               <Link to="/docs" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                 {isEnglish ? 'Documentation' : '文档'}
               </Link>
