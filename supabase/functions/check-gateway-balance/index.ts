@@ -192,8 +192,10 @@ async function checkHyperSoftsBalance(gateway: any): Promise<GatewayBalance> {
     }
 
     // HYPERSOFTS uses status: 1 for success
+    // API returns balance in paisa/cents, so divide by 100 to get actual value
     if (result.status === 1 || result.status === '1' || result.code === 200 || result.code === '200') {
-      const balance = parseFloat(result.data?.balance || result.balance || '0')
+      const rawBalance = parseFloat(result.data?.balance || result.balance || '0')
+      const balance = rawBalance / 100 // Convert from paisa to actual currency
       return {
         gateway_id: gateway.id,
         gateway_name: gateway.gateway_name,
