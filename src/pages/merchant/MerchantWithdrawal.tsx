@@ -18,6 +18,7 @@ interface MerchantData {
   payout_fee: number;
   currency: string | null;
   hasWithdrawalPassword: boolean;
+  min_withdrawal_amount: number;
 }
 
 // Currency symbols

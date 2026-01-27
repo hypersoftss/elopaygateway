@@ -350,6 +350,7 @@ export type Database = {
           gateway_type: string
           id: string
           is_active: boolean | null
+          min_withdrawal_amount: number | null
           payout_key: string | null
           trade_type: string | null
           updated_at: string | null
@@ -365,6 +366,7 @@ export type Database = {
           gateway_type: string
           id?: string
           is_active?: boolean | null
+          min_withdrawal_amount?: number | null
           payout_key?: string | null
           trade_type?: string | null
           updated_at?: string | null
@@ -380,6 +382,7 @@ export type Database = {
           gateway_type?: string
           id?: string
           is_active?: boolean | null
+          min_withdrawal_amount?: number | null
           payout_key?: string | null
           trade_type?: string | null
           updated_at?: string | null

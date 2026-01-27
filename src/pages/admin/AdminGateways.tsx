@@ -42,6 +42,7 @@ interface PaymentGateway {
   trade_type: string | null;
   is_active: boolean;
   created_at: string;
+  min_withdrawal_amount: number | null;
 }
 
 // Trade type options based on gateway type and currency
@@ -89,6 +90,7 @@ const AdminGatewaysPage = () => {
     payout_key: '',
     currency: 'INR',
     trade_type: '',
+    min_withdrawal_amount: 1000,
   });
 
   const fetchGateways = async () => {
@@ -126,6 +128,7 @@ const AdminGatewaysPage = () => {
             payout_key: payoutKey,
             currency: newGateway.currency,
             trade_type: newGateway.trade_type || null,
+            min_withdrawal_amount: newGateway.min_withdrawal_amount || 1000,
           })
           .eq('id', editingGateway.id);
         if (error) throw error;
@@ -146,6 +149,7 @@ const AdminGatewaysPage = () => {
             payout_key: payoutKey,
             currency: newGateway.currency,
             trade_type: newGateway.trade_type || null,
+            min_withdrawal_amount: newGateway.min_withdrawal_amount || 1000,
           });
         if (error) throw error;
         toast({
@@ -177,6 +181,7 @@ const AdminGatewaysPage = () => {
       payout_key: '',
       currency: 'INR',
       trade_type: '',
+      min_withdrawal_amount: 1000,
     });
   };
 
@@ -239,6 +244,7 @@ const AdminGatewaysPage = () => {
       payout_key: gateway.payout_key || '',
       currency: gateway.currency,
       trade_type: gateway.trade_type || '',
+      min_withdrawal_amount: gateway.min_withdrawal_amount || 1000,
     });
     setShowGatewayDialog(true);
   };
@@ -560,6 +566,20 @@ const AdminGatewaysPage = () => {
                 />
               </div>
             )}
+
+            {/* Minimum Withdrawal Amount */}
+            <div className="space-y-2">
+              <Label>{language === 'zh' ? '最低提现金额' : 'Min Withdrawal Amount'}</Label>
+              <Input
+                type="number"
+                value={newGateway.min_withdrawal_amount}
+                onChange={(e) => setNewGateway(g => ({ ...g, min_withdrawal_amount: parseFloat(e.target.value) || 1000 }))}
+                placeholder="1000"
+              />
+              <p className="text-xs text-muted-foreground">
+                {language === 'zh' ? '商户最低提现金额限制' : 'Minimum withdrawal amount for merchants'}
+              </p>
+            </div>
           </div>
 
           <DialogFooter className="gap-2">
