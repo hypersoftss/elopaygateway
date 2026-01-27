@@ -20,8 +20,8 @@ function generateBondPaySignature(merchantId: string, amount: string, orderNo: s
   return hash.toString()
 }
 
-// HYPER SOFTS signature: ASCII-sorted parameters + &key=secret (uppercase)
-function generateHyperSoftsSignature(params: Record<string, any>, key: string): string {
+// ELOPAY signature: ASCII-sorted parameters + &key=secret (uppercase)
+function generateEloPaySignature(params: Record<string, any>, key: string): string {
   // Filter out empty values and sign itself
   const filteredParams = Object.entries(params)
     .filter(([k, v]) => v !== '' && v !== null && v !== undefined && k !== 'sign')
@@ -32,7 +32,7 @@ function generateHyperSoftsSignature(params: Record<string, any>, key: string): 
     .join('&')
   
   const signString = `${queryString}&key=${key}`
-  console.log('HYPER SOFTS sign string:', signString)
+  console.log('ELOPAY sign string:', signString)
   
   const hash = new Md5()
   hash.update(signString)
@@ -157,11 +157,11 @@ Deno.serve(async (req) => {
 
     // Route based on gateway type
     if (gateway && (gateway.gateway_type === 'hypersofts' || gateway.gateway_type === 'lgpay')) {
-      // HYPER SOFTS Integration
-      console.log('Using HYPER SOFTS gateway:', gateway.gateway_code)
+      // ELOPAY Integration
+      console.log('Using ELOPAY gateway:', gateway.gateway_code)
       gatewayId = gateway.id
 
-      // Determine trade_type for HYPER SOFTS API
+      // Determine trade_type for ELOPAY API
       // PKR always uses 'PKRPH' for deposits (jazzcash/easypaisa are just UI selections)
       // BDT uses the selected trade_type (nagad/bkash)
       // INR uses the selected trade_type (INRUPI/usdt)
@@ -180,16 +180,16 @@ Deno.serve(async (req) => {
         app_id: gateway.app_id,
         trade_type: apiTradeType,
         order_sn: orderNo,
-        money: Math.round(amount * 100), // HYPER SOFTS uses cents
+        money: Math.round(amount * 100), // ELOPAY uses cents
         notify_url: internalCallbackUrl,
         ip: '0.0.0.0',
         remark: merchant?.id || link.merchant_id,
       }
 
-      hsParams.sign = generateHyperSoftsSignature(hsParams, gateway.api_key)
+      hsParams.sign = generateEloPaySignature(hsParams, gateway.api_key)
 
-      console.log('Calling HYPER SOFTS API:', `${gateway.base_url}/api/order/create`)
-      console.log('HYPER SOFTS params:', hsParams)
+      console.log('Calling ELOPAY API:', `${gateway.base_url}/api/order/create`)
+      console.log('ELOPAY params:', hsParams)
 
       const formBody = new URLSearchParams()
       Object.entries(hsParams).forEach(([k, v]) => formBody.append(k, String(v)))
@@ -201,13 +201,13 @@ Deno.serve(async (req) => {
       })
 
       const hsData = await hsResponse.json()
-      console.log('HYPER SOFTS response:', hsData)
+      console.log('ELOPAY response:', hsData)
 
       if (hsData.status === 1 && hsData.data?.pay_url) {
         paymentUrl = hsData.data.pay_url
         gatewayOrderNo = hsData.data?.order_no || hsData.data?.order_sn
       } else {
-        console.error('HYPER SOFTS error:', hsData)
+        console.error('ELOPAY error:', hsData)
         return new Response(
           JSON.stringify({ error: hsData.msg || 'Gateway error' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -215,8 +215,8 @@ Deno.serve(async (req) => {
       }
 
     } else if (gateway && (gateway.gateway_type === 'hyperpay' || gateway.gateway_type === 'bondpay')) {
-      // HYPER PAY Integration (formerly BondPay) - using gateway credentials
-      console.log('Using HYPER PAY gateway:', gateway.gateway_code)
+      // ELOPAYGATEWAY Integration (formerly BondPay) - using gateway credentials
+      console.log('Using ELOPAYGATEWAY gateway:', gateway.gateway_code)
       gatewayId = gateway.id
 
       const signature = generateBondPaySignature(
@@ -227,7 +227,7 @@ Deno.serve(async (req) => {
         internalCallbackUrl
       )
 
-      console.log('Calling HYPER PAY API:', `${gateway.base_url}/v1/create`)
+      console.log('Calling ELOPAYGATEWAY API:', `${gateway.base_url}/v1/create`)
 
       const hpResponse = await fetch(`${gateway.base_url}/v1/create`, {
         method: 'POST',
@@ -244,13 +244,13 @@ Deno.serve(async (req) => {
       })
 
       const hpData = await hpResponse.json()
-      console.log('HYPER PAY response:', hpData)
+      console.log('ELOPAYGATEWAY response:', hpData)
 
       if (hpData.payment_url) {
         paymentUrl = hpData.payment_url
         gatewayOrderNo = hpData.order_no
       } else {
-        console.error('HYPER PAY error:', hpData)
+        console.error('ELOPAYGATEWAY error:', hpData)
         return new Response(
           JSON.stringify({ error: hpData.message || 'Gateway error' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

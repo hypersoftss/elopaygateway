@@ -22,8 +22,8 @@ function verifyHyperPaySignature(params: Record<string, string>, apiKey: string,
   return expectedSign.toLowerCase() === signature.toLowerCase()
 }
 
-// HYPER SOFTS signature (ASCII sorted + uppercase MD5)
-function generateHyperSoftsSignature(params: Record<string, any>, key: string): string {
+// ELOPAY signature (ASCII sorted + uppercase MD5)
+function generateEloPaySignature(params: Record<string, any>, key: string): string {
   // Filter out empty values and sign itself
   const filteredParams = Object.entries(params)
     .filter(([k, v]) => v !== '' && v !== null && v !== undefined && k !== 'sign')
@@ -34,7 +34,7 @@ function generateHyperSoftsSignature(params: Record<string, any>, key: string): 
     .join('&')
   
   const signString = `${queryString}&key=${key}`
-  console.log('HYPER SOFTS sign string:', signString)
+  console.log('ELOPAY sign string:', signString)
   
   const hash = new Md5()
   hash.update(signString)
@@ -267,24 +267,24 @@ Deno.serve(async (req) => {
 
     // Route to appropriate gateway
     if (gateway.gateway_type === 'hypersofts' || gateway.gateway_type === 'lgpay') {
-      // HYPER SOFTS integration - trade_type logic varies by gateway_code:
-      // - hypersofts_pkr: Use gateway's trade_type (PKRPH) for all merchants
-      // - hypersofts_bdt: Use merchant's trade_type directly (Nagad, bKash)
-      // - hypersofts_inr: Use gateway's trade_type (INRUPI) or merchant's trade_type (usdt)
+      // ELOPAY integration - trade_type logic varies by gateway_code:
+      // - ELOPAY_PKR: Use gateway's trade_type (PKRPH) for all merchants
+      // - ELOPAY_BDT: Use merchant's trade_type directly (Nagad, bKash)
+      // - ELOPAY_INR: Use gateway's trade_type (INRUPI) or merchant's trade_type (usdt)
       let tradeType = gateway.trade_type || 'INRUPI'
       
-      if (gateway.gateway_code === 'hypersofts_bdt' && merchant.trade_type) {
+      if ((gateway.gateway_code === 'ELOPAY_BDT' || gateway.gateway_code === 'hypersofts_bdt') && merchant.trade_type) {
         // For BDT, deposit codes ARE the merchant's trade_type (Nagad/bKash)
         tradeType = merchant.trade_type
-      } else if (gateway.gateway_code === 'hypersofts_inr' && merchant.trade_type) {
+      } else if ((gateway.gateway_code === 'ELOPAY_INR' || gateway.gateway_code === 'hypersofts_inr') && merchant.trade_type) {
         // For INR, use merchant's trade_type if set (usdt/INRUPI)
         tradeType = merchant.trade_type
-      } else if (gateway.gateway_code === 'hypersofts_pkr') {
+      } else if (gateway.gateway_code === 'ELOPAY_PKR' || gateway.gateway_code === 'hypersofts_pkr') {
         // For PKR, use gateway's trade_type (PKRPH)
         tradeType = gateway.trade_type || 'PKRPH'
       }
       
-      console.log('HYPER SOFTS payin v2 - Gateway code:', gateway.gateway_code, 'Currency:', gateway.currency, 'Trade type:', tradeType, 'Merchant trade_type:', merchant.trade_type)
+      console.log('ELOPAY payin - Gateway code:', gateway.gateway_code, 'Currency:', gateway.currency, 'Trade type:', tradeType, 'Merchant trade_type:', merchant.trade_type)
       
       const hsParams: Record<string, any> = {
         app_id: gateway.app_id,
@@ -296,9 +296,9 @@ Deno.serve(async (req) => {
         remark: merchant.id,
       }
 
-      hsParams.sign = generateHyperSoftsSignature(hsParams, gateway.api_key)
+      hsParams.sign = generateEloPaySignature(hsParams, gateway.api_key)
 
-      console.log('Calling HYPER SOFTS API:', hsParams)
+      console.log('Calling ELOPAY API:', hsParams)
 
       const formBody = new URLSearchParams()
       Object.entries(hsParams).forEach(([k, v]) => formBody.append(k, String(v)))
@@ -310,16 +310,16 @@ Deno.serve(async (req) => {
       })
 
       gatewayResponse = await hsResponse.json()
-      console.log('HYPER SOFTS response:', gatewayResponse)
+      console.log('ELOPAY response:', gatewayResponse)
 
       if (gatewayResponse.status === 1 && gatewayResponse.data?.pay_url) {
         paymentUrl = gatewayResponse.data.pay_url
       }
     } else if (gateway.gateway_type === 'hyperpay' || gateway.gateway_type === 'bondpay') {
-      // HYPER PAY integration (explicitly handling hyperpay/bondpay gateway types)
-      console.log('Using HYPER PAY gateway:', gateway.gateway_code || 'default')
+      // ELOPAYGATEWAY integration (explicitly handling hyperpay/bondpay gateway types)
+      console.log('Using ELOPAYGATEWAY gateway:', gateway.gateway_code || 'default')
       
-      const hyperPaySignature = generateHyperPaySignature(
+      const eloPayGatewaySignature = generateHyperPaySignature(
         gateway.app_id,
         amount.toString(),
         orderNo,
@@ -327,9 +327,9 @@ Deno.serve(async (req) => {
         internalCallbackUrl
       )
 
-      console.log('Calling HYPER PAY API:', `${gateway.base_url}/v1/create`)
+      console.log('Calling ELOPAYGATEWAY API:', `${gateway.base_url}/v1/create`)
 
-      const hyperPayResponse = await fetch(`${gateway.base_url}/v1/create`, {
+      const eloPayGatewayResponse = await fetch(`${gateway.base_url}/v1/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -339,27 +339,27 @@ Deno.serve(async (req) => {
           merchant_order_no: orderNo,
           callback_url: internalCallbackUrl,
           extra: merchant.id,
-          signature: hyperPaySignature
+          signature: eloPayGatewaySignature
         })
       })
 
-      gatewayResponse = await hyperPayResponse.json()
-      console.log('HYPER PAY response:', gatewayResponse)
+      gatewayResponse = await eloPayGatewayResponse.json()
+      console.log('ELOPAYGATEWAY response:', gatewayResponse)
       
       if (gatewayResponse.payment_url) {
         paymentUrl = gatewayResponse.payment_url
       } else {
-        console.error('HYPER PAY error:', gatewayResponse)
+        console.error('ELOPAYGATEWAY error:', gatewayResponse)
         return new Response(
           JSON.stringify({ code: 400, message: gatewayResponse.message || 'Gateway error' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
     } else {
-      // Fallback for unknown gateway types - treat as HYPER PAY
-      console.log('Using fallback HYPER PAY logic for unknown gateway type:', gateway.gateway_type)
+      // Fallback for unknown gateway types - treat as ELOPAYGATEWAY
+      console.log('Using fallback ELOPAYGATEWAY logic for unknown gateway type:', gateway.gateway_type)
       
-      const hyperPaySignature = generateHyperPaySignature(
+      const fallbackSignature = generateHyperPaySignature(
         gateway.app_id,
         amount.toString(),
         orderNo,
@@ -367,7 +367,7 @@ Deno.serve(async (req) => {
         internalCallbackUrl
       )
 
-      const hyperPayResponse = await fetch(`${gateway.base_url}/v1/create`, {
+      const fallbackResponse = await fetch(`${gateway.base_url}/v1/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -377,12 +377,12 @@ Deno.serve(async (req) => {
           merchant_order_no: orderNo,
           callback_url: internalCallbackUrl,
           extra: merchant.id,
-          signature: hyperPaySignature
+          signature: fallbackSignature
         })
       })
 
-      gatewayResponse = await hyperPayResponse.json()
-      console.log('Fallback HYPER PAY response:', gatewayResponse)
+      gatewayResponse = await fallbackResponse.json()
+      console.log('Fallback ELOPAYGATEWAY response:', gatewayResponse)
       
       if (gatewayResponse.payment_url) {
         paymentUrl = gatewayResponse.payment_url
