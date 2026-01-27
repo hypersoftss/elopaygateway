@@ -158,9 +158,17 @@ const MerchantDocumentation = () => {
       {/* Region Header */}
       <div className="p-6 bg-gradient-to-r from-green-500/10 to-green-600/5 border border-green-500/20 rounded-xl">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 bg-green-500 rounded-xl flex items-center justify-center text-3xl">
-            🇵🇰
-          </div>
+          {settings.logoUrl ? (
+            <img 
+              src={settings.logoUrl} 
+              alt="ELOPAY" 
+              className="w-16 h-16 rounded-xl object-contain shadow-lg ring-2 ring-green-500/30" 
+            />
+          ) : (
+            <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center text-3xl shadow-lg">
+              🇵🇰
+            </div>
+          )}
           <div>
             <h2 className="text-xl font-bold">ELOPAY_PKR Integration</h2>
             <p className="text-muted-foreground">Easypaisa, JazzCash & USDT Payments</p>
@@ -322,9 +330,17 @@ const MerchantDocumentation = () => {
       {/* Region Header */}
       <div className="p-6 bg-gradient-to-r from-orange-500/10 to-pink-500/5 border border-orange-500/20 rounded-xl">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-pink-500 rounded-xl flex items-center justify-center text-3xl">
-            🇧🇩
-          </div>
+          {settings.logoUrl ? (
+            <img 
+              src={settings.logoUrl} 
+              alt="ELOPAY" 
+              className="w-16 h-16 rounded-xl object-contain shadow-lg ring-2 ring-orange-500/30" 
+            />
+          ) : (
+            <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-pink-500 rounded-xl flex items-center justify-center text-3xl shadow-lg">
+              🇧🇩
+            </div>
+          )}
           <div>
             <h2 className="text-xl font-bold">ELOPAY_BDT Integration</h2>
             <p className="text-muted-foreground">Nagad, bKash & USDT Payments</p>
@@ -476,9 +492,17 @@ const MerchantDocumentation = () => {
       {/* Region Header */}
       <div className="p-6 bg-gradient-to-r from-blue-500/10 to-purple-500/5 border border-blue-500/20 rounded-xl">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 bg-gradient-to-br from-orange-500 via-white to-green-500 rounded-xl flex items-center justify-center text-3xl">
-            🇮🇳
-          </div>
+          {settings.logoUrl ? (
+            <img 
+              src={settings.logoUrl} 
+              alt="ELOPAY" 
+              className="w-16 h-16 rounded-xl object-contain shadow-lg ring-2 ring-blue-500/30" 
+            />
+          ) : (
+            <div className="w-16 h-16 bg-gradient-to-br from-orange-500 via-white to-green-500 rounded-xl flex items-center justify-center text-3xl shadow-lg">
+              🇮🇳
+            </div>
+          )}
           <div>
             <h2 className="text-xl font-bold">{isHyperPay ? 'ELOPAYGATEWAY_INR' : 'ELOPAY_INR'} Integration</h2>
             <p className="text-muted-foreground">
