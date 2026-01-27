@@ -39,29 +39,30 @@ async function getBotToken(supabaseAdmin: any): Promise<string | null> {
   return settings?.telegram_bot_token || Deno.env.get('TG_BOT_TOKEN') || null
 }
 
-// Commands that should NOT trigger auto-delete (keep messages visible)
-const NO_AUTO_DELETE_COMMANDS = [
-  '/help',
-  '/tg_id',
-  '/id', 
-  '/chatid',
-  '/setmenu',
-  '/create_merchant',
-  '/broadcast',
-]
+// Default commands that should NOT trigger auto-delete (keep messages visible)
+const DEFAULT_NO_AUTO_DELETE_COMMANDS = '/help,/tg_id,/id,/chatid,/setmenu,/create_merchant,/broadcast'
 
 // Global supabase client for the current request
 let _supabaseAdmin: any = null
+
+// Global no-auto-delete commands list (loaded from DB)
+let _noAutoDeleteCommands: string[] = []
 
 // Set the global supabase client
 function setSupabaseAdmin(client: any) {
   _supabaseAdmin = client
 }
 
-// Check if command should skip auto-delete
+// Set no-auto-delete commands from admin settings
+function setNoAutoDeleteCommands(commandsString: string | null) {
+  const str = commandsString || DEFAULT_NO_AUTO_DELETE_COMMANDS
+  _noAutoDeleteCommands = str.split(',').map(c => c.trim().toLowerCase()).filter(Boolean)
+}
+
+// Check if command should skip auto-delete (only affects whether NEW message is tracked)
 function shouldSkipAutoDelete(command: string): boolean {
   const cmd = command.toLowerCase().split('@')[0]
-  return NO_AUTO_DELETE_COMMANDS.includes(cmd)
+  return _noAutoDeleteCommands.includes(cmd)
 }
 
 // Get last bot message ID from database
@@ -121,12 +122,15 @@ async function deleteMessage(botToken: string, chatId: string, messageId: number
   }
 }
 
-// Helper to send Telegram message with optional keyboard (auto-deletes previous bot message)
-async function sendMessage(botToken: string, chatId: string, text: string, parseMode: string = 'HTML', keyboard?: any, autoDelete: boolean = true) {
+// Helper to send Telegram message with optional keyboard
+// autoDelete: whether to delete previous message and track this one
+// skipTracking: if true, delete previous but DON'T track this message (for NO_AUTO_DELETE commands)
+async function sendMessage(botToken: string, chatId: string, text: string, parseMode: string = 'HTML', keyboard?: any, autoDelete: boolean = true, skipTracking: boolean = false) {
   if (!botToken) return
 
-  // Delete previous bot message if exists (using database)
-  if (autoDelete && _supabaseAdmin) {
+  // ALWAYS delete previous bot message if exists (using database)
+  // This ensures previous message is deleted regardless of which command sent it
+  if (_supabaseAdmin) {
     const lastMsgId = await getLastBotMessageId(chatId)
     if (lastMsgId) {
       await deleteMessage(botToken, chatId, lastMsgId)
@@ -153,10 +157,11 @@ async function sendMessage(botToken: string, chatId: string, text: string, parse
   try {
     const result = await response.json()
     if (result.ok && result.result?.message_id && _supabaseAdmin) {
-      if (autoDelete) {
+      if (autoDelete && !skipTracking) {
+        // Track this message so it will be deleted when next command comes
         await saveLastBotMessageId(chatId, result.result.message_id)
       } else {
-        // If not auto-deleting, clear the tracking so next message doesn't delete this one
+        // Don't track - this message won't be auto-deleted
         await clearLastBotMessageId(chatId)
       }
     }
@@ -165,12 +170,14 @@ async function sendMessage(botToken: string, chatId: string, text: string, parse
   }
 }
 
-// Send message with inline keyboard (auto-deletes previous bot message)
-async function sendMessageWithButtons(botToken: string, chatId: string, text: string, buttons: { text: string; callback_data: string }[][], autoDelete: boolean = true) {
+// Send message with inline keyboard
+// autoDelete: whether to track this message for future deletion
+// skipTracking: if true, delete previous but DON'T track this message
+async function sendMessageWithButtons(botToken: string, chatId: string, text: string, buttons: { text: string; callback_data: string }[][], autoDelete: boolean = true, skipTracking: boolean = false) {
   if (!botToken) return
 
-  // Delete previous bot message if exists (using database)
-  if (autoDelete && _supabaseAdmin) {
+  // ALWAYS delete previous bot message if exists
+  if (_supabaseAdmin) {
     const lastMsgId = await getLastBotMessageId(chatId)
     if (lastMsgId) {
       await deleteMessage(botToken, chatId, lastMsgId)
@@ -194,7 +201,7 @@ async function sendMessageWithButtons(botToken: string, chatId: string, text: st
   try {
     const result = await response.json()
     if (result.ok && result.result?.message_id && _supabaseAdmin) {
-      if (autoDelete) {
+      if (autoDelete && !skipTracking) {
         await saveLastBotMessageId(chatId, result.result.message_id)
       } else {
         await clearLastBotMessageId(chatId)
@@ -612,6 +619,9 @@ Deno.serve(async (req) => {
       .select('*')
       .limit(1)
       .maybeSingle()
+
+    // Set no-auto-delete commands from admin settings
+    setNoAutoDeleteCommands(adminSettings?.no_auto_delete_commands)
 
     const adminChatId = adminSettings?.admin_telegram_chat_id
     const gatewayName = adminSettings?.gateway_name || 'ELOPAY'
@@ -1479,7 +1489,7 @@ Deno.serve(async (req) => {
         `🆔 Chat ID: <code>${chatId}</code>\n` +
         `📝 Type: ${chatType}\n\n` +
         `<i>Copy this ID to use for notifications</i>`,
-        'HTML', undefined, !skipAutoDelete
+        'HTML', undefined, true, skipAutoDelete // autoDelete=true (delete prev), skipTracking=skipAutoDelete
       )
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
@@ -1876,7 +1886,7 @@ Deno.serve(async (req) => {
           `/tg_id - Get chat ID\n\n` +
           `🌐 Dashboard: ${gatewayDomain}/merchant`
 
-        await sendMessage(botToken, chatId, msg, 'HTML', undefined, false) // Don't auto-delete help
+        await sendMessage(botToken, chatId, msg, 'HTML', undefined, true, true) // autoDelete=true, skipTracking=true for help
         return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
       }
     }
@@ -1933,7 +1943,7 @@ Deno.serve(async (req) => {
         `/setmenu - Update bot menu\n` +
         `/tg_id - Get chat ID`
 
-      await sendMessage(botToken, chatId, msg, 'HTML', undefined, false) // Don't auto-delete help
+      await sendMessage(botToken, chatId, msg, 'HTML', undefined, true, true) // autoDelete=true, skipTracking=true for help
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
