@@ -7,7 +7,7 @@ import { Copy, AlertTriangle, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { useGatewaySettings } from '@/hooks/useGatewaySettings';
 
-const HyperPayINRDocs = () => {
+const EloPayGatewayINRDocs = () => {
   const { settings } = useGatewaySettings();
   const gatewayName = 'ELOPAYGATEWAY_INR';
 
@@ -325,4 +325,4 @@ Content-Type: application/json
   );
 };
 
-export default HyperPayINRDocs;
+export default EloPayGatewayINRDocs;

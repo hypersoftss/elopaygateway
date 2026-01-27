@@ -7,7 +7,7 @@ import { Copy, Smartphone, AlertTriangle, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { useGatewaySettings } from '@/hooks/useGatewaySettings';
 
-const HyperSoftsPKRDocs = () => {
+const EloPayPKRDocs = () => {
   const { settings } = useGatewaySettings();
   const gatewayName = 'ELOPAY_PKR';
 
@@ -386,4 +386,4 @@ money: X    // Will stay pending (no callback)`;
   );
 };
 
-export default HyperSoftsPKRDocs;
+export default EloPayPKRDocs;

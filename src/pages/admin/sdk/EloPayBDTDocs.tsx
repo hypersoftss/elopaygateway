@@ -3,20 +3,20 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Copy, Building2, AlertTriangle, Zap } from 'lucide-react';
+import { Copy, Smartphone, AlertTriangle, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { useGatewaySettings } from '@/hooks/useGatewaySettings';
 
-const HyperSoftsINRDocs = () => {
+const EloPayBDTDocs = () => {
   const { settings } = useGatewaySettings();
-  const gatewayName = 'ELOPAY_INR';
+  const gatewayName = 'ELOPAY_BDT';
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`${label} copied to clipboard`);
   };
 
-  const signatureCode = `// ELOPAY_INR Signature Algorithm (ASCII Sorted MD5)
+  const signatureCode = `// ELOPAY_BDT Signature Algorithm (ASCII Sorted MD5)
 const crypto = require('crypto');
 
 function generateSignature(params, secretKey) {
@@ -43,37 +43,48 @@ function generateSignature(params, secretKey) {
 const sign = generateSignature({
   app_id: 'YOUR_APP_ID',
   order_sn: 'ORDER123456',
-  money: 100000, // 1000 INR * 100
+  money: 100000, // 1000 BDT * 100
   notify_url: 'https://yoursite.com/callback',
-  trade_type: 'INRUPI'
+  trade_type: 'Nagad'
 }, 'YOUR_API_KEY');`;
 
-  const payinRequest = `// Pay-In Request (INR)
+  const payinNagad = `// Pay-In Request (Nagad)
 POST {GATEWAY_BASE_URL}/api/order/create
 Content-Type: application/x-www-form-urlencoded
 
 app_id=YOUR_APP_ID
-trade_type=INRUPI     // or "usdt"
+trade_type=Nagad
 order_sn=ORDER123456
-money=100000          // Amount × 100 (1000 INR = 100000)
+money=100000          // Amount × 100 (1000 BDT = 100000)
 notify_url=https://yoursite.com/callback
-ip=customer_ip        // or 0.0.0.0
+user_id=01xxxxxxxxx   // 11-digit mobile number
 remark=optional_note
 sign=GENERATED_SIGNATURE`;
 
-  const payoutRequest = `// Pay-Out Request (Bank Transfer)
+  const payinBkash = `// Pay-In Request (bKash)
+POST {GATEWAY_BASE_URL}/api/order/create
+Content-Type: application/x-www-form-urlencoded
+
+app_id=YOUR_APP_ID
+trade_type=bKash
+order_sn=ORDER123456
+money=100000          // Amount × 100 (1000 BDT = 100000)
+notify_url=https://yoursite.com/callback
+user_id=01xxxxxxxxx   // 11-digit mobile number
+remark=optional_note
+sign=GENERATED_SIGNATURE`;
+
+  const payoutRequest = `// Pay-Out Request (bKash/Nagad)
 POST {GATEWAY_BASE_URL}/api/deposit/create
 Content-Type: application/x-www-form-urlencoded
 
 app_id=YOUR_APP_ID
 order_sn=PAYOUT123456
-currency=INR
+currency=BDT
 money=100000          // Amount × 100
 notify_url=https://yoursite.com/callback
-name=ACCOUNT_HOLDER_NAME    // Name at bank
-bank_name=HDFC Bank         // Bank name
-card_number=1234567890      // Bank account number
-addon1=HDFC0001234          // IFSC Code
+name=Account Holder Name
+card_number=01xxxxxxxxx  // bKash/Nagad phone number
 sign=GENERATED_SIGNATURE`;
 
   const callbackExample = `// Callback Response (POST to your notify_url)
@@ -89,8 +100,7 @@ sign=CALLBACK_SIGNATURE
 
 // For Payout callbacks:
 // status=1 means payout successful
-// status=0 means payout failed (check msg)
-// status=5 means processing (wait for final status)`;
+// status=0 means payout failed (check msg)`;
 
   const testModeInfo = `// Test Mode Configuration
 // For testing, use these trade_types:
@@ -113,19 +123,19 @@ money: X    // Will stay pending (no callback)`;
               <img 
                 src={settings.logoUrl} 
                 alt="ELOPAY" 
-                className="w-14 h-14 rounded-xl object-contain shadow-lg ring-2 ring-orange-500/30" 
+                className="w-14 h-14 rounded-xl object-contain shadow-lg ring-2 ring-emerald-500/30" 
               />
             ) : (
-              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg">
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg">
                 <Zap className="h-7 w-7 text-white" />
               </div>
             )}
             <div>
-              <h1 className="text-2xl font-bold">ELOPAY_INR</h1>
-              <p className="text-muted-foreground">ELOPAY India - Bank Transfer & UPI Integration</p>
+              <h1 className="text-2xl font-bold">ELOPAY_BDT</h1>
+              <p className="text-muted-foreground">ELOPAY Bangladesh - Nagad & bKash Integration</p>
             </div>
           </div>
-          <Badge variant="default" className="bg-orange-500">🇮🇳 India</Badge>
+          <Badge variant="default" className="bg-emerald-600">🇧🇩 Bangladesh</Badge>
         </div>
 
         {/* Confidential Notice */}
@@ -153,15 +163,15 @@ money: X    // Will stay pending (no callback)`;
               <CardTitle className="text-sm">Currency</CardTitle>
             </CardHeader>
             <CardContent>
-              <Badge>INR (Indian Rupee)</Badge>
+              <Badge>BDT (Bangladeshi Taka)</Badge>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Trade Type</CardTitle>
+              <CardTitle className="text-sm">App ID</CardTitle>
             </CardHeader>
             <CardContent>
-              <code className="text-xs bg-muted px-2 py-1 rounded">INRUPI / usdt</code>
+              <code className="text-xs bg-muted px-2 py-1 rounded">From Gateway Config</code>
             </CardContent>
           </Card>
           <Card>
@@ -178,36 +188,37 @@ money: X    // Will stay pending (no callback)`;
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
-              Payment Methods
+              <Smartphone className="h-5 w-5" />
+              Available Trade Types
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="border rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Badge className="bg-blue-500">INRUPI</Badge>
+                  <Badge className="bg-orange-600">Nagad</Badge>
                 </div>
-                <p className="text-sm text-muted-foreground">UPI Payment (Recommended)</p>
-                <p className="text-xs mt-2"><strong>trade_type:</strong> <code>INRUPI</code></p>
-                <p className="text-xs"><strong>Payout:</strong> Bank Transfer (IMPS/NEFT)</p>
+                <p className="text-sm text-muted-foreground">Mobile wallet payments via Nagad</p>
+                <p className="text-xs mt-2"><strong>trade_type:</strong> <code>Nagad</code></p>
+                <p className="text-xs"><strong>Limits:</strong> 100 - 25,000 BDT</p>
               </div>
               <div className="border rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Badge className="bg-green-500">USDT</Badge>
+                  <Badge className="bg-pink-600">bKash</Badge>
                 </div>
-                <p className="text-sm text-muted-foreground">Crypto (TRC20)</p>
-                <p className="text-xs mt-2"><strong>trade_type:</strong> <code>usdt</code></p>
-                <p className="text-xs"><strong>Settlement:</strong> Auto-converted to INR</p>
+                <p className="text-sm text-muted-foreground">Mobile wallet payments via bKash</p>
+                <p className="text-xs mt-2"><strong>trade_type:</strong> <code>bKash</code></p>
+                <p className="text-xs"><strong>Limits:</strong> 100 - 25,000 BDT</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Tabs defaultValue="signature" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="signature">Signature</TabsTrigger>
-            <TabsTrigger value="payin">Pay-In</TabsTrigger>
+            <TabsTrigger value="payin-nagad">Pay-In Nagad</TabsTrigger>
+            <TabsTrigger value="payin-bkash">Pay-In bKash</TabsTrigger>
             <TabsTrigger value="payout">Pay-Out</TabsTrigger>
             <TabsTrigger value="callback">Callback</TabsTrigger>
           </TabsList>
@@ -215,7 +226,7 @@ money: X    // Will stay pending (no callback)`;
           <TabsContent value="signature">
             <Card>
               <CardHeader>
-                <CardTitle>ELOPAY_INR Signature Algorithm</CardTitle>
+                <CardTitle>ELOPAY_BDT Signature Algorithm</CardTitle>
                 <CardDescription>ASCII-sorted MD5 with uppercase output</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -242,43 +253,57 @@ money: X    // Will stay pending (no callback)`;
             </Card>
           </TabsContent>
 
-          <TabsContent value="payin">
+          <TabsContent value="payin-nagad">
             <Card>
               <CardHeader>
-                <CardTitle>Create Pay-In Order</CardTitle>
-                <CardDescription>Collect payments in INR via UPI or USDT</CardDescription>
+                <CardTitle>Pay-In via Nagad</CardTitle>
+                <CardDescription>Collect payments via Nagad mobile wallet</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-end">
-                  <Button size="sm" variant="outline" onClick={() => copyToClipboard(payinRequest, 'Payin request')}>
+                  <Button size="sm" variant="outline" onClick={() => copyToClipboard(payinNagad, 'Nagad payin')}>
                     <Copy className="h-4 w-4 mr-2" /> Copy
                   </Button>
                 </div>
                 <pre className="bg-muted p-4 rounded-lg text-sm overflow-x-auto">
-                  {payinRequest}
+                  {payinNagad}
                 </pre>
                 
-                <h4 className="font-semibold mt-4">Request Parameters</h4>
-                <div className="border rounded-lg overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead className="bg-muted">
-                      <tr>
-                        <th className="text-left p-3">Field</th>
-                        <th className="text-left p-3">Type</th>
-                        <th className="text-left p-3">Required</th>
-                        <th className="text-left p-3">Description</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="border-t"><td className="p-3">app_id</td><td className="p-3">String</td><td className="p-3">✓</td><td className="p-3">Your merchant app ID</td></tr>
-                      <tr className="border-t"><td className="p-3">trade_type</td><td className="p-3">String</td><td className="p-3">-</td><td className="p-3">INRUPI or usdt</td></tr>
-                      <tr className="border-t"><td className="p-3">order_sn</td><td className="p-3">String</td><td className="p-3">✓</td><td className="p-3">Unique order number</td></tr>
-                      <tr className="border-t"><td className="p-3">money</td><td className="p-3">Integer</td><td className="p-3">✓</td><td className="p-3">Amount × 100</td></tr>
-                      <tr className="border-t"><td className="p-3">notify_url</td><td className="p-3">String</td><td className="p-3">✓</td><td className="p-3">Callback URL</td></tr>
-                      <tr className="border-t"><td className="p-3">ip</td><td className="p-3">String</td><td className="p-3">-</td><td className="p-3">Customer IP (or 0.0.0.0)</td></tr>
-                      <tr className="border-t"><td className="p-3">sign</td><td className="p-3">String</td><td className="p-3">✓</td><td className="p-3">MD5 signature (uppercase)</td></tr>
-                    </tbody>
-                  </table>
+                <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4">
+                  <h4 className="font-semibold text-orange-600 dark:text-orange-400">Nagad Requirements</h4>
+                  <ul className="list-disc list-inside text-sm mt-2 space-y-1">
+                    <li><strong>user_id:</strong> 11-digit mobile number (01xxxxxxxxx)</li>
+                    <li><strong>Limits:</strong> 100 - 25,000 BDT per transaction</li>
+                    <li><strong>trade_type:</strong> Must be "Nagad" (case-sensitive)</li>
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="payin-bkash">
+            <Card>
+              <CardHeader>
+                <CardTitle>Pay-In via bKash</CardTitle>
+                <CardDescription>Collect payments via bKash mobile wallet</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex justify-end">
+                  <Button size="sm" variant="outline" onClick={() => copyToClipboard(payinBkash, 'bKash payin')}>
+                    <Copy className="h-4 w-4 mr-2" /> Copy
+                  </Button>
+                </div>
+                <pre className="bg-muted p-4 rounded-lg text-sm overflow-x-auto">
+                  {payinBkash}
+                </pre>
+                
+                <div className="bg-pink-500/10 border border-pink-500/30 rounded-lg p-4">
+                  <h4 className="font-semibold text-pink-600 dark:text-pink-400">bKash Requirements</h4>
+                  <ul className="list-disc list-inside text-sm mt-2 space-y-1">
+                    <li><strong>user_id:</strong> 11-digit mobile number (01xxxxxxxxx)</li>
+                    <li><strong>Limits:</strong> 100 - 25,000 BDT per transaction</li>
+                    <li><strong>trade_type:</strong> Must be "bKash" (case-sensitive)</li>
+                  </ul>
                 </div>
               </CardContent>
             </Card>
@@ -287,12 +312,12 @@ money: X    // Will stay pending (no callback)`;
           <TabsContent value="payout">
             <Card>
               <CardHeader>
-                <CardTitle>Create Pay-Out Order</CardTitle>
-                <CardDescription>Send payments to Indian bank accounts</CardDescription>
+                <CardTitle>Pay-Out (bKash/Nagad)</CardTitle>
+                <CardDescription>Send money to Bangladesh mobile wallets</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-end">
-                  <Button size="sm" variant="outline" onClick={() => copyToClipboard(payoutRequest, 'Payout request')}>
+                  <Button size="sm" variant="outline" onClick={() => copyToClipboard(payoutRequest, 'BDT payout')}>
                     <Copy className="h-4 w-4 mr-2" /> Copy
                   </Button>
                 </div>
@@ -314,13 +339,11 @@ money: X    // Will stay pending (no callback)`;
                     <tbody>
                       <tr className="border-t"><td className="p-3">app_id</td><td className="p-3">String</td><td className="p-3">✓</td><td className="p-3">Your merchant app ID</td></tr>
                       <tr className="border-t"><td className="p-3">order_sn</td><td className="p-3">String</td><td className="p-3">✓</td><td className="p-3">Unique order number</td></tr>
-                      <tr className="border-t"><td className="p-3">currency</td><td className="p-3">String</td><td className="p-3">✓</td><td className="p-3">INR</td></tr>
+                      <tr className="border-t"><td className="p-3">currency</td><td className="p-3">String</td><td className="p-3">✓</td><td className="p-3">BDT</td></tr>
                       <tr className="border-t"><td className="p-3">money</td><td className="p-3">Integer</td><td className="p-3">✓</td><td className="p-3">Amount × 100</td></tr>
                       <tr className="border-t"><td className="p-3">notify_url</td><td className="p-3">String</td><td className="p-3">✓</td><td className="p-3">Callback URL</td></tr>
                       <tr className="border-t"><td className="p-3">name</td><td className="p-3">String</td><td className="p-3">✓</td><td className="p-3">Account holder name</td></tr>
-                      <tr className="border-t"><td className="p-3">bank_name</td><td className="p-3">String</td><td className="p-3">✓</td><td className="p-3">Bank name</td></tr>
-                      <tr className="border-t"><td className="p-3">card_number</td><td className="p-3">String</td><td className="p-3">✓</td><td className="p-3">Bank account number</td></tr>
-                      <tr className="border-t"><td className="p-3">addon1</td><td className="p-3">String</td><td className="p-3">✓</td><td className="p-3">IFSC Code</td></tr>
+                      <tr className="border-t"><td className="p-3">card_number</td><td className="p-3">String</td><td className="p-3">✓</td><td className="p-3">bKash/Nagad phone number</td></tr>
                       <tr className="border-t"><td className="p-3">sign</td><td className="p-3">String</td><td className="p-3">✓</td><td className="p-3">MD5 signature (uppercase)</td></tr>
                     </tbody>
                   </table>
@@ -360,4 +383,4 @@ money: X    // Will stay pending (no callback)`;
   );
 };
 
-export default HyperSoftsINRDocs;
+export default EloPayBDTDocs;
