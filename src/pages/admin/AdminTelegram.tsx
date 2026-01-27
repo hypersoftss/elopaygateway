@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Send, Eye, EyeOff, MessageSquare, Terminal, Users, Wallet, Shield, Info, Play, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
+import { Send, Eye, EyeOff, MessageSquare, Terminal, Users, Shield, Info, Play, AlertCircle, CheckCircle2, Loader2, Bot, Zap, BarChart3, Lock, Bell, TrendingUp, Clock, Search, RefreshCcw, Snowflake, Flame, Copy, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,9 +11,139 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import { useTranslation } from '@/lib/i18n';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+
+// Command categories for better organization
+const adminCommandCategories = [
+  {
+    id: 'general',
+    icon: '🎯',
+    title: 'General & Setup',
+    color: 'blue',
+    commands: [
+      { cmd: '/help', desc: 'Show all available commands with categories', result: 'Interactive help menu with buttons' },
+      { cmd: '/tg_id', desc: 'Get current chat/group ID', result: '🆔 Chat ID: -1001234567890' },
+      { cmd: '/setmenu', desc: 'Setup command menu for all groups', result: '✅ Bot Menu Updated!' },
+      { cmd: '/dashboard', desc: 'Interactive dashboard with quick actions', result: 'Dashboard with clickable buttons' },
+    ]
+  },
+  {
+    id: 'merchants',
+    icon: '👤',
+    title: 'Merchant Management',
+    color: 'amber',
+    commands: [
+      { cmd: '/create_merchant "Name" email group_id gateway_code', desc: 'Create new merchant', result: '✅ Merchant Created!' },
+      { cmd: '/merchants', desc: 'List all merchants with buttons', result: '📋 Interactive merchant list' },
+      { cmd: '/merchant [account_no]', desc: 'View merchant details', result: '👤 Full merchant info' },
+      { cmd: '/search [name]', desc: 'Search merchant by name', result: '🔍 Search results' },
+      { cmd: '/toggle [account_no]', desc: 'Enable/Disable merchant', result: '✅ Merchant status toggled' },
+    ]
+  },
+  {
+    id: 'balance',
+    icon: '💰',
+    title: 'Balance & Finance',
+    color: 'green',
+    commands: [
+      { cmd: '/balance [account_no]', desc: 'Check merchant balance', result: '💰 Available: ₹10,000 | Frozen: ₹500' },
+      { cmd: '/add_balance [account_no] [amount]', desc: 'Add balance to merchant', result: '✅ ₹5,000 added. New balance: ₹15,000' },
+      { cmd: '/set_fee [account_no] [payin] [payout]', desc: 'Set merchant fees', result: '✅ Fees updated: Payin 2%, Payout 1.5%' },
+      { cmd: '/freeze [account_no]', desc: 'Freeze merchant account', result: '❄️ Account frozen successfully' },
+      { cmd: '/unfreeze [account_no]', desc: 'Unfreeze merchant account', result: '🔥 Account unfrozen successfully' },
+    ]
+  },
+  {
+    id: 'transactions',
+    icon: '📊',
+    title: 'Transactions & Orders',
+    color: 'purple',
+    commands: [
+      { cmd: '/pending', desc: 'View all pending transactions', result: '⏳ System-wide pending orders' },
+      { cmd: '/history [account_no] [type]', desc: 'Transaction history (payin/payout)', result: '📋 Last 10 transactions' },
+      { cmd: '/status [order_no]', desc: 'Check specific order status', result: '🔍 Order details' },
+      { cmd: '/today [account_no]', desc: "Today's summary for merchant", result: "📊 Today's statistics" },
+      { cmd: '/large', desc: 'Recent large transactions', result: '🔔 High-value transactions list' },
+    ]
+  },
+  {
+    id: 'analytics',
+    icon: '📈',
+    title: 'Analytics & Reports',
+    color: 'cyan',
+    commands: [
+      { cmd: '/stats', desc: 'System-wide statistics', result: '📊 Complete system overview' },
+      { cmd: '/top', desc: 'Top merchants by balance', result: '🏆 Top 10 merchants' },
+      { cmd: '/weekly', desc: 'Weekly performance report', result: '📈 7-day analytics' },
+      { cmd: '/monthly', desc: 'Monthly performance report', result: '📊 30-day analytics' },
+      { cmd: '/comparison', desc: 'Compare today vs yesterday, week vs week', result: '📊 Trend comparison with percentages' },
+      { cmd: '/peaks', desc: 'Peak hours analysis', result: '⏰ Hourly transaction distribution' },
+      { cmd: '/suspicious', desc: 'Check for suspicious activity', result: '🔍 Anomaly detection results' },
+      { cmd: '/alerts', desc: 'Low balance & system alerts', result: '⚠️ Active alerts list' },
+    ]
+  },
+  {
+    id: 'security',
+    icon: '🔐',
+    title: 'Security & Reset',
+    color: 'red',
+    commands: [
+      { cmd: '/reset_2fa [account_no]', desc: "Reset merchant's 2FA", result: '✅ 2FA reset successfully' },
+      { cmd: '/reset_password [account_no]', desc: 'Reset login password', result: '✅ New password generated' },
+      { cmd: '/reset_withdrawal [account_no]', desc: 'Reset withdrawal password', result: '✅ New withdrawal password' },
+      { cmd: '/set_telegram [account_no] [group_id]', desc: 'Link merchant to group', result: '✅ Group linked' },
+    ]
+  },
+];
+
+const merchantCommandCategories = [
+  {
+    id: 'account',
+    icon: '👤',
+    title: 'Account Info',
+    color: 'blue',
+    commands: [
+      { cmd: '/me', desc: 'View your account details', result: '👤 Full account info with gateway' },
+      { cmd: '/mybalance', desc: 'Quick balance check', result: '💰 Available: ₹10,000 | Frozen: ₹500' },
+      { cmd: '/fees', desc: 'View your fee structure', result: '💸 Payin: 2% | Payout: 1.5%' },
+    ]
+  },
+  {
+    id: 'transactions',
+    icon: '💸',
+    title: 'Transactions',
+    color: 'green',
+    commands: [
+      { cmd: '/today', desc: "Today's & yesterday's summary", result: '📊 Complete daily report' },
+      { cmd: '/pending', desc: 'Your pending transactions', result: '⏳ Pending orders list' },
+      { cmd: '/history [type]', desc: 'Recent transactions (payin/payout)', result: '📋 Transaction history' },
+      { cmd: '/status [order_no]', desc: 'Check order status', result: '🔍 Order details' },
+    ]
+  },
+  {
+    id: 'analytics',
+    icon: '📊',
+    title: 'Analytics',
+    color: 'purple',
+    commands: [
+      { cmd: '/weekly', desc: 'Weekly performance stats', result: '📈 7-day analytics' },
+      { cmd: '/peaks', desc: 'Your peak transaction hours', result: '⏰ Hourly distribution' },
+    ]
+  },
+  {
+    id: 'utility',
+    icon: '⚙️',
+    title: 'Utility',
+    color: 'gray',
+    commands: [
+      { cmd: '/tg_id', desc: "Get this group's ID", result: '🆔 Chat ID: -1001234567890' },
+      { cmd: '/help', desc: 'Show available commands', result: '📋 Help menu' },
+    ]
+  },
+];
 
 // Telegram Bot Tester Component
 const TelegramBotTester = ({ botToken }: { botToken: string | null }) => {
@@ -26,13 +156,16 @@ const TelegramBotTester = ({ botToken }: { botToken: string | null }) => {
   const [testHistory, setTestHistory] = useState<{ command: string; response: string; status: 'success' | 'error'; time: string }[]>([]);
 
   const quickCommands = [
-    { cmd: '/help', desc: 'Show help menu' },
-    { cmd: '/tg_id', desc: 'Get chat ID' },
-    { cmd: '/merchants', desc: 'List merchants (Admin)' },
-    { cmd: '/pending', desc: 'Pending transactions' },
-    { cmd: '/stats', desc: 'System statistics' },
-    { cmd: '/top', desc: 'Top merchants' },
-    { cmd: '/setmenu', desc: 'Setup bot menu' },
+    { cmd: '/help', icon: '❓' },
+    { cmd: '/tg_id', icon: '🆔' },
+    { cmd: '/merchants', icon: '👥' },
+    { cmd: '/stats', icon: '📊' },
+    { cmd: '/pending', icon: '⏳' },
+    { cmd: '/top', icon: '🏆' },
+    { cmd: '/weekly', icon: '📈' },
+    { cmd: '/comparison', icon: '📊' },
+    { cmd: '/dashboard', icon: '🎛️' },
+    { cmd: '/setmenu', icon: '📋' },
   ];
 
   const handleTest = async () => {
@@ -58,7 +191,6 @@ const TelegramBotTester = ({ botToken }: { botToken: string | null }) => {
     setTestResponse('');
 
     try {
-      // Simulate sending message to the bot by calling our edge function
       const { data: session } = await supabase.auth.getSession();
       
       const response = await fetch(
@@ -172,9 +304,6 @@ const TelegramBotTester = ({ botToken }: { botToken: string | null }) => {
               placeholder="-1001234567890"
               className="font-mono"
             />
-            <p className="text-xs text-muted-foreground">
-              {language === 'zh' ? '输入要模拟的 Chat ID (Admin 或 Merchant 群组)' : 'Enter Chat ID to simulate (Admin or Merchant group)'}
-            </p>
           </div>
 
           {/* Command Input */}
@@ -198,8 +327,9 @@ const TelegramBotTester = ({ botToken }: { botToken: string | null }) => {
                   variant="outline"
                   size="sm"
                   onClick={() => setTestCommand(qc.cmd)}
-                  className="text-xs font-mono"
+                  className="text-xs font-mono gap-1"
                 >
+                  <span>{qc.icon}</span>
                   {qc.cmd}
                 </Button>
               ))}
@@ -213,7 +343,7 @@ const TelegramBotTester = ({ botToken }: { botToken: string | null }) => {
               {language === 'zh' ? '执行命令' : 'Execute'}
             </Button>
             <Button variant="outline" onClick={handleGetBotInfo} disabled={isTesting}>
-              {language === 'zh' ? 'Bot 信息' : 'Bot Info'}
+              Bot Info
             </Button>
             <Button variant="outline" onClick={handleGetUpdates} disabled={isTesting}>
               Webhook
@@ -236,7 +366,6 @@ const TelegramBotTester = ({ botToken }: { botToken: string | null }) => {
           </div>
         </CardHeader>
         <CardContent className="p-6 space-y-4">
-          {/* Response Area */}
           <div className="space-y-2">
             <Label>{language === 'zh' ? '响应' : 'Response'}</Label>
             <Textarea
@@ -247,7 +376,6 @@ const TelegramBotTester = ({ botToken }: { botToken: string | null }) => {
             />
           </div>
 
-          {/* History */}
           {testHistory.length > 0 && (
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground">{language === 'zh' ? '历史记录' : 'History'}</Label>
@@ -272,6 +400,91 @@ const TelegramBotTester = ({ botToken }: { botToken: string | null }) => {
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+};
+
+// Command Card Component
+const CommandCard = ({ category }: { category: typeof adminCommandCategories[0] }) => {
+  const colorClasses: Record<string, { bg: string; border: string; icon: string }> = {
+    blue: { bg: 'from-blue-500/10', border: 'border-blue-500/20', icon: 'bg-blue-500/20 text-blue-500' },
+    amber: { bg: 'from-amber-500/10', border: 'border-amber-500/20', icon: 'bg-amber-500/20 text-amber-500' },
+    green: { bg: 'from-green-500/10', border: 'border-green-500/20', icon: 'bg-green-500/20 text-green-500' },
+    purple: { bg: 'from-purple-500/10', border: 'border-purple-500/20', icon: 'bg-purple-500/20 text-purple-500' },
+    cyan: { bg: 'from-cyan-500/10', border: 'border-cyan-500/20', icon: 'bg-cyan-500/20 text-cyan-500' },
+    red: { bg: 'from-red-500/10', border: 'border-red-500/20', icon: 'bg-red-500/20 text-red-500' },
+    gray: { bg: 'from-gray-500/10', border: 'border-gray-500/20', icon: 'bg-gray-500/20 text-gray-500' },
+  };
+
+  const colors = colorClasses[category.color] || colorClasses.blue;
+
+  return (
+    <Card className={`border-border ${colors.border}`}>
+      <CardHeader className={`bg-gradient-to-r ${colors.bg} to-transparent border-b py-4`}>
+        <div className="flex items-center gap-3">
+          <div className={`p-2 rounded-lg ${colors.icon}`}>
+            <span className="text-lg">{category.icon}</span>
+          </div>
+          <div>
+            <CardTitle className="text-base">{category.title}</CardTitle>
+            <CardDescription>{category.commands.length} commands</CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="p-4">
+        <div className="space-y-3">
+          {category.commands.map((cmd, idx) => (
+            <div key={idx} className="group">
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <code className="px-2 py-1 bg-primary/10 text-primary rounded text-xs font-mono font-medium">
+                      {cmd.cmd}
+                    </code>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">{cmd.desc}</p>
+                  <div className="flex items-center gap-1 mt-2 text-xs text-green-600 dark:text-green-400">
+                    <CheckCircle2 className="h-3 w-3" />
+                    <span>{cmd.result}</span>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => navigator.clipboard.writeText(cmd.cmd.split(' ')[0])}
+                >
+                  <Copy className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+// Feature Highlight Component
+const FeatureHighlight = ({ icon: Icon, title, description, color }: { icon: any; title: string; description: string; color: string }) => {
+  const colorClasses: Record<string, string> = {
+    blue: 'bg-blue-500/10 text-blue-500',
+    green: 'bg-green-500/10 text-green-500',
+    purple: 'bg-purple-500/10 text-purple-500',
+    amber: 'bg-amber-500/10 text-amber-500',
+    red: 'bg-red-500/10 text-red-500',
+    cyan: 'bg-cyan-500/10 text-cyan-500',
+  };
+
+  return (
+    <div className="flex items-start gap-3 p-4 rounded-xl bg-card border">
+      <div className={`p-2 rounded-lg ${colorClasses[color] || colorClasses.blue}`}>
+        <Icon className="h-5 w-5" />
+      </div>
+      <div>
+        <h4 className="font-medium">{title}</h4>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </div>
     </div>
   );
 };
@@ -405,13 +618,13 @@ const AdminTelegram = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-500/5">
-              <MessageSquare className="h-6 w-6 text-blue-500" />
+            <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20">
+              <Bot className="h-6 w-6 text-blue-500" />
             </div>
             <div>
               <h1 className="text-2xl font-bold">Telegram Bot</h1>
               <p className="text-sm text-muted-foreground">
-                {language === 'zh' ? '配置和管理您的 Telegram 管理机器人' : 'Configure and manage your Telegram management bot'}
+                {language === 'zh' ? 'Advanced 管理机器人 with Analytics & Security' : 'Advanced management bot with Analytics & Security'}
               </p>
             </div>
           </div>
@@ -421,21 +634,133 @@ const AdminTelegram = () => {
           </Button>
         </div>
 
-        <Tabs defaultValue="config" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="config" className="flex items-center gap-2">
-              <Terminal className="h-4 w-4" />
-              <span>{language === 'zh' ? '配置' : 'Configuration'}</span>
-            </TabsTrigger>
-            <TabsTrigger value="testing" className="flex items-center gap-2">
-              <Send className="h-4 w-4" />
-              <span>{language === 'zh' ? '测试' : 'Testing'}</span>
-            </TabsTrigger>
+        {/* Feature Highlights */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <FeatureHighlight icon={BarChart3} title="Analytics" description="Weekly/Monthly reports" color="purple" />
+          <FeatureHighlight icon={TrendingUp} title="Comparison" description="Trend analysis" color="green" />
+          <FeatureHighlight icon={Clock} title="Peak Hours" description="Traffic patterns" color="cyan" />
+          <FeatureHighlight icon={Bell} title="Alerts" description="Auto notifications" color="amber" />
+          <FeatureHighlight icon={Lock} title="Security" description="Freeze/Unfreeze" color="red" />
+          <FeatureHighlight icon={Zap} title="Interactive" description="Button menus" color="blue" />
+        </div>
+
+        <Tabs defaultValue="commands" className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="commands" className="flex items-center gap-2">
               <Info className="h-4 w-4" />
-              <span>{language === 'zh' ? '命令指南' : 'Command Guide'}</span>
+              <span className="hidden sm:inline">Commands</span>
+            </TabsTrigger>
+            <TabsTrigger value="admin-cmds" className="flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              <span className="hidden sm:inline">Admin</span>
+            </TabsTrigger>
+            <TabsTrigger value="merchant-cmds" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              <span className="hidden sm:inline">Merchant</span>
+            </TabsTrigger>
+            <TabsTrigger value="config" className="flex items-center gap-2">
+              <Terminal className="h-4 w-4" />
+              <span className="hidden sm:inline">Config</span>
             </TabsTrigger>
           </TabsList>
+
+          {/* Quick Command Overview */}
+          <TabsContent value="commands" className="space-y-6">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Card className="bg-gradient-to-br from-amber-500/10 to-transparent border-amber-500/20">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <Shield className="h-8 w-8 text-amber-500" />
+                  <div>
+                    <p className="text-2xl font-bold">{adminCommandCategories.reduce((acc, cat) => acc + cat.commands.length, 0)}</p>
+                    <p className="text-xs text-muted-foreground">Admin Commands</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-green-500/10 to-transparent border-green-500/20">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <Users className="h-8 w-8 text-green-500" />
+                  <div>
+                    <p className="text-2xl font-bold">{merchantCommandCategories.reduce((acc, cat) => acc + cat.commands.length, 0)}</p>
+                    <p className="text-xs text-muted-foreground">Merchant Commands</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-purple-500/10 to-transparent border-purple-500/20">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <BarChart3 className="h-8 w-8 text-purple-500" />
+                  <div>
+                    <p className="text-2xl font-bold">8</p>
+                    <p className="text-xs text-muted-foreground">Analytics Commands</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-red-500/10 to-transparent border-red-500/20">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <Lock className="h-8 w-8 text-red-500" />
+                  <div>
+                    <p className="text-2xl font-bold">6</p>
+                    <p className="text-xs text-muted-foreground">Security Commands</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Popular Commands Quick Reference */}
+            <Card>
+              <CardHeader className="bg-gradient-to-r from-primary/10 to-transparent border-b">
+                <CardTitle className="flex items-center gap-2">
+                  <Zap className="h-5 w-5 text-primary" />
+                  Most Used Commands
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {[
+                    { cmd: '/dashboard', desc: 'Interactive control panel', icon: '🎛️' },
+                    { cmd: '/stats', desc: 'Complete system overview', icon: '📊' },
+                    { cmd: '/merchants', desc: 'Manage all merchants', icon: '👥' },
+                    { cmd: '/weekly', desc: 'Weekly performance report', icon: '📈' },
+                    { cmd: '/pending', desc: 'Pending transactions', icon: '⏳' },
+                    { cmd: '/comparison', desc: 'Trend comparison', icon: '📊' },
+                    { cmd: '/freeze', desc: 'Freeze merchant account', icon: '❄️' },
+                    { cmd: '/alerts', desc: 'System alerts', icon: '🔔' },
+                    { cmd: '/peaks', desc: 'Peak hours analysis', icon: '⏰' },
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer group">
+                      <span className="text-xl">{item.icon}</span>
+                      <div className="flex-1">
+                        <code className="text-sm font-mono text-primary">{item.cmd}</code>
+                        <p className="text-xs text-muted-foreground">{item.desc}</p>
+                      </div>
+                      <Copy className="h-4 w-4 opacity-0 group-hover:opacity-50 transition-opacity" onClick={() => navigator.clipboard.writeText(item.cmd)} />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Bot Testing */}
+            <TelegramBotTester botToken={settings?.telegram_bot_token} />
+          </TabsContent>
+
+          {/* Admin Commands Tab */}
+          <TabsContent value="admin-cmds" className="space-y-6">
+            <div className="grid md:grid-cols-2 gap-6">
+              {adminCommandCategories.map((category) => (
+                <CommandCard key={category.id} category={category} />
+              ))}
+            </div>
+          </TabsContent>
+
+          {/* Merchant Commands Tab */}
+          <TabsContent value="merchant-cmds" className="space-y-6">
+            <div className="grid md:grid-cols-2 gap-6">
+              {merchantCommandCategories.map((category) => (
+                <CommandCard key={category.id} category={category} />
+              ))}
+            </div>
+          </TabsContent>
 
           {/* Configuration Tab */}
           <TabsContent value="config" className="space-y-6">
@@ -444,15 +769,11 @@ const AdminTelegram = () => {
               <CardHeader className="bg-gradient-to-r from-blue-500/10 via-blue-500/5 to-transparent border-b">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-blue-500/20">
-                    <Send className="h-5 w-5 text-blue-500" />
+                    <Bot className="h-5 w-5 text-blue-500" />
                   </div>
                   <div>
-                    <CardTitle className="text-base">
-                      {language === 'zh' ? 'Bot 配置' : 'Bot Configuration'}
-                    </CardTitle>
-                    <CardDescription>
-                      {language === 'zh' ? '配置您的 Telegram Bot Token 和 Webhook' : 'Configure your Telegram Bot Token and Webhook'}
-                    </CardDescription>
+                    <CardTitle className="text-base">Bot Configuration</CardTitle>
+                    <CardDescription>Configure your Telegram Bot Token and Webhook</CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -481,7 +802,7 @@ const AdminTelegram = () => {
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {language === 'zh' ? '从 @BotFather 获取 Bot Token' : 'Get Bot Token from @BotFather on Telegram'}
+                    Get Bot Token from @BotFather on Telegram
                   </p>
                 </div>
 
@@ -502,7 +823,7 @@ const AdminTelegram = () => {
                       onClick={setWebhook}
                       disabled={isSettingWebhook || !settings?.telegram_bot_token}
                     >
-                      {isSettingWebhook ? '...' : (language === 'zh' ? '设置 Webhook' : 'Set Webhook')}
+                      {isSettingWebhook ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Set Webhook'}
                     </Button>
                   </div>
                 </div>
@@ -519,269 +840,45 @@ const AdminTelegram = () => {
                     className="bg-muted/50 border-border font-mono"
                   />
                   <p className="text-xs text-muted-foreground">
-                    {language === 'zh' ? '在群组中使用 /tg_id 获取群组 ID' : 'Use /tg_id in your group to get the Group ID'}
+                    Use /tg_id in your group to get the Group ID
                   </p>
                 </div>
 
+                <Separator />
+
+                {/* Setup Steps */}
                 <Alert className="border-blue-500/30 bg-blue-500/10">
-                  <Send className="h-4 w-4 text-blue-500" />
+                  <Bot className="h-4 w-4 text-blue-500" />
                   <AlertDescription className="text-blue-600 dark:text-blue-400">
-                    <b>{language === 'zh' ? '设置步骤:' : 'Setup Steps:'}</b>
+                    <b>Setup Steps:</b>
                     <ol className="list-decimal list-inside mt-2 space-y-1 text-sm">
-                      <li>{language === 'zh' ? '从 @BotFather 创建 Bot 并获取 Token' : 'Create a bot with @BotFather and get the Token'}</li>
-                      <li>{language === 'zh' ? '将 Token 粘贴到上方并保存' : 'Paste the Token above and Save'}</li>
-                      <li>{language === 'zh' ? '点击"设置 Webhook"激活 Bot' : 'Click "Set Webhook" to activate the bot'}</li>
-                      <li>{language === 'zh' ? '将 Bot 添加到您的 Admin 群组' : 'Add the bot to your Admin group'}</li>
-                      <li>{language === 'zh' ? '在群组中发送 /tg_id 获取群组 ID' : 'Send /tg_id in the group to get Group ID'}</li>
-                      <li>{language === 'zh' ? '将群组 ID 填入上方并保存' : 'Enter the Group ID above and save'}</li>
-                      <li>{language === 'zh' ? '发送 /setmenu 初始化命令菜单' : 'Send /setmenu to initialize the command menu'}</li>
+                      <li>Create a bot with @BotFather and get the Token</li>
+                      <li>Paste the Token above and Save</li>
+                      <li>Click "Set Webhook" to activate the bot</li>
+                      <li>Add the bot to your Admin group</li>
+                      <li>Send /tg_id in the group to get Group ID</li>
+                      <li>Enter the Group ID above and save</li>
+                      <li>Send /setmenu to initialize the command menu</li>
                     </ol>
                   </AlertDescription>
                 </Alert>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
-          {/* Testing Tab */}
-          <TabsContent value="testing" className="space-y-6">
-            <TelegramBotTester botToken={settings?.telegram_bot_token} />
-          </TabsContent>
-
-          {/* Commands Tab */}
-          <TabsContent value="commands" className="space-y-6">
-            {/* Admin Commands */}
-            <Card className="border-border">
-              <CardHeader className="bg-gradient-to-r from-amber-500/10 to-transparent border-b">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-amber-500/20">
-                    <Shield className="h-5 w-5 text-amber-500" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-base">👑 Admin Commands</CardTitle>
-                    <CardDescription>Commands available in the Admin group</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6 space-y-6">
-                {/* General */}
-                <div>
-                  <h4 className="font-semibold mb-3 flex items-center gap-2">
-                    <Badge variant="outline">📋 General</Badge>
-                  </h4>
-                  <div className="space-y-3 pl-4 border-l-2 border-muted">
-                    <CommandExample
-                      command="/tg_id"
-                      description="Get current chat/group ID"
-                      example="/tg_id"
-                      result="🆔 Chat ID: -1001234567890"
-                    />
-                    <CommandExample
-                      command="/setmenu"
-                      description="Setup command menu for all groups"
-                      example="/setmenu"
-                      result="✅ Bot Menu Updated!"
-                    />
-                    <CommandExample
-                      command="/help"
-                      description="Show all available commands"
-                      example="/help"
-                      result="Shows complete command reference"
-                    />
-                  </div>
-                </div>
-
-                {/* Merchant Management */}
-                <div>
-                  <h4 className="font-semibold mb-3 flex items-center gap-2">
-                    <Badge variant="outline">👤 Merchant Management</Badge>
-                  </h4>
-                  <div className="space-y-3 pl-4 border-l-2 border-muted">
-                    <CommandExample
-                      command='/create_merchant "Name" email group_id gateway_code'
-                      description="Create new merchant with gateway"
-                      example='/create_merchant "Test Shop" test@email.com -1001234567890 lgpay_inr'
-                      result="✅ Merchant Created! Credentials sent to group."
-                    />
-                    <CommandExample
-                      command="/merchants"
-                      description="List all merchants"
-                      example="/merchants"
-                      result="📋 Merchants List (5): 1. ✅ Test Shop..."
-                    />
-                    <CommandExample
-                      command="/merchant [account_no]"
-                      description="View merchant details"
-                      example="/merchant 100000001"
-                      result="👤 Full merchant info with balance, fees, gateway"
-                    />
-                    <CommandExample
-                      command="/search [name]"
-                      description="Search merchant by name"
-                      example="/search test"
-                      result="🔍 Search Results: matching merchants"
-                    />
-                  </div>
-                </div>
-
-                {/* Balance & Transactions */}
-                <div>
-                  <h4 className="font-semibold mb-3 flex items-center gap-2">
-                    <Badge variant="outline">💰 Balance & Transactions</Badge>
-                  </h4>
-                  <div className="space-y-3 pl-4 border-l-2 border-muted">
-                    <CommandExample
-                      command="/balance [account_no]"
-                      description="Check merchant balance"
-                      example="/balance 100000001"
-                      result="💰 Available: ₹10,000 | Frozen: ₹500"
-                    />
-                    <CommandExample
-                      command="/pending"
-                      description="View all pending transactions"
-                      example="/pending"
-                      result="⏳ System Pending: 5 payin, 2 payout orders"
-                    />
-                    <CommandExample
-                      command="/history [account_no] [type]"
-                      description="Transaction history (optional: payin/payout)"
-                      example="/history 100000001 payin"
-                      result="📊 Last 10 payin transactions"
-                    />
-                    <CommandExample
-                      command="/status [order_no]"
-                      description="Check specific order status"
-                      example="/status PAY1234567890"
-                      result="🔍 Order details: amount, status, merchant"
-                    />
-                    <CommandExample
-                      command="/today [account_no]"
-                      description="Today's summary for merchant"
-                      example="/today 100000001"
-                      result="📊 Today's payin/payout count and amounts"
-                    />
-                  </div>
-                </div>
-
-                {/* Account Actions */}
-                <div>
-                  <h4 className="font-semibold mb-3 flex items-center gap-2">
-                    <Badge variant="outline">🔧 Account Actions</Badge>
-                  </h4>
-                  <div className="space-y-3 pl-4 border-l-2 border-muted">
-                    <CommandExample
-                      command="/reset_2fa [account_no]"
-                      description="Reset merchant's 2FA"
-                      example="/reset_2fa 100000001"
-                      result="✅ 2FA reset. Merchant will setup again on login."
-                    />
-                    <CommandExample
-                      command="/reset_password [account_no]"
-                      description="Reset merchant's login password"
-                      example="/reset_password 100000001"
-                      result="✅ New Password: Abc123XYZ (sent to merchant)"
-                    />
-                    <CommandExample
-                      command="/reset_withdrawal [account_no]"
-                      description="Reset merchant's withdrawal password"
-                      example="/reset_withdrawal 100000001"
-                      result="✅ New Withdrawal Password: ABCD1234"
-                    />
-                    <CommandExample
-                      command="/set_telegram [account_no] [group_id]"
-                      description="Link merchant to Telegram group"
-                      example="/set_telegram 100000001 -1009876543210"
-                      result="✅ Group linked. Merchant will receive notifications."
-                    />
-                  </div>
-                </div>
-
-                {/* Reports */}
-                <div>
-                  <h4 className="font-semibold mb-3 flex items-center gap-2">
-                    <Badge variant="outline">📊 Reports</Badge>
-                  </h4>
-                  <div className="space-y-3 pl-4 border-l-2 border-muted">
-                    <CommandExample
-                      command="/stats"
-                      description="System-wide statistics"
-                      example="/stats"
-                      result="📊 Total merchants, balances, today's volume"
-                    />
-                    <CommandExample
-                      command="/top"
-                      description="Top merchants by balance"
-                      example="/top"
-                      result="🏆 Top 10 merchants ranked by balance"
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Merchant Commands */}
-            <Card className="border-border">
-              <CardHeader className="bg-gradient-to-r from-green-500/10 to-transparent border-b">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-green-500/20">
-                    <Users className="h-5 w-5 text-green-500" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-base">🏪 Merchant Commands</CardTitle>
-                    <CardDescription>Commands available in Merchant groups</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6 space-y-6">
-                <div className="space-y-3 pl-4 border-l-2 border-green-500/30">
-                  <CommandExample
-                    command="/me"
-                    description="View your account info"
-                    example="/me"
-                    result="👤 Account details, balance, fees, gateway info"
-                  />
-                  <CommandExample
-                    command="/mybalance"
-                    description="Quick balance check"
-                    example="/mybalance"
-                    result="💰 Available: ₹10,000 | Frozen: ₹500"
-                  />
-                  <CommandExample
-                    command="/today"
-                    description="Today's & yesterday's summary"
-                    example="/today"
-                    result="📊 Payin/Payout counts, amounts, success rates"
-                  />
-                  <CommandExample
-                    command="/pending"
-                    description="Your pending transactions"
-                    example="/pending"
-                    result="⏳ List of your pending orders"
-                  />
-                  <CommandExample
-                    command="/history [type]"
-                    description="Recent transactions (optional: payin/payout)"
-                    example="/history payout"
-                    result="📋 Last 10 payout transactions"
-                  />
-                  <CommandExample
-                    command="/status [order_no]"
-                    description="Check your order status"
-                    example="/status PAY1234567890"
-                    result="🔍 Order status with full details"
-                  />
-                  <CommandExample
-                    command="/tg_id"
-                    description="Get this group's ID"
-                    example="/tg_id"
-                    result="🆔 Chat ID: -1001234567890"
-                  />
-                  <CommandExample
-                    command="/help"
-                    description="Show available commands"
-                    example="/help"
-                    result="📋 List of all merchant commands"
-                  />
-                </div>
+                {/* New Features Alert */}
+                <Alert className="border-green-500/30 bg-green-500/10">
+                  <Zap className="h-4 w-4 text-green-500" />
+                  <AlertDescription className="text-green-600 dark:text-green-400">
+                    <b>✨ Advanced Features:</b>
+                    <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
+                      <li><b>/dashboard</b> - Interactive dashboard with buttons</li>
+                      <li><b>/weekly, /monthly</b> - Performance analytics</li>
+                      <li><b>/comparison</b> - Trend analysis (today vs yesterday)</li>
+                      <li><b>/peaks</b> - Peak hours transaction analysis</li>
+                      <li><b>/freeze, /unfreeze</b> - Account security controls</li>
+                      <li><b>/alerts</b> - Low balance & suspicious activity alerts</li>
+                      <li><b>Large transaction alerts</b> - Auto notifications</li>
+                    </ul>
+                  </AlertDescription>
+                </Alert>
               </CardContent>
             </Card>
           </TabsContent>
@@ -790,19 +887,5 @@ const AdminTelegram = () => {
     </DashboardLayout>
   );
 };
-
-// Command Example Component
-const CommandExample = ({ command, description, example, result }: { command: string; description: string; example: string; result: string }) => (
-  <div className="space-y-1">
-    <div className="flex flex-wrap items-center gap-2">
-      <code className="px-2 py-1 bg-primary/10 text-primary rounded text-xs font-mono">{command}</code>
-      <span className="text-sm text-muted-foreground">{description}</span>
-    </div>
-    <div className="text-xs text-muted-foreground pl-2 border-l border-muted-foreground/30 space-y-1">
-      <p><span className="text-foreground/70">Example:</span> <code className="text-blue-500">{example}</code></p>
-      <p><span className="text-foreground/70">Result:</span> <span className="text-green-500">{result}</span></p>
-    </div>
-  </div>
-);
 
 export default AdminTelegram;
