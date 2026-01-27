@@ -97,9 +97,9 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json()
-    const { merchant_id, amount, merchant_order_no, callback_url, sign, extra } = body
+    const { merchant_id, amount, merchant_order_no, callback_url, sign, extra, trade_type: requestTradeType } = body
 
-    console.log('Payin request received:', { merchant_id, amount, merchant_order_no })
+    console.log('Payin request received:', { merchant_id, amount, merchant_order_no, trade_type: requestTradeType })
 
     if (!merchant_id || !amount || !merchant_order_no || !sign) {
       return new Response(
@@ -268,23 +268,24 @@ Deno.serve(async (req) => {
     // Route to appropriate gateway
     if (gateway.gateway_type === 'hypersofts' || gateway.gateway_type === 'lgpay') {
       // ELOPAY integration - trade_type logic varies by gateway_code:
-      // - ELOPAY_PKR: Use gateway's trade_type (PKRPH) for all merchants
-      // - ELOPAY_BDT: Use merchant's trade_type directly (Nagad, bKash)
-      // - ELOPAY_INR: Use gateway's trade_type (INRUPI) or merchant's trade_type (usdt)
+      // - ELOPAY_PKR: Use REQUEST's trade_type (PKRPH for JazzCash, PKRPH-EASY for Easypaisa)
+      // - ELOPAY_BDT: Use REQUEST's trade_type (Nagad, bKash)
+      // - ELOPAY_INR: Use REQUEST's trade_type or gateway default (INRUPI/usdt)
       let tradeType = gateway.trade_type || 'INRUPI'
       
-      if ((gateway.gateway_code === 'ELOPAY_BDT' || gateway.gateway_code === 'hypersofts_bdt') && merchant.trade_type) {
-        // For BDT, deposit codes ARE the merchant's trade_type (Nagad/bKash)
-        tradeType = merchant.trade_type
-      } else if ((gateway.gateway_code === 'ELOPAY_INR' || gateway.gateway_code === 'hypersofts_inr') && merchant.trade_type) {
-        // For INR, use merchant's trade_type if set (usdt/INRUPI)
-        tradeType = merchant.trade_type
-      } else if (gateway.gateway_code === 'ELOPAY_PKR' || gateway.gateway_code === 'hypersofts_pkr') {
-        // For PKR, use gateway's trade_type (PKRPH)
-        tradeType = gateway.trade_type || 'PKRPH'
+      if (gateway.gateway_code === 'ELOPAY_PKR' || gateway.gateway_code === 'hypersofts_pkr') {
+        // For PKR, use REQUEST's trade_type to select JazzCash (PKRPH) or Easypaisa (PKRPH-EASY)
+        // Fall back to gateway default if not provided
+        tradeType = requestTradeType || gateway.trade_type || 'PKRPH'
+      } else if ((gateway.gateway_code === 'ELOPAY_BDT' || gateway.gateway_code === 'hypersofts_bdt')) {
+        // For BDT, use REQUEST's trade_type (Nagad/bKash) or merchant default
+        tradeType = requestTradeType || merchant.trade_type || 'nagad'
+      } else if ((gateway.gateway_code === 'ELOPAY_INR' || gateway.gateway_code === 'hypersofts_inr')) {
+        // For INR, use REQUEST's trade_type or merchant/gateway default
+        tradeType = requestTradeType || merchant.trade_type || gateway.trade_type || 'INRUPI'
       }
       
-      console.log('ELOPAY payin - Gateway code:', gateway.gateway_code, 'Currency:', gateway.currency, 'Trade type:', tradeType, 'Merchant trade_type:', merchant.trade_type)
+      console.log('ELOPAY payin - Gateway code:', gateway.gateway_code, 'Currency:', gateway.currency, 'Trade type:', tradeType, 'Request trade_type:', requestTradeType)
       
       const hsParams: Record<string, any> = {
         app_id: gateway.app_id,
