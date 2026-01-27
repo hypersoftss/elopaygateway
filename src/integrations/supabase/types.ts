@@ -616,6 +616,7 @@ export type Database = {
           gateway_id: string
           gateway_name: string
           gateway_type: string
+          min_withdrawal_amount: number
         }[]
       }
       has_role: {

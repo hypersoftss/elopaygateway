@@ -93,8 +93,10 @@ const MerchantWithdrawal = () => {
       const { data: gatewayData } = await supabase.rpc('get_my_gateway');
       
       let currency = 'INR';
+      let minWithdrawalAmount = 1000;
       if (gatewayData && gatewayData.length > 0) {
         currency = gatewayData[0].currency || 'INR';
+        minWithdrawalAmount = Number(gatewayData[0].min_withdrawal_amount) || 1000;
       }
 
       if (data) {
@@ -105,6 +107,7 @@ const MerchantWithdrawal = () => {
           currency,
           // Check if either hashed or legacy password exists
           hasWithdrawalPassword: !!(data.withdrawal_password_hash || data.withdrawal_password),
+          min_withdrawal_amount: minWithdrawalAmount,
         });
 
         // Set default method based on currency
@@ -174,10 +177,21 @@ const MerchantWithdrawal = () => {
     if (!user?.merchantId || !merchantData) return;
 
     const amount = parseFloat(form.amount);
+    const minAmount = merchantData.min_withdrawal_amount || 1000;
+    
     if (amount <= 0) {
       toast({
         title: language === 'zh' ? '错误' : 'Error',
         description: language === 'zh' ? '无效金额' : 'Invalid amount',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (amount < minAmount) {
+      toast({
+        title: language === 'zh' ? '错误' : 'Error',
+        description: language === 'zh' ? `最低提现金额为 ${currencySymbol}${minAmount}` : `Minimum withdrawal amount is ${currencySymbol}${minAmount}`,
         variant: 'destructive',
       });
       return;
@@ -584,7 +598,7 @@ const MerchantWithdrawal = () => {
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">
-                  {language === 'zh' ? '可用' : 'Available'}: {currencySymbol}{merchantData.balance.toLocaleString()}
+                  {language === 'zh' ? '最低' : 'Min'}: {currencySymbol}{merchantData.min_withdrawal_amount.toLocaleString()} • {language === 'zh' ? '可用' : 'Available'}: {currencySymbol}{merchantData.balance.toLocaleString()}
                 </span>
                 <button
                   onClick={() => setForm({ ...form, amount: merchantData.balance.toString() })}
