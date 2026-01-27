@@ -162,12 +162,14 @@ Deno.serve(async (req) => {
       gatewayId = gateway.id
 
       // Determine trade_type for ELOPAY API
-      // PKR always uses 'PKRPH' for deposits (jazzcash/easypaisa are just UI selections)
-      // BDT uses the selected trade_type (nagad/bkash)
-      // INR uses the selected trade_type (INRUPI/usdt)
+      // PKR: Use link's trade_type to select JazzCash (PKRPH) or Easypaisa (PKRPH-EASY)
+      // BDT: Use link's trade_type (nagad/bkash)
+      // INR: Use link's trade_type (INRUPI/usdt)
       let apiTradeType: string
       if (gateway.currency === 'PKR') {
-        apiTradeType = 'PKRPH' // PKR deposits ALWAYS use PKRPH
+        // PKR supports both JazzCash (PKRPH) and Easypaisa (PKRPH-EASY)
+        // Use link's trade_type, fallback to gateway default (PKRPH for JazzCash)
+        apiTradeType = tradeType || gateway.trade_type || 'PKRPH'
       } else if (gateway.currency === 'BDT') {
         apiTradeType = tradeType || 'nagad' // BDT uses selected method or default nagad
       } else if (gateway.currency === 'INR') {
@@ -175,6 +177,8 @@ Deno.serve(async (req) => {
       } else {
         apiTradeType = tradeType || 'INRUPI'
       }
+      
+      console.log('ELOPAY trade_type selection - Currency:', gateway.currency, 'Link trade_type:', tradeType, 'Final:', apiTradeType)
 
       const hsParams: Record<string, any> = {
         app_id: gateway.app_id,
