@@ -1,17 +1,19 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Layers, Plus, Trash2, Edit, Eye, EyeOff, Activity } from 'lucide-react';
+import { Layers, Plus, Trash2, Edit, Eye, EyeOff, Activity, Loader2, CheckCircle2, XCircle, Zap } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTranslation } from '@/lib/i18n';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { md5 } from 'js-md5';
 import {
   Table,
   TableBody,
@@ -82,6 +84,12 @@ const AdminGatewaysPage = () => {
   const [showGatewayDialog, setShowGatewayDialog] = useState(false);
   const [editingGateway, setEditingGateway] = useState<PaymentGateway | null>(null);
   const [showGatewayApiKey, setShowGatewayApiKey] = useState<Set<string>>(new Set());
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [connectionTestResult, setConnectionTestResult] = useState<{
+    success: boolean;
+    message: string;
+    balance?: number;
+  } | null>(null);
   const [newGateway, setNewGateway] = useState({
     gateway_code: '',
     gateway_name: '',
@@ -96,6 +104,138 @@ const AdminGatewaysPage = () => {
     max_withdrawal_amount: 50000,
     daily_withdrawal_limit: 200000,
   });
+
+  // Generate ELOPAY (hypersofts) signature - ASCII sorted MD5
+  const generateEloPaySignature = (params: Record<string, string>, apiKey: string): string => {
+    const sortedKeys = Object.keys(params).sort();
+    const signStr = sortedKeys
+      .filter(key => params[key] !== '' && params[key] !== undefined && params[key] !== null)
+      .map(key => `${key}=${params[key]}`)
+      .join('&');
+    const finalStr = signStr + '&key=' + apiKey;
+    return md5(finalStr).toUpperCase();
+  };
+
+  // Test gateway connection
+  const testGatewayConnection = async () => {
+    if (!newGateway.base_url || !newGateway.app_id || !newGateway.api_key) {
+      toast({
+        title: language === 'zh' ? '错误' : 'Error',
+        description: language === 'zh' ? '请填写Base URL、App ID和API Key' : 'Please fill Base URL, App ID and API Key',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsTestingConnection(true);
+    setConnectionTestResult(null);
+
+    try {
+      const baseUrl = newGateway.base_url.replace(/\/$/, '');
+      const timestamp = Math.floor(Date.now() / 1000).toString();
+
+      if (newGateway.gateway_type === 'hypersofts' || newGateway.gateway_type === 'lgpay') {
+        // ELOPAY - use balance API with ASCII-sorted MD5
+        const params: Record<string, string> = {
+          app_id: newGateway.app_id,
+          timestamp,
+        };
+        const sign = generateEloPaySignature(params, newGateway.api_key);
+
+        const response = await fetch(`${baseUrl}/api/balance`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...params, sign }),
+        });
+
+        const responseText = await response.text();
+        console.log('ELOPAY test response:', responseText);
+
+        let result: any;
+        try {
+          result = JSON.parse(responseText);
+        } catch {
+          setConnectionTestResult({
+            success: false,
+            message: language === 'zh' ? '无效的JSON响应' : 'Invalid JSON response from gateway',
+          });
+          return;
+        }
+
+        if (result.status === 1 || result.status === '1' || result.code === 200) {
+          const balance = parseFloat(result.data?.balance || result.balance || '0');
+          setConnectionTestResult({
+            success: true,
+            message: language === 'zh' ? '连接成功!' : 'Connection successful!',
+            balance,
+          });
+        } else {
+          setConnectionTestResult({
+            success: false,
+            message: result.msg || result.message || (language === 'zh' ? 'API错误 - 检查凭证' : 'API error - check credentials'),
+          });
+        }
+      } else if (newGateway.gateway_type === 'hyperpay' || newGateway.gateway_type === 'bondpay') {
+        // ELOPAY GATEWAY - different signature
+        const signStr = `app_id=${newGateway.app_id}&timestamp=${timestamp}&key=${newGateway.api_key}`;
+        const sign = md5(signStr).toUpperCase();
+
+        const response = await fetch(`${baseUrl}/api/merchant/balance`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            app_id: newGateway.app_id,
+            timestamp,
+            sign,
+          }),
+        });
+
+        const responseText = await response.text();
+        console.log('ELOPAY GATEWAY test response:', responseText);
+
+        if (responseText.startsWith('<!DOCTYPE') || responseText.startsWith('<html')) {
+          setConnectionTestResult({
+            success: false,
+            message: language === 'zh' ? '网关返回HTML - 余额API可能不可用' : 'Gateway returned HTML - balance API may not be available',
+          });
+          return;
+        }
+
+        let result: any;
+        try {
+          result = JSON.parse(responseText);
+        } catch {
+          setConnectionTestResult({
+            success: false,
+            message: language === 'zh' ? '无效的JSON响应' : 'Invalid JSON response from gateway',
+          });
+          return;
+        }
+
+        if (result.code === 200 || result.status === 'success' || result.status === 1) {
+          const balance = parseFloat(result.data?.balance || result.balance || '0');
+          setConnectionTestResult({
+            success: true,
+            message: language === 'zh' ? '连接成功!' : 'Connection successful!',
+            balance,
+          });
+        } else {
+          setConnectionTestResult({
+            success: false,
+            message: result.msg || result.message || (language === 'zh' ? 'API错误 - 检查凭证' : 'API error - check credentials'),
+          });
+        }
+      }
+    } catch (error: any) {
+      console.error('Connection test error:', error);
+      setConnectionTestResult({
+        success: false,
+        message: error.message || (language === 'zh' ? '连接失败' : 'Connection failed'),
+      });
+    } finally {
+      setIsTestingConnection(false);
+    }
+  };
 
   const fetchGateways = async () => {
     setIsLoading(true);
@@ -193,6 +333,7 @@ const AdminGatewaysPage = () => {
       max_withdrawal_amount: 50000,
       daily_withdrawal_limit: 200000,
     });
+    setConnectionTestResult(null);
   };
 
   const handleToggleGatewayStatus = async (gateway: PaymentGateway) => {
@@ -616,9 +757,51 @@ const AdminGatewaysPage = () => {
             </div>
           </div>
 
-          <DialogFooter className="gap-2">
+          {/* Connection Test Result */}
+          {connectionTestResult && (
+            <Alert className={connectionTestResult.success 
+              ? 'border-green-500/50 bg-green-500/10' 
+              : 'border-destructive/50 bg-destructive/10'
+            }>
+              <div className="flex items-center gap-2">
+                {connectionTestResult.success ? (
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                ) : (
+                  <XCircle className="h-4 w-4 text-destructive" />
+                )}
+                <AlertDescription className="text-sm">
+                  {connectionTestResult.message}
+                  {connectionTestResult.success && connectionTestResult.balance !== undefined && (
+                    <span className="ml-2 font-medium">
+                      Balance: {newGateway.currency === 'INR' ? '₹' : newGateway.currency === 'PKR' ? 'Rs.' : '৳'}
+                      {connectionTestResult.balance.toLocaleString()}
+                    </span>
+                  )}
+                </AlertDescription>
+              </div>
+            </Alert>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-2">
             <Button variant="outline" onClick={() => setShowGatewayDialog(false)}>
               {language === 'zh' ? '取消' : 'Cancel'}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={testGatewayConnection}
+              disabled={isTestingConnection || !newGateway.base_url || !newGateway.app_id || !newGateway.api_key}
+            >
+              {isTestingConnection ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  {language === 'zh' ? '测试中...' : 'Testing...'}
+                </>
+              ) : (
+                <>
+                  <Zap className="h-4 w-4 mr-2" />
+                  {language === 'zh' ? '测试连接' : 'Test Connection'}
+                </>
+              )}
             </Button>
             <Button 
               onClick={handleSaveGateway} 
