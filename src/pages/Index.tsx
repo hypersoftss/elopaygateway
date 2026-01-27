@@ -13,6 +13,9 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { 
   Store, 
   ArrowRight, 
@@ -47,7 +50,11 @@ import {
   Crown,
   Gem,
   Medal,
-  Menu
+  Menu,
+  Send,
+  Mail,
+  User,
+  MessageSquare
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { LanguageSwitch } from '@/components/LanguageSwitch';
@@ -283,6 +290,7 @@ const Index = () => {
               { href: '#pricing', label: isEnglish ? 'Pricing' : '定价' },
               { href: '#testimonials', label: isEnglish ? 'Reviews' : '评价' },
               { href: '#faq', label: isEnglish ? 'FAQ' : '常见问题' },
+              { href: '#contact', label: isEnglish ? 'Contact' : '联系' },
             ].map((link) => (
               <a
                 key={link.href}
@@ -336,6 +344,7 @@ const Index = () => {
                     { href: '#pricing', label: isEnglish ? 'Pricing' : '定价', icon: Crown },
                     { href: '#testimonials', label: isEnglish ? 'Reviews' : '评价', icon: Star },
                     { href: '#faq', label: isEnglish ? 'FAQ' : '常见问题', icon: HelpCircle },
+                    { href: '#contact', label: isEnglish ? 'Contact' : '联系', icon: Mail },
                   ].map((link) => (
                     <a
                       key={link.href}
@@ -926,6 +935,140 @@ const Index = () => {
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
+          </div>
+        </div>
+      </section>
+
+      {/* Contact Section */}
+      <section id="contact" className="py-20 md:py-32 bg-gradient-to-b from-transparent via-card/30 to-transparent scroll-mt-20">
+        <div className="container mx-auto px-4">
+          <div className="max-w-5xl mx-auto">
+            <div className="grid lg:grid-cols-2 gap-12 items-start">
+              {/* Left side - Info */}
+              <div>
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium text-primary mb-6">
+                  <MessageSquare className="h-4 w-4" />
+                  {isEnglish ? 'Get In Touch' : '联系我们'}
+                </div>
+                <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
+                  {isEnglish ? 'Contact Us' : '联系我们'}
+                </h2>
+                <p className="text-lg text-muted-foreground mb-8">
+                  {isEnglish 
+                    ? 'Have questions about our payment gateway? Want to discuss custom pricing? Our team is here to help.'
+                    : '对我们的支付网关有疑问？想讨论定制价格？我们的团队随时为您提供帮助。'}
+                </p>
+                
+                <div className="space-y-6">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                      <Mail className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold mb-1">{isEnglish ? 'Email Us' : '发送邮件'}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {settings.supportEmail || 'support@elopay.com'}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                      <Clock className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold mb-1">{isEnglish ? 'Response Time' : '响应时间'}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {isEnglish ? 'We typically respond within 24 hours' : '我们通常在24小时内回复'}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                      <Globe className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold mb-1">{isEnglish ? 'Regions' : '服务地区'}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {isEnglish ? 'India • Pakistan • Bangladesh' : '印度 • 巴基斯坦 • 孟加拉国'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Right side - Form */}
+              <div className="p-8 rounded-2xl bg-card border border-border/50 shadow-xl">
+                <form 
+                  className="space-y-6"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.currentTarget);
+                    const name = formData.get('name');
+                    const email = formData.get('email');
+                    const message = formData.get('message');
+                    const subject = `Business Inquiry from ${name}`;
+                    const body = `Name: ${name}%0D%0AEmail: ${email}%0D%0A%0D%0AMessage:%0D%0A${message}`;
+                    window.location.href = `mailto:${settings.supportEmail || 'support@elopay.com'}?subject=${encodeURIComponent(subject as string)}&body=${body}`;
+                  }}
+                >
+                  <div className="space-y-2">
+                    <Label htmlFor="name" className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      {isEnglish ? 'Your Name' : '您的姓名'}
+                    </Label>
+                    <Input 
+                      id="name" 
+                      name="name"
+                      placeholder={isEnglish ? 'John Doe' : '张三'}
+                      required
+                      className="h-12"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      {isEnglish ? 'Email Address' : '电子邮箱'}
+                    </Label>
+                    <Input 
+                      id="email" 
+                      name="email"
+                      type="email"
+                      placeholder={isEnglish ? 'john@company.com' : 'zhang@company.com'}
+                      required
+                      className="h-12"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="message" className="flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                      {isEnglish ? 'Your Message' : '您的留言'}
+                    </Label>
+                    <Textarea 
+                      id="message" 
+                      name="message"
+                      placeholder={isEnglish ? 'Tell us about your business and how we can help...' : '告诉我们您的业务以及我们如何能帮助您...'}
+                      required
+                      className="min-h-[120px] resize-none"
+                    />
+                  </div>
+                  
+                  <Button type="submit" size="lg" className="w-full h-12 text-base font-semibold">
+                    <Send className="h-5 w-5 mr-2" />
+                    {isEnglish ? 'Send Message' : '发送消息'}
+                  </Button>
+                  
+                  <p className="text-xs text-center text-muted-foreground">
+                    {isEnglish 
+                      ? 'By submitting, you agree to our terms of service and privacy policy.'
+                      : '提交即表示您同意我们的服务条款和隐私政策。'}
+                  </p>
+                </form>
+              </div>
+            </div>
           </div>
         </div>
       </section>
