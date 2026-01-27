@@ -187,6 +187,29 @@ const AdminGatewayHealth = () => {
     }
   };
 
+  // Map gateway names to ELOPAY branding
+  const getDisplayName = (gateway: Gateway) => {
+    const { gateway_type, gateway_code, currency } = gateway;
+    
+    // ELOPAY GATEWAY (hyperpay/bondpay type)
+    if (gateway_type === 'hyperpay' || gateway_type === 'bondpay') {
+      return 'ELOPAY GATEWAY';
+    }
+    
+    // ELOPAY regional (hypersofts/lgpay type)
+    if (gateway_type === 'hypersofts' || gateway_type === 'lgpay') {
+      switch (currency) {
+        case 'INR': return 'ELOPAY India';
+        case 'PKR': return 'ELOPAY Pakistan';
+        case 'BDT': return 'ELOPAY Bangladesh';
+        default: return `ELOPAY ${currency}`;
+      }
+    }
+    
+    // Fallback to original name
+    return gateway.gateway_name;
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'online':
@@ -249,7 +272,7 @@ const AdminGatewayHealth = () => {
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       {getStatusIcon(stats.latestStatus)}
-                      <span className="font-medium text-sm">{gateway.gateway_name}</span>
+                      <span className="font-medium text-sm">{getDisplayName(gateway)}</span>
                     </div>
                     <Badge variant={gateway.is_active ? "default" : "secondary"}>
                       {gateway.currency}
@@ -458,7 +481,7 @@ const AdminGatewayHealth = () => {
                         {getStatusIcon(record.status)}
                         <div>
                           <div className="font-medium text-sm">
-                            {gateway?.gateway_name || 'Unknown Gateway'}
+                            {gateway ? getDisplayName(gateway) : 'Unknown Gateway'}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {format(new Date(record.checked_at), 'yyyy-MM-dd HH:mm:ss')}
