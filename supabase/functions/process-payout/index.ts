@@ -156,7 +156,7 @@ Deno.serve(async (req) => {
       const internalCallbackUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/callback-handler`
       let gatewayResponse = null
 
-      if (gateway.gateway_type === 'hypersofts') {
+      if (gateway.gateway_type === 'hypersofts' || gateway.gateway_type === 'lgpay') {
         // ELOPAY payout - use specific withdrawal codes based on gateway_code
         // ELOPAY_BDT -> BDT withdrawal
         // ELOPAY_PKR -> PKR withdrawal  
