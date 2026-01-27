@@ -131,100 +131,46 @@ const AdminGatewaysPage = () => {
     setConnectionTestResult(null);
 
     try {
-      const baseUrl = newGateway.base_url.replace(/\/$/, '');
-      const timestamp = Math.floor(Date.now() / 1000).toString();
-
-      if (newGateway.gateway_type === 'hypersofts' || newGateway.gateway_type === 'lgpay') {
-        // ELOPAY - use balance API with ASCII-sorted MD5
-        const params: Record<string, string> = {
-          app_id: newGateway.app_id,
-          timestamp,
-        };
-        const sign = generateEloPaySignature(params, newGateway.api_key);
-
-        const response = await fetch(`${baseUrl}/api/balance`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...params, sign }),
-        });
-
-        const responseText = await response.text();
-        console.log('ELOPAY test response:', responseText);
-
-        let result: any;
-        try {
-          result = JSON.parse(responseText);
-        } catch {
-          setConnectionTestResult({
-            success: false,
-            message: language === 'zh' ? '无效的JSON响应' : 'Invalid JSON response from gateway',
-          });
-          return;
-        }
-
-        if (result.status === 1 || result.status === '1' || result.code === 200) {
-          const balance = parseFloat(result.data?.balance || result.balance || '0');
-          setConnectionTestResult({
-            success: true,
-            message: language === 'zh' ? '连接成功!' : 'Connection successful!',
-            balance,
-          });
-        } else {
-          setConnectionTestResult({
-            success: false,
-            message: result.msg || result.message || (language === 'zh' ? 'API错误 - 检查凭证' : 'API error - check credentials'),
-          });
-        }
-      } else if (newGateway.gateway_type === 'hyperpay' || newGateway.gateway_type === 'bondpay') {
-        // ELOPAY GATEWAY - different signature
-        const signStr = `app_id=${newGateway.app_id}&timestamp=${timestamp}&key=${newGateway.api_key}`;
-        const sign = md5(signStr).toUpperCase();
-
-        const response = await fetch(`${baseUrl}/api/merchant/balance`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+      // Use edge function to avoid CORS issues
+      const { data, error } = await supabase.functions.invoke('check-gateway-balance', {
+        body: {
+          test_connection: true,
+          gateway_config: {
+            gateway_type: newGateway.gateway_type,
+            base_url: newGateway.base_url.replace(/\/$/, ''),
             app_id: newGateway.app_id,
-            timestamp,
-            sign,
-          }),
+            api_key: newGateway.api_key,
+          }
+        }
+      });
+
+      if (error) {
+        setConnectionTestResult({
+          success: false,
+          message: error.message || (language === 'zh' ? '连接失败' : 'Connection failed'),
         });
+        return;
+      }
 
-        const responseText = await response.text();
-        console.log('ELOPAY GATEWAY test response:', responseText);
-
-        if (responseText.startsWith('<!DOCTYPE') || responseText.startsWith('<html')) {
-          setConnectionTestResult({
-            success: false,
-            message: language === 'zh' ? '网关返回HTML - 余额API可能不可用' : 'Gateway returned HTML - balance API may not be available',
-          });
-          return;
-        }
-
-        let result: any;
-        try {
-          result = JSON.parse(responseText);
-        } catch {
-          setConnectionTestResult({
-            success: false,
-            message: language === 'zh' ? '无效的JSON响应' : 'Invalid JSON response from gateway',
-          });
-          return;
-        }
-
-        if (result.code === 200 || result.status === 'success' || result.status === 1) {
-          const balance = parseFloat(result.data?.balance || result.balance || '0');
+      if (data?.success && data?.test_result) {
+        const testResult = data.test_result;
+        if (testResult.status === 'success') {
           setConnectionTestResult({
             success: true,
             message: language === 'zh' ? '连接成功!' : 'Connection successful!',
-            balance,
+            balance: testResult.balance,
           });
         } else {
           setConnectionTestResult({
             success: false,
-            message: result.msg || result.message || (language === 'zh' ? 'API错误 - 检查凭证' : 'API error - check credentials'),
+            message: testResult.message || (language === 'zh' ? 'API错误 - 检查凭证' : 'API error - check credentials'),
           });
         }
+      } else {
+        setConnectionTestResult({
+          success: false,
+          message: data?.error || (language === 'zh' ? '连接测试失败' : 'Connection test failed'),
+        });
       }
     } catch (error: any) {
       console.error('Connection test error:', error);

@@ -385,12 +385,60 @@ async function saveBalanceHistory(supabase: any, balance: GatewayBalance) {
   }
 }
 
+// Test a single gateway configuration (for admin connection testing)
+async function testGatewayConfig(config: { gateway_type: string, base_url: string, app_id: string, api_key: string }): Promise<{ status: string, balance?: number, message?: string }> {
+  const fakeGateway = {
+    id: 'test',
+    gateway_name: 'Test',
+    gateway_code: 'TEST',
+    currency: 'PKR',
+    base_url: config.base_url,
+    app_id: config.app_id,
+    api_key: config.api_key,
+    gateway_type: config.gateway_type,
+  }
+
+  let result: GatewayBalance
+
+  if (config.gateway_type === 'lgpay' || config.gateway_type === 'hypersofts') {
+    result = await checkHyperSoftsBalance(fakeGateway)
+  } else if (config.gateway_type === 'bondpay' || config.gateway_type === 'hyperpay') {
+    result = await checkHyperPayBalance(fakeGateway)
+  } else {
+    return { status: 'error', message: `Unknown gateway type: ${config.gateway_type}` }
+  }
+
+  return {
+    status: result.status === 'online' ? 'success' : result.status,
+    balance: result.balance ?? undefined,
+    message: result.message,
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
+    // Parse request body for test_connection mode
+    let body: any = {}
+    try {
+      body = await req.json()
+    } catch {
+      // No body or invalid JSON - continue with default behavior
+    }
+
+    // Handle test_connection mode - test a specific gateway config
+    if (body.test_connection && body.gateway_config) {
+      console.log('Testing gateway connection:', body.gateway_config.gateway_type)
+      const testResult = await testGatewayConfig(body.gateway_config)
+      return new Response(
+        JSON.stringify({ success: true, test_result: testResult }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
