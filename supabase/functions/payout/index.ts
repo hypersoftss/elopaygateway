@@ -294,6 +294,19 @@ Deno.serve(async (req) => {
       accountNumber: account_number,
     })
 
+    // Send LARGE TRANSACTION ALERT to admin if threshold exceeded
+    const largePayoutThreshold = adminSettings?.large_payout_threshold || 50000
+    if (amountNum >= largePayoutThreshold) {
+      console.log('Large payout detected, sending alert:', amountNum, '>=', largePayoutThreshold)
+      await sendTelegramNotification('large_payout_alert', merchant.id, {
+        orderNo,
+        amount: amountNum,
+        bankName: bank_name,
+        accountNumber: account_number,
+        threshold: largePayoutThreshold,
+      })
+    }
+
     console.log('Payout order created (pending admin approval):', orderNo)
 
     return new Response(
