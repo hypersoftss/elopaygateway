@@ -1128,11 +1128,16 @@ const Index = () => {
               <Link to="/docs" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                 {isEnglish ? 'Documentation' : '文档'}
               </Link>
-              {settings.supportEmail && (
-                <a href={`mailto:${settings.supportEmail}`} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                  {isEnglish ? 'Support' : '支持'}
-                </a>
-              )}
+              <a 
+                href="#contact" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  document.querySelector('#contact')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              >
+                {isEnglish ? 'Support' : '支持'}
+              </a>
             </div>
           </div>
         </div>
