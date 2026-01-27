@@ -13,79 +13,7 @@ interface HealthCheckResult {
   domain: string
 }
 
-// Store last alert time for 6-hour throttling
-let lastAlertTime: number = 0
-const ALERT_INTERVAL_MS = 6 * 60 * 60 * 1000 // 6 hours between alerts
-
-async function sendTelegramAlert(
-  result: HealthCheckResult,
-  adminChatId: string,
-  botToken: string,
-  responseThreshold: number
-) {
-  const now = Date.now()
-  const timeSinceLastAlert = now - lastAlertTime
-  
-  // Throttle ALL alerts to 6-hour intervals
-  if (timeSinceLastAlert < ALERT_INTERVAL_MS) {
-    const hoursRemaining = Math.round((ALERT_INTERVAL_MS - timeSinceLastAlert) / 1000 / 60 / 60 * 10) / 10
-    console.log(`Skipping alert - next report in ${hoursRemaining} hours`)
-    return
-  }
-
-  let emoji = ''
-  let title = ''
-  let details = ''
-
-  if (result.status === 'offline') {
-    emoji = '🔴'
-    title = 'SERVER HEALTH REPORT - OFFLINE'
-    details = `❌ Server is not responding!\n` +
-      `🌐 Domain: ${result.domain}\n` +
-      `📝 Error: ${result.message}`
-  } else if (result.status === 'slow') {
-    emoji = '🟡'
-    title = 'SERVER HEALTH REPORT - SLOW'
-    details = `⚠️ Server response time exceeded threshold!\n` +
-      `🌐 Domain: ${result.domain}\n` +
-      `⏱️ Response Time: ${result.responseTime}ms\n` +
-      `📊 Threshold: ${responseThreshold}ms`
-  } else {
-    // Online status
-    emoji = '📊'
-    title = 'SERVER HEALTH REPORT'
-    details = `✅ Server is running normally\n` +
-      `🌐 Domain: ${result.domain}\n` +
-      `⏱️ Response Time: ${result.responseTime}ms\n` +
-      `📊 Threshold: ${responseThreshold}ms`
-  }
-
-  const message = `${emoji} <b>${title}</b>\n\n` +
-    `${details}\n\n` +
-    `⏰ Time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}\n` +
-    `🔄 Next report in 6 hours`
-
-  try {
-    const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: adminChatId,
-        text: message,
-        parse_mode: 'HTML',
-      }),
-    })
-
-    if (response.ok) {
-      console.log(`Health report sent: ${result.status}`)
-      lastAlertTime = now
-    } else {
-      console.error('Failed to send Telegram alert:', await response.text())
-    }
-  } catch (error) {
-    console.error('Error sending Telegram alert:', error)
-  }
-}
+// Telegram notifications disabled - health reports only returned via API response
 
 async function checkServerHealth(domain: string, timeout: number = 10000): Promise<HealthCheckResult> {
   const cleanDomain = domain.replace(/\/$/, '')
@@ -186,26 +114,12 @@ Deno.serve(async (req) => {
 
     console.log(`Health check result: ${result.status} - ${result.responseTime}ms`)
 
-    // Calculate time until next report
-    const now = Date.now()
-    const timeSinceLastAlert = now - lastAlertTime
-    const nextReportMinutes = Math.max(0, Math.round((ALERT_INTERVAL_MS - timeSinceLastAlert) / 1000 / 60))
-
-    // Send Telegram alert if needed (throttled to 6-hour intervals)
-    if (botToken && adminChatId) {
-      await sendTelegramAlert(result, adminChatId, botToken, responseThreshold)
-    } else {
-      console.log('Telegram alerts not configured - missing bot token or admin chat ID')
-    }
-
+    // Telegram notifications disabled - only return API response
     return new Response(
       JSON.stringify({
         success: true,
         result,
         threshold: responseThreshold,
-        telegram_configured: !!(botToken && adminChatId),
-        next_report_minutes: nextReportMinutes,
-        alert_interval_hours: 6,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )

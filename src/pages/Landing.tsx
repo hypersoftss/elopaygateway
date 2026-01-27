@@ -76,7 +76,7 @@ const Landing = () => {
           {/* Login Options */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
             <Button asChild size="lg" className="h-14 px-8 btn-gradient-primary text-lg font-medium">
-              <Link to="/admin-login">
+              <Link to="/xp7k9m2v-admin">
                 <ShieldCheck className="h-5 w-5 mr-2" />
                 {language === 'zh' ? '管理员登录' : 'Admin Login'}
                 <ArrowRight className="h-5 w-5 ml-2" />

@@ -56,7 +56,7 @@ export const useAuthStore = create<AuthState>()(
         if (currentUser?.role === 'merchant') {
           window.location.href = '/merchant-login';
         } else if (currentUser?.role === 'admin') {
-          window.location.href = '/admin-login';
+          window.location.href = '/xp7k9m2v-admin';
         } else {
           window.location.href = '/';
         }
