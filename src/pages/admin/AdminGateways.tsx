@@ -721,7 +721,7 @@ const AdminGatewaysPage = () => {
                   {connectionTestResult.success && connectionTestResult.balance !== undefined && (
                     <span className="ml-2 font-medium">
                       Balance: {newGateway.currency === 'INR' ? '₹' : newGateway.currency === 'PKR' ? 'Rs.' : '৳'}
-                      {connectionTestResult.balance.toLocaleString()}
+                      {connectionTestResult.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   )}
                 </AlertDescription>

@@ -283,7 +283,7 @@ const AdminGatewayHealth = () => {
                     <div>
                       <div className="text-xl font-bold">
                         {stats.latestBalance !== null 
-                          ? `${currencySymbol}${stats.latestBalance.toLocaleString()}`
+                          ? `${currencySymbol}${stats.latestBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                           : '--'
                         }
                       </div>
@@ -354,7 +354,7 @@ const AdminGatewayHealth = () => {
                     </span>
                     <span className="font-medium">
                       {getCurrencySymbol(selectedGatewayData.currency)}
-                      {selectedStats.avgBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      {selectedStats.avgBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -363,7 +363,7 @@ const AdminGatewayHealth = () => {
                     </span>
                     <span className="font-medium text-destructive">
                       {getCurrencySymbol(selectedGatewayData.currency)}
-                      {selectedStats.minBalance.toLocaleString()}
+                      {selectedStats.minBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -372,7 +372,7 @@ const AdminGatewayHealth = () => {
                     </span>
                     <span className="font-medium text-green-500">
                       {getCurrencySymbol(selectedGatewayData.currency)}
-                      {selectedStats.maxBalance.toLocaleString()}
+                      {selectedStats.maxBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
                 </div>
@@ -423,11 +423,11 @@ const AdminGatewayHealth = () => {
                       <YAxis 
                         tick={{ fontSize: 11 }}
                         className="text-muted-foreground"
-                        tickFormatter={(value) => `${getCurrencySymbol(selectedGatewayData.currency)}${(value / 1000).toFixed(0)}k`}
+                        tickFormatter={(value) => `${getCurrencySymbol(selectedGatewayData.currency)}${value.toFixed(2)}`}
                       />
                       <Tooltip 
                         formatter={(value: number) => [
-                          `${getCurrencySymbol(selectedGatewayData.currency)}${value.toLocaleString()}`,
+                          `${getCurrencySymbol(selectedGatewayData.currency)}${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
                           language === 'zh' ? '余额' : 'Balance'
                         ]}
                         labelFormatter={(label) => `${language === 'zh' ? '时间' : 'Time'}: ${label}`}
