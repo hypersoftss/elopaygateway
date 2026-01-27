@@ -97,31 +97,42 @@ const AdminApiTesting = () => {
     fetchMerchants();
   }, []);
 
+  // Get currency symbol based on merchant's currency
+  const getCurrencySymbol = (merchant: Merchant | null) => {
+    if (!merchant) return '₹';
+    switch (merchant.currency) {
+      case 'PKR': return 'Rs.';
+      case 'BDT': return '৳';
+      case 'INR':
+      default: return '₹';
+    }
+  };
+
   const getTradeTypeOptions = (merchant: Merchant | null) => {
     if (!merchant) return [];
     
     const { gateway_type, gateway_code, currency } = merchant;
     
     // ELOPAY GATEWAY - default UPI
-    if (gateway_type === 'hyperpay') {
-      return [{ value: 'default', label: 'UPI (Default)' }];
+    if (gateway_type === 'hyperpay' || gateway_code?.includes('ELOPAYGATEWAY')) {
+      return [{ value: 'default', label: '🇮🇳 UPI (Default)' }];
     }
     
     // ELOPAY options based on gateway_code/currency
-    if (gateway_type === 'hypersofts' || gateway_code?.startsWith('hypersofts')) {
-      if (currency === 'INR' || gateway_code === 'hypersofts_inr') {
+    if (gateway_type === 'hypersofts' || gateway_code?.includes('ELOPAY_')) {
+      if (currency === 'INR' || gateway_code === 'ELOPAY_INR' || gateway_code === 'hypersofts_inr') {
         return [
           { value: 'INRUPI', label: '🇮🇳 UPI (INRUPI)' },
           { value: 'usdt', label: '💰 USDT' },
         ];
       }
-      if (currency === 'BDT' || gateway_code === 'hypersofts_bdt') {
+      if (currency === 'BDT' || gateway_code === 'ELOPAY_BDT' || gateway_code === 'hypersofts_bdt') {
         return [
           { value: 'nagad', label: '🇧🇩 Nagad' },
           { value: 'bkash', label: '🇧🇩 bKash' },
         ];
       }
-      if (currency === 'PKR' || gateway_code === 'hypersofts_pkr') {
+      if (currency === 'PKR' || gateway_code === 'ELOPAY_PKR' || gateway_code === 'hypersofts_pkr') {
         return [
           { value: 'easypaisa', label: '🇵🇰 Easypaisa' },
           { value: 'jazzcash', label: '🇵🇰 JazzCash' },
@@ -139,25 +150,25 @@ const AdminApiTesting = () => {
     const { gateway_type, gateway_code, currency } = merchant;
     
     // ELOPAY GATEWAY - INR bank transfer
-    if (gateway_type === 'hyperpay') {
+    if (gateway_type === 'hyperpay' || gateway_code?.includes('ELOPAYGATEWAY')) {
       return [{ value: 'bank', label: '🏦 Bank Transfer' }];
     }
     
     // ELOPAY payout options based on currency
-    if (gateway_type === 'hypersofts' || gateway_code?.startsWith('hypersofts')) {
-      if (currency === 'INR' || gateway_code === 'hypersofts_inr') {
+    if (gateway_type === 'hypersofts' || gateway_code?.includes('ELOPAY_')) {
+      if (currency === 'INR' || gateway_code === 'ELOPAY_INR' || gateway_code === 'hypersofts_inr') {
         return [
           { value: 'bank', label: '🏦 Bank Transfer (INR)' },
           { value: 'usdt', label: '💰 USDT' },
         ];
       }
-      if (currency === 'BDT' || gateway_code === 'hypersofts_bdt') {
+      if (currency === 'BDT' || gateway_code === 'ELOPAY_BDT' || gateway_code === 'hypersofts_bdt') {
         return [
           { value: 'nagad', label: '🇧🇩 Nagad' },
           { value: 'bkash', label: '🇧🇩 bKash' },
         ];
       }
-      if (currency === 'PKR' || gateway_code === 'hypersofts_pkr') {
+      if (currency === 'PKR' || gateway_code === 'ELOPAY_PKR' || gateway_code === 'hypersofts_pkr') {
         return [
           { value: 'easypaisa', label: '🇵🇰 Easypaisa' },
           { value: 'jazzcash', label: '🇵🇰 JazzCash' },
@@ -428,8 +439,8 @@ const AdminApiTesting = () => {
                 <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-purple-600">
-                      {selectedMerchant?.gateway_code?.startsWith('hypersofts') ? 'ELOPAY' : 
-                       selectedMerchant?.gateway_code?.startsWith('hyperpay') ? 'ELOPAY GATEWAY' : 'DEFAULT'}
+                      {selectedMerchant?.gateway_code?.includes('ELOPAY_') || selectedMerchant?.gateway_code?.startsWith('hypersofts') ? 'ELOPAY' : 
+                       selectedMerchant?.gateway_code?.includes('ELOPAYGATEWAY') || selectedMerchant?.gateway_code?.startsWith('hyperpay') ? 'ELOPAY GATEWAY' : 'DEFAULT'}
                     </span>
                     <span className="text-muted-foreground">|</span>
                     <span className="text-sm">{selectedMerchant?.currency || 'INR'}</span>
@@ -449,7 +460,7 @@ const AdminApiTesting = () => {
                 <Label>{language === 'zh' ? '当前余额' : 'Current Balance'}</Label>
                 <div className="p-3 rounded-lg bg-[hsl(var(--success))]/10 border border-[hsl(var(--success))]/20">
                   <span className="text-2xl font-bold text-[hsl(var(--success))]">
-                    ₹{selectedMerchant?.balance?.toLocaleString() || '0'}
+                    {getCurrencySymbol(selectedMerchant)}{selectedMerchant?.balance?.toLocaleString() || '0'}
                   </span>
                 </div>
               </div>
@@ -461,7 +472,7 @@ const AdminApiTesting = () => {
         <Card className="border-blue-500/20">
           <CardHeader className="bg-blue-500/5">
             <CardTitle className="text-lg flex items-center gap-2">
-              <span className="w-6 h-6 bg-blue-500 rounded-md flex items-center justify-center text-white text-xs">₹</span>
+              <span className="w-6 h-6 bg-blue-500 rounded-md flex items-center justify-center text-white text-xs">{getCurrencySymbol(selectedMerchant)}</span>
               {language === 'zh' ? '测试余额' : 'Test Balance'}
             </CardTitle>
             <CardDescription>
@@ -471,7 +482,7 @@ const AdminApiTesting = () => {
           <CardContent className="pt-6">
             <div className="flex items-end gap-4">
               <div className="space-y-2 flex-1">
-                <Label>{language === 'zh' ? '金额 (₹)' : 'Amount (₹)'}</Label>
+                <Label>{language === 'zh' ? `金额 (${getCurrencySymbol(selectedMerchant)})` : `Amount (${getCurrencySymbol(selectedMerchant)})`}</Label>
                 <Input
                   type="number"
                   value={balanceAmount}
