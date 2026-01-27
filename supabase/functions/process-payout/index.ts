@@ -24,8 +24,8 @@ function generateHyperPayPayoutSignature(
   return hash.toString()
 }
 
-// HYPER SOFTS signature (ASCII sorted + uppercase MD5)
-function generateHyperSoftsSignature(params: Record<string, any>, key: string): string {
+// ELOPAY signature (ASCII sorted + uppercase MD5)
+function generateEloPaySignature(params: Record<string, any>, key: string): string {
   const filteredParams = Object.entries(params)
     .filter(([k, v]) => v !== '' && v !== null && v !== undefined && k !== 'sign')
     .sort(([a], [b]) => a.localeCompare(b))
@@ -35,7 +35,7 @@ function generateHyperSoftsSignature(params: Record<string, any>, key: string): 
     .join('&')
   
   const signString = `${queryString}&key=${key}`
-  console.log('HYPER SOFTS payout sign string:', signString)
+  console.log('ELOPAY payout sign string:', signString)
   
   const hash = new Md5()
   hash.update(signString)
@@ -157,22 +157,22 @@ Deno.serve(async (req) => {
       let gatewayResponse = null
 
       if (gateway.gateway_type === 'hypersofts') {
-        // HYPER SOFTS payout - use specific withdrawal codes based on gateway_code
-        // hypersofts_bdt -> BDT withdrawal
-        // hypersofts_pkr -> PKR withdrawal  
-        // hypersofts_inr -> INR withdrawal
+        // ELOPAY payout - use specific withdrawal codes based on gateway_code
+        // ELOPAY_BDT -> BDT withdrawal
+        // ELOPAY_PKR -> PKR withdrawal  
+        // ELOPAY_INR -> INR withdrawal
         let withdrawalCode = gateway.currency // Default to currency code
         
         // Map gateway_code to specific withdrawal codes
-        if (gateway.gateway_code === 'hypersofts_bdt') {
+        if (gateway.gateway_code === 'ELOPAY_BDT' || gateway.gateway_code === 'hypersofts_bdt') {
           withdrawalCode = 'BDT' // BDT payout code
-        } else if (gateway.gateway_code === 'hypersofts_pkr') {
+        } else if (gateway.gateway_code === 'ELOPAY_PKR' || gateway.gateway_code === 'hypersofts_pkr') {
           withdrawalCode = 'PKR' // PKR payout code
-        } else if (gateway.gateway_code === 'hypersofts_inr') {
+        } else if (gateway.gateway_code === 'ELOPAY_INR' || gateway.gateway_code === 'hypersofts_inr') {
           withdrawalCode = 'INR' // INR payout code
         }
         
-        console.log('HYPER SOFTS payout - Gateway code:', gateway.gateway_code, 'Currency:', gateway.currency, 'Withdrawal code:', withdrawalCode)
+        console.log('ELOPAY payout - Gateway code:', gateway.gateway_code, 'Currency:', gateway.currency, 'Withdrawal code:', withdrawalCode)
         
         const hsParams: Record<string, any> = {
           app_id: gateway.app_id,
@@ -191,9 +191,9 @@ Deno.serve(async (req) => {
           hsParams.addon1 = transaction.ifsc_code
         }
 
-        hsParams.sign = generateHyperSoftsSignature(hsParams, gateway.payout_key || gateway.api_key)
+        hsParams.sign = generateEloPaySignature(hsParams, gateway.payout_key || gateway.api_key)
 
-        console.log('Calling HYPER SOFTS Payout API:', hsParams)
+        console.log('Calling ELOPAY Payout API:', hsParams)
 
         const formBody = new URLSearchParams()
         Object.entries(hsParams).forEach(([k, v]) => formBody.append(k, String(v)))
@@ -205,11 +205,11 @@ Deno.serve(async (req) => {
         })
 
         gatewayResponse = await hsResponse.json()
-        console.log('HYPER SOFTS Payout response:', gatewayResponse)
+        console.log('ELOPAY Payout response:', gatewayResponse)
 
       } else {
-        // HYPER PAY payout (default)
-        const hyperPaySignature = generateHyperPayPayoutSignature(
+        // ELOPAYGATEWAY payout (default)
+        const eloPayGatewaySignature = generateHyperPayPayoutSignature(
           transaction.account_number || '',
           transaction.amount.toString(),
           transaction.bank_name || '',
@@ -221,7 +221,7 @@ Deno.serve(async (req) => {
           gateway.payout_key
         )
 
-        console.log('Calling HYPER PAY Payout API for approved transaction...')
+        console.log('Calling ELOPAYGATEWAY Payout API for approved transaction...')
 
         const formData = new URLSearchParams()
         formData.append('merchant_id', gateway.app_id)
@@ -232,16 +232,16 @@ Deno.serve(async (req) => {
         formData.append('name', transaction.account_holder_name || '')
         formData.append('bank_name', transaction.bank_name || '')
         formData.append('callback_url', internalCallbackUrl)
-        formData.append('signature', hyperPaySignature)
+        formData.append('signature', eloPayGatewaySignature)
 
-        const hyperPayResponse = await fetch(`${gateway.base_url}/payout/payment.php`, {
+        const eloPayGatewayResponse = await fetch(`${gateway.base_url}/payout/payment.php`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           body: formData.toString()
         })
 
-        gatewayResponse = await hyperPayResponse.json()
-        console.log('HYPER PAY Payout response:', gatewayResponse)
+        gatewayResponse = await eloPayGatewayResponse.json()
+        console.log('ELOPAYGATEWAY Payout response:', gatewayResponse)
       }
 
       // Update transaction with gateway response
