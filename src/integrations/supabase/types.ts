@@ -350,6 +350,7 @@ export type Database = {
           gateway_type: string
           id: string
           is_active: boolean | null
+          max_withdrawal_amount: number | null
           min_withdrawal_amount: number | null
           payout_key: string | null
           trade_type: string | null
@@ -366,6 +367,7 @@ export type Database = {
           gateway_type: string
           id?: string
           is_active?: boolean | null
+          max_withdrawal_amount?: number | null
           min_withdrawal_amount?: number | null
           payout_key?: string | null
           trade_type?: string | null
@@ -382,6 +384,7 @@ export type Database = {
           gateway_type?: string
           id?: string
           is_active?: boolean | null
+          max_withdrawal_amount?: number | null
           min_withdrawal_amount?: number | null
           payout_key?: string | null
           trade_type?: string | null
@@ -616,6 +619,7 @@ export type Database = {
           gateway_id: string
           gateway_name: string
           gateway_type: string
+          max_withdrawal_amount: number
           min_withdrawal_amount: number
         }[]
       }

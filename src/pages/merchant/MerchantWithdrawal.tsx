@@ -19,6 +19,7 @@ interface MerchantData {
   currency: string | null;
   hasWithdrawalPassword: boolean;
   min_withdrawal_amount: number;
+  max_withdrawal_amount: number;
 }
 
 // Currency symbols
@@ -94,9 +95,11 @@ const MerchantWithdrawal = () => {
       
       let currency = 'INR';
       let minWithdrawalAmount = 1000;
+      let maxWithdrawalAmount = 50000;
       if (gatewayData && gatewayData.length > 0) {
         currency = gatewayData[0].currency || 'INR';
         minWithdrawalAmount = Number(gatewayData[0].min_withdrawal_amount) || 1000;
+        maxWithdrawalAmount = Number(gatewayData[0].max_withdrawal_amount) || 50000;
       }
 
       if (data) {
@@ -108,6 +111,7 @@ const MerchantWithdrawal = () => {
           // Check if either hashed or legacy password exists
           hasWithdrawalPassword: !!(data.withdrawal_password_hash || data.withdrawal_password),
           min_withdrawal_amount: minWithdrawalAmount,
+          max_withdrawal_amount: maxWithdrawalAmount,
         });
 
         // Set default method based on currency
@@ -178,6 +182,7 @@ const MerchantWithdrawal = () => {
 
     const amount = parseFloat(form.amount);
     const minAmount = merchantData.min_withdrawal_amount || 1000;
+    const maxAmount = merchantData.max_withdrawal_amount || 50000;
     
     if (amount <= 0) {
       toast({
@@ -192,6 +197,15 @@ const MerchantWithdrawal = () => {
       toast({
         title: language === 'zh' ? '错误' : 'Error',
         description: language === 'zh' ? `最低提现金额为 ${currencySymbol}${minAmount}` : `Minimum withdrawal amount is ${currencySymbol}${minAmount}`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (amount > maxAmount) {
+      toast({
+        title: language === 'zh' ? '错误' : 'Error',
+        description: language === 'zh' ? `单笔最高提现金额为 ${currencySymbol}${maxAmount}` : `Maximum withdrawal amount per transaction is ${currencySymbol}${maxAmount}`,
         variant: 'destructive',
       });
       return;
@@ -587,10 +601,12 @@ const MerchantWithdrawal = () => {
               {(() => {
                 const enteredAmount = parseFloat(form.amount) || 0;
                 const minAmount = merchantData.min_withdrawal_amount || 1000;
+                const maxAmount = merchantData.max_withdrawal_amount || 50000;
                 const availableBalance = merchantData.balance;
                 const isBelowMinimum = form.amount && enteredAmount > 0 && enteredAmount < minAmount;
+                const isAboveMaximum = form.amount && enteredAmount > 0 && enteredAmount > maxAmount;
                 const isAboveBalance = form.amount && enteredAmount > 0 && enteredAmount > availableBalance;
-                const hasError = isBelowMinimum || isAboveBalance;
+                const hasError = isBelowMinimum || isAboveMaximum || isAboveBalance;
                 
                 return (
                   <>
@@ -622,7 +638,19 @@ const MerchantWithdrawal = () => {
                         </span>
                       </div>
                     )}
-                    {isAboveBalance && !isBelowMinimum && (
+                    {isAboveMaximum && !isBelowMinimum && (
+                      <div className="flex items-center gap-2 text-destructive text-sm animate-in fade-in slide-in-from-top-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        <span>
+                          {language === 'zh' 
+                            ? `单笔最高提现金额为 ${currencySymbol}${maxAmount.toLocaleString()}` 
+                            : `Maximum per transaction is ${currencySymbol}${maxAmount.toLocaleString()}`}
+                        </span>
+                      </div>
+                    )}
+                    {isAboveBalance && !isBelowMinimum && !isAboveMaximum && (
                       <div className="flex items-center gap-2 text-destructive text-sm animate-in fade-in slide-in-from-top-1">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
                           <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
@@ -636,10 +664,10 @@ const MerchantWithdrawal = () => {
                     )}
                     <div className="flex justify-between text-sm">
                       <span className={hasError ? 'text-destructive font-medium' : 'text-muted-foreground'}>
-                        {language === 'zh' ? '最低' : 'Min'}: {currencySymbol}{minAmount.toLocaleString()} • {language === 'zh' ? '可用' : 'Available'}: {currencySymbol}{availableBalance.toLocaleString()}
+                        {language === 'zh' ? '限额' : 'Limit'}: {currencySymbol}{minAmount.toLocaleString()} - {currencySymbol}{maxAmount.toLocaleString()} • {language === 'zh' ? '可用' : 'Available'}: {currencySymbol}{availableBalance.toLocaleString()}
                       </span>
                       <button
-                        onClick={() => setForm({ ...form, amount: availableBalance.toString() })}
+                        onClick={() => setForm({ ...form, amount: Math.min(availableBalance, maxAmount).toString() })}
                         className="text-primary font-medium hover:underline"
                       >
                         {language === 'zh' ? '全部提现' : 'Withdraw All'}
