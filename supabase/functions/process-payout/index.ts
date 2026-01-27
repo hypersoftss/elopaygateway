@@ -186,9 +186,28 @@ Deno.serve(async (req) => {
           addon2: 'v1.0',
         }
 
-        // Add IFSC for India
+        // Add addon1 based on currency and method
         if (gateway.currency === 'INR' && transaction.ifsc_code) {
+          // INR bank transfers use IFSC code in addon1
           hsParams.addon1 = transaction.ifsc_code
+        } else if (gateway.currency === 'PKR') {
+          // PKR uses addon1 for wallet method: jazzcash or easypaisa
+          const bankName = (transaction.bank_name || '').toLowerCase()
+          if (bankName === 'jazzcash' || bankName === 'jazz') {
+            hsParams.addon1 = 'jazzcash'
+          } else if (bankName === 'easypaisa' || bankName === 'easy') {
+            hsParams.addon1 = 'easypaisa'
+          }
+          console.log('PKR payout addon1:', hsParams.addon1, 'from bank_name:', transaction.bank_name)
+        } else if (gateway.currency === 'BDT') {
+          // BDT uses addon1 for wallet method: nagad or bkash
+          const bankName = (transaction.bank_name || '').toLowerCase()
+          if (bankName === 'nagad') {
+            hsParams.addon1 = 'nagad'
+          } else if (bankName === 'bkash') {
+            hsParams.addon1 = 'bkash'
+          }
+          console.log('BDT payout addon1:', hsParams.addon1, 'from bank_name:', transaction.bank_name)
         }
 
         hsParams.sign = generateEloPaySignature(hsParams, gateway.payout_key || gateway.api_key)
