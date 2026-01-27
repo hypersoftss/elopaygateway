@@ -31,7 +31,15 @@ import {
   Landmark,
   Smartphone,
   CircleDollarSign,
-  ShieldCheck
+  ShieldCheck,
+  Code2,
+  Settings,
+  Rocket,
+  Check,
+  X,
+  Crown,
+  Gem,
+  Medal
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { LanguageSwitch } from '@/components/LanguageSwitch';
@@ -369,6 +377,84 @@ const Index = () => {
         </div>
       </section>
 
+      {/* How It Works Section */}
+      <section className="py-20 md:py-32">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium text-primary mb-6">
+              <Rocket className="h-4 w-4" />
+              {isEnglish ? 'Simple Integration' : '简单集成'}
+            </div>
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
+              {isEnglish ? 'How It Works' : '工作原理'}
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              {isEnglish 
+                ? 'Get started in minutes with our simple 4-step integration process'
+                : '通过我们简单的4步集成流程，几分钟内即可开始'}
+            </p>
+          </div>
+
+          <div className="max-w-5xl mx-auto">
+            <div className="grid md:grid-cols-4 gap-6 relative">
+              {/* Connection line */}
+              <div className="hidden md:block absolute top-16 left-[12.5%] right-[12.5%] h-0.5 bg-gradient-to-r from-primary/50 via-primary to-primary/50" />
+              
+              {[
+                {
+                  step: 1,
+                  icon: <Users className="h-6 w-6" />,
+                  title: isEnglish ? 'Create Account' : '创建账户',
+                  description: isEnglish ? 'Sign up and get your merchant credentials instantly' : '注册并立即获取商户凭证',
+                },
+                {
+                  step: 2,
+                  icon: <Code2 className="h-6 w-6" />,
+                  title: isEnglish ? 'Integrate API' : '集成API',
+                  description: isEnglish ? 'Use our SDK or REST API with comprehensive docs' : '使用我们的SDK或REST API及全面文档',
+                },
+                {
+                  step: 3,
+                  icon: <Settings className="h-6 w-6" />,
+                  title: isEnglish ? 'Configure' : '配置',
+                  description: isEnglish ? 'Set up payment methods, callbacks & webhooks' : '设置支付方式、回调和Webhooks',
+                },
+                {
+                  step: 4,
+                  icon: <Rocket className="h-6 w-6" />,
+                  title: isEnglish ? 'Go Live' : '上线',
+                  description: isEnglish ? 'Start accepting payments from customers' : '开始接受客户付款',
+                },
+              ].map((item, index) => (
+                <div key={index} className="relative text-center group">
+                  {/* Step number circle */}
+                  <div className="relative mx-auto mb-6 w-32 h-32 rounded-full bg-gradient-to-br from-card to-card/50 border border-border/50 flex items-center justify-center shadow-xl group-hover:shadow-2xl group-hover:shadow-primary/20 transition-all duration-300 group-hover:-translate-y-2">
+                    <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm font-bold flex items-center justify-center shadow-lg">
+                      {item.step}
+                    </div>
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                      {item.icon}
+                    </div>
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2">{item.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* CTA */}
+            <div className="text-center mt-12">
+              <Button asChild size="lg" className="h-12 px-8 shadow-lg">
+                <Link to="/docs">
+                  <Play className="h-5 w-5 mr-2" />
+                  {isEnglish ? 'View Integration Guide' : '查看集成指南'}
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Features Section */}
       <section className="py-20 md:py-32">
         <div className="container mx-auto px-4">
@@ -398,6 +484,139 @@ const Index = () => {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section className="py-20 md:py-32 bg-gradient-to-b from-transparent via-card/30 to-transparent">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium text-primary mb-6">
+              <Crown className="h-4 w-4" />
+              {isEnglish ? 'Pricing Plans' : '定价方案'}
+            </div>
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
+              {isEnglish ? 'Simple, Transparent Pricing' : '简单透明的定价'}
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              {isEnglish 
+                ? 'Choose the plan that fits your business needs'
+                : '选择适合您业务需求的方案'}
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            {[
+              {
+                name: isEnglish ? 'Starter' : '入门版',
+                icon: <Medal className="h-6 w-6" />,
+                price: isEnglish ? 'Contact Us' : '联系我们',
+                description: isEnglish ? 'Perfect for small businesses' : '适合小型企业',
+                gradient: 'from-slate-500 to-slate-600',
+                features: [
+                  { name: isEnglish ? 'Up to ₹5L monthly volume' : '每月最高₹50万交易量', included: true },
+                  { name: isEnglish ? 'Standard payin fee' : '标准代收费率', included: true },
+                  { name: isEnglish ? 'Standard payout fee' : '标准代付费率', included: true },
+                  { name: isEnglish ? 'Email support' : '邮件支持', included: true },
+                  { name: isEnglish ? 'Basic analytics' : '基础分析', included: true },
+                  { name: isEnglish ? 'Priority support' : '优先支持', included: false },
+                  { name: isEnglish ? 'Custom integration' : '定制集成', included: false },
+                ],
+                popular: false,
+              },
+              {
+                name: isEnglish ? 'Business' : '商业版',
+                icon: <Gem className="h-6 w-6" />,
+                price: isEnglish ? 'Contact Us' : '联系我们',
+                description: isEnglish ? 'For growing businesses' : '适合成长型企业',
+                gradient: 'from-primary to-blue-600',
+                features: [
+                  { name: isEnglish ? 'Up to ₹50L monthly volume' : '每月最高₹500万交易量', included: true },
+                  { name: isEnglish ? 'Reduced payin fee' : '优惠代收费率', included: true },
+                  { name: isEnglish ? 'Reduced payout fee' : '优惠代付费率', included: true },
+                  { name: isEnglish ? '24/7 support' : '全天候支持', included: true },
+                  { name: isEnglish ? 'Advanced analytics' : '高级分析', included: true },
+                  { name: isEnglish ? 'Priority support' : '优先支持', included: true },
+                  { name: isEnglish ? 'Custom integration' : '定制集成', included: false },
+                ],
+                popular: true,
+              },
+              {
+                name: isEnglish ? 'Enterprise' : '企业版',
+                icon: <Crown className="h-6 w-6" />,
+                price: isEnglish ? 'Custom' : '定制',
+                description: isEnglish ? 'For large organizations' : '适合大型企业',
+                gradient: 'from-amber-500 to-orange-600',
+                features: [
+                  { name: isEnglish ? 'Unlimited monthly volume' : '无限月交易量', included: true },
+                  { name: isEnglish ? 'Custom payin fee' : '定制代收费率', included: true },
+                  { name: isEnglish ? 'Custom payout fee' : '定制代付费率', included: true },
+                  { name: isEnglish ? 'Dedicated account manager' : '专属客户经理', included: true },
+                  { name: isEnglish ? 'Real-time analytics' : '实时分析', included: true },
+                  { name: isEnglish ? 'Priority support' : '优先支持', included: true },
+                  { name: isEnglish ? 'Custom integration' : '定制集成', included: true },
+                ],
+                popular: false,
+              },
+            ].map((plan, index) => (
+              <div
+                key={index}
+                className={`relative p-6 rounded-2xl bg-card border transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${
+                  plan.popular 
+                    ? 'border-primary shadow-xl shadow-primary/10 scale-105' 
+                    : 'border-border/50'
+                }`}
+              >
+                {plan.popular && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-primary text-primary-foreground text-xs font-semibold">
+                    {isEnglish ? 'Most Popular' : '最受欢迎'}
+                  </div>
+                )}
+                
+                <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-r ${plan.gradient} text-white mb-4 shadow-lg`}>
+                  {plan.icon}
+                </div>
+                
+                <h3 className="text-xl font-bold mb-1">{plan.name}</h3>
+                <p className="text-sm text-muted-foreground mb-4">{plan.description}</p>
+                
+                <div className="mb-6">
+                  <span className="text-3xl font-bold">{plan.price}</span>
+                </div>
+                
+                <ul className="space-y-3 mb-6">
+                  {plan.features.map((feature, i) => (
+                    <li key={i} className="flex items-center gap-2 text-sm">
+                      {feature.included ? (
+                        <Check className="h-4 w-4 text-emerald-500 shrink-0" />
+                      ) : (
+                        <X className="h-4 w-4 text-muted-foreground/50 shrink-0" />
+                      )}
+                      <span className={feature.included ? '' : 'text-muted-foreground/50'}>
+                        {feature.name}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                
+                <Button 
+                  asChild 
+                  className="w-full" 
+                  variant={plan.popular ? 'default' : 'outline'}
+                >
+                  <Link to="/merchant-login">
+                    {isEnglish ? 'Get Started' : '开始使用'}
+                  </Link>
+                </Button>
+              </div>
+            ))}
+          </div>
+
+          <p className="text-center text-sm text-muted-foreground mt-8">
+            {isEnglish 
+              ? 'All plans include SSL encryption, 2FA security, and API access. Contact us for volume-based discounts.'
+              : '所有方案均包含SSL加密、双重验证和API访问。联系我们了解批量折扣。'}
+          </p>
         </div>
       </section>
 
