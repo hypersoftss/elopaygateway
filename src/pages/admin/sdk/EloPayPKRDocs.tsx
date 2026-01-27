@@ -67,13 +67,14 @@ Content-Type: application/x-www-form-urlencoded
 
 app_id=YOUR_APP_ID
 order_sn=PAYOUT123456
-currency=PKR
-money=100000          // Amount × 100
+currency=PKR              // Withdrawal code: PKR (fixed for all PKR payouts)
+money=100000              // Amount × 100
 notify_url=https://yoursite.com/callback
 name=Account Name
-uid=CNIC_NUMBER       // Receiver's CNIC matching Easypaisa wallet
-card_number=03xxxxxxxxx  // Easypaisa wallet number
-addon1=easypaisa
+uid=CNIC_NUMBER           // Receiver's CNIC matching Easypaisa wallet
+card_number=03xxxxxxxxx   // Easypaisa wallet number
+addon1=easypaisa          // Payment method identifier
+addon2=v1.0
 sign=GENERATED_SIGNATURE`;
 
   const payoutJazzcash = `// Pay-Out Request (JazzCash)
@@ -82,13 +83,14 @@ Content-Type: application/x-www-form-urlencoded
 
 app_id=YOUR_APP_ID
 order_sn=PAYOUT123456
-currency=PKR
-money=100000          // Amount × 100
+currency=PKR              // Withdrawal code: PKR (fixed for all PKR payouts)
+money=100000              // Amount × 100
 notify_url=https://yoursite.com/callback
 name=Account Name
-uid=CNIC_NUMBER       // Receiver's CNIC matching JazzCash wallet
-card_number=03xxxxxxxxx  // JazzCash wallet number
-addon1=jazzcash
+uid=CNIC_NUMBER           // Receiver's CNIC matching JazzCash wallet
+card_number=03xxxxxxxxx   // JazzCash wallet number
+addon1=jazzcash           // Payment method identifier
+addon2=v1.0
 sign=GENERATED_SIGNATURE`;
 
   const callbackExample = `// Callback Response (POST to your notify_url)
@@ -203,16 +205,18 @@ money: X    // Will stay pending (no callback)`;
                   <Badge className="bg-red-600">JazzCash</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">Mobile wallet payments via JazzCash</p>
-                <p className="text-xs mt-2"><strong>trade_type (payin):</strong> <code>PKRPH</code></p>
-                <p className="text-xs"><strong>addon1 (payout):</strong> <code>jazzcash</code></p>
+                <p className="text-xs mt-2"><strong>Deposit trade_type:</strong> <code className="bg-muted px-1 rounded">PKRPH</code></p>
+                <p className="text-xs"><strong>Withdrawal currency:</strong> <code className="bg-muted px-1 rounded">PKR</code></p>
+                <p className="text-xs"><strong>Withdrawal addon1:</strong> <code className="bg-muted px-1 rounded">jazzcash</code></p>
               </div>
               <div className="border rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Badge className="bg-green-600">Easypaisa</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">Mobile wallet payments via Easypaisa</p>
-                <p className="text-xs mt-2"><strong>trade_type (payin):</strong> <code>PKRPH-EASY</code></p>
-                <p className="text-xs"><strong>addon1 (payout):</strong> <code>easypaisa</code></p>
+                <p className="text-xs mt-2"><strong>Deposit trade_type:</strong> <code className="bg-muted px-1 rounded">PKRPH-EASY</code></p>
+                <p className="text-xs"><strong>Withdrawal currency:</strong> <code className="bg-muted px-1 rounded">PKR</code></p>
+                <p className="text-xs"><strong>Withdrawal addon1:</strong> <code className="bg-muted px-1 rounded">easypaisa</code></p>
               </div>
             </div>
           </CardContent>
