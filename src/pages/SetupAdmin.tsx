@@ -53,7 +53,7 @@ const SetupAdmin = () => {
         description: 'Admin account created successfully!',
       });
 
-      navigate('/admin-login');
+      navigate('/xp7k9m2v-admin');
     } catch (error: any) {
       toast({
         title: t('common.error'),

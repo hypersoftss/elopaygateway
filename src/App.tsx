@@ -90,7 +90,7 @@ const AppRoutes = () => {
       {/* Public Routes */}
       <Route path="/" element={<Index />} />
       <Route path="/setup-admin" element={<SetupAdmin />} />
-      <Route path="/admin-login" element={<AdminLogin />} />
+      <Route path="/xp7k9m2v-admin" element={<AdminLogin />} />
       <Route path="/merchant-login" element={<MerchantLogin />} />
       <Route path="/pay/:linkCode" element={<PaymentPage />} />
       <Route path="/payment-success" element={<PaymentSuccess />} />
