@@ -19,6 +19,7 @@ import { Label } from '@/components/ui/label';
 import { 
   Store, 
   ArrowRight, 
+  ArrowUp,
   Zap, 
   Globe, 
   Lock, 
@@ -130,6 +131,22 @@ const Index = () => {
 
   const gatewayName = settings.gatewayName || 'ELOPAY';
   const logoUrl = settings.logoUrl;
+
+  // Back to top button visibility
+  const [showBackToTop, setShowBackToTop] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowBackToTop(window.scrollY > 400);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   useDocumentMeta({
     title: gatewayName ? `${gatewayName} - ${isEnglish ? 'Next-Gen Payment Gateway' : '新一代支付网关'}` : undefined,
@@ -1142,6 +1159,17 @@ const Index = () => {
           </div>
         </div>
       </footer>
+
+      {/* Back to Top Button */}
+      <button
+        onClick={scrollToTop}
+        className={`fixed bottom-6 right-6 z-50 p-3 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 ${
+          showBackToTop ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
+        }`}
+        aria-label="Back to top"
+      >
+        <ArrowUp className="h-5 w-5" />
+      </button>
     </div>
   );
 };
