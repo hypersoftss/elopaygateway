@@ -42,6 +42,23 @@ async function getBotToken(supabaseAdmin: any): Promise<string | null> {
 // In-memory store for last bot message per chat (for auto-delete)
 const lastBotMessages: Map<string, number> = new Map()
 
+// Commands that should NOT trigger auto-delete (keep messages visible)
+const NO_AUTO_DELETE_COMMANDS = [
+  '/help',
+  '/tg_id',
+  '/id', 
+  '/chatid',
+  '/setmenu',
+  '/create_merchant',
+  '/broadcast',
+]
+
+// Check if command should skip auto-delete
+function shouldSkipAutoDelete(command: string): boolean {
+  const cmd = command.toLowerCase().split('@')[0]
+  return NO_AUTO_DELETE_COMMANDS.includes(cmd)
+}
+
 // Delete a message
 async function deleteMessage(botToken: string, chatId: string, messageId: number) {
   try {
@@ -1375,19 +1392,22 @@ Deno.serve(async (req) => {
     const isAdmin = adminChatId && chatId === adminChatId
     const userMessageId = message.message_id
 
-    // Delete user's command message to keep chat clean (only for bot commands in groups)
-    if (text.startsWith('/') && chatType !== 'private') {
+    // Parse command and arguments
+    const parts = text.split(/\s+/)
+    const command = parts[0].toLowerCase().split('@')[0]
+    const args = parts.slice(1)
+    
+    // Check if this command should skip auto-delete
+    const skipAutoDelete = shouldSkipAutoDelete(command)
+
+    // Delete user's command message to keep chat clean (only for bot commands in groups, skip certain commands)
+    if (text.startsWith('/') && chatType !== 'private' && !skipAutoDelete) {
       try {
         await deleteMessage(botToken, chatId, userMessageId)
       } catch (e) {
         // Ignore - bot may not have delete permission
       }
     }
-
-    // Parse command and arguments
-    const parts = text.split(/\s+/)
-    const command = parts[0].toLowerCase().split('@')[0]
-    const args = parts.slice(1)
 
     // ============ /tg_id - Get Chat ID (Works anywhere) ============
     if (command === '/tg_id' || command === '/id' || command === '/chatid') {
@@ -1397,7 +1417,8 @@ Deno.serve(async (req) => {
         `${chatInfo}\n\n` +
         `🆔 Chat ID: <code>${chatId}</code>\n` +
         `📝 Type: ${chatType}\n\n` +
-        `<i>Copy this ID to use for notifications</i>`
+        `<i>Copy this ID to use for notifications</i>`,
+        'HTML', undefined, !skipAutoDelete
       )
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
@@ -1464,7 +1485,8 @@ Deno.serve(async (req) => {
         `✅ <b>Bot Menu Updated!</b>\n\n` +
         `• Merchant: ${merchantCommands.length} commands\n` +
         `• Admin: ${adminCommands.length} commands\n\n` +
-        `<i>Type / to see command suggestions</i>`
+        `<i>Type / to see command suggestions</i>`,
+        'HTML', undefined, false // Don't auto-delete setmenu response
       )
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
@@ -1793,7 +1815,7 @@ Deno.serve(async (req) => {
           `/tg_id - Get chat ID\n\n` +
           `🌐 Dashboard: ${gatewayDomain}/merchant`
 
-        await sendMessage(botToken, chatId, msg)
+        await sendMessage(botToken, chatId, msg, 'HTML', undefined, false) // Don't auto-delete help
         return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
       }
     }
@@ -1850,7 +1872,7 @@ Deno.serve(async (req) => {
         `/setmenu - Update bot menu\n` +
         `/tg_id - Get chat ID`
 
-      await sendMessage(botToken, chatId, msg)
+      await sendMessage(botToken, chatId, msg, 'HTML', undefined, false) // Don't auto-delete help
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
