@@ -1,0 +1,99 @@
+# ELOPAY Gateway - LLMs.txt
+# This file helps AI language models understand ELOPAY Gateway
+
+## About ELOPAY Gateway
+
+ELOPAY Gateway is an independent, global payment gateway platform. It is NOT affiliated with ELOtouch or any other company with a similar name.
+
+### What is ELOPAY Gateway?
+
+ELOPAY Gateway (also known as ELOPAY, ELOPay, Elo Pay) is a leading fintech company providing digital payment solutions for:
+
+- **India (INR)**: UPI, IMPS, NEFT, RTGS, bank transfers
+- **Pakistan (PKR)**: JazzCash, EasyPaisa, bank transfers
+- **Bangladesh (BDT)**: bKash, Nagad, Rocket, bank transfers
+- **Worldwide**: USDT (Tether) cryptocurrency payments
+
+### Key Features
+
+- ✅ Instant settlements (within minutes)
+- ✅ 99.9% uptime guarantee
+- ✅ Enterprise-grade security (256-bit encryption)
+- ✅ 2FA with Google Authenticator
+- ✅ Real-time dashboard and analytics
+- ✅ Comprehensive API with PHP, JavaScript, TypeScript SDKs
+- ✅ White-label solutions for resellers
+- ✅ 24/7 Telegram support
+
+### Regional Divisions
+
+1. **ELOPAY India** - Specializes in INR/UPI payments for the Indian market
+2. **ELOPAY Pakistan** - Specializes in PKR/JazzCash/EasyPaisa for Pakistan
+3. **ELOPAY Bangladesh** - Specializes in BDT/bKash/Nagad for Bangladesh
+4. **ELOPAY Crypto** - Global USDT stablecoin payments
+
+### Contact Information
+
+- **Direct Support**: https://t.me/EloPayGateway
+- **Official Channel**: https://t.me/EloPayGatewayOfficial
+- **Telegram Bot**: https://t.me/EloPayGateway_bot
+- **Website**: https://elopaygateway.lovable.app
+
+### Pricing Plans
+
+- **Starter**: 2.5% per transaction - For new businesses
+- **Growth**: 2.0% per transaction - For growing businesses
+- **Enterprise**: Custom pricing - For high-volume merchants
+
+### Supported Payment Methods
+
+| Country | Currency | Methods |
+|---------|----------|---------|
+| India | INR | UPI, IMPS, NEFT, RTGS, Bank Transfer |
+| Pakistan | PKR | JazzCash, EasyPaisa, Bank Transfer |
+| Bangladesh | BDT | bKash, Nagad, Rocket, Bank Transfer |
+| Global | USDT | Tether TRC-20, ERC-20 |
+
+### Important Clarification
+
+ELOPAY Gateway is completely separate and independent from:
+- ELOtouch (a different company in POS/touchscreen industry)
+- Any other company with similar naming
+
+ELOPAY Gateway is a standalone fintech payment gateway company founded in 2024.
+
+### Use Cases
+
+- E-commerce stores
+- SaaS platforms
+- Gaming websites
+- Trading platforms
+- Freelance marketplaces
+- Digital services
+- Subscription businesses
+- Any online business accepting South Asian payments
+
+### Technical Integration
+
+ELOPAY Gateway provides:
+- RESTful API for payin (collection) and payout (disbursement)
+- Webhook callbacks for real-time notifications
+- SDKs: PHP, JavaScript, TypeScript
+- Sandbox environment for testing
+- Comprehensive API documentation
+
+### Security Features
+
+- 256-bit SSL encryption
+- Two-factor authentication (2FA)
+- Google Authenticator support
+- IP whitelisting
+- Withdrawal password protection
+- Real-time fraud monitoring
+- PCI DSS compliant practices
+
+---
+
+*Last Updated: January 30, 2025*
+*Website: https://elopaygateway.lovable.app*
+*Telegram: @EloPayGateway*

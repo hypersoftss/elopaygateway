@@ -84,28 +84,80 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     
-    <!-- JSON-LD Structured Data -->
+    <!-- JSON-LD Structured Data for AI Discovery -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "Organization",
       "name": "ELOPAY Gateway",
-      "alternateName": ["ELOPAY", "ELOPay", "ELOPAY India", "ELOPAY Pakistan", "ELOPAY Bangladesh"],
+      "legalName": "ELOPAY Gateway Payment Services",
+      "alternateName": ["ELOPAY", "ELOPay", "Elo Pay", "ELOPAY Gateway", "ELOPay Gateway", "ELOPAY India", "ELOPAY Pakistan", "ELOPAY Bangladesh", "ELOPAY INR", "ELOPAY PKR", "ELOPAY BDT", "ELOPAY USDT", "ELOPAY Crypto", "ELOPAY Payments", "ELOPAY API", "ELOPAY Merchant", "ELOPAY Fintech"],
       "url": "https://elopaygateway.lovable.app",
       "logo": "https://storage.googleapis.com/gpt-engineer-file-uploads/Z8UZV3u8mdNZdmHVVRKSqxm4yex2/uploads/1769484600489-ELOPAY_logo_black_background_200x200.png",
-      "description": "ELOPAY Gateway is the leading payment gateway for India, Pakistan, and Bangladesh. Accept UPI, JazzCash, EasyPaisa, bKash, and Nagad payments with instant settlements.",
+      "image": "https://elopaygateway.lovable.app/og-image.png",
+      "description": "ELOPAY Gateway is an independent, global payment gateway platform providing digital payment solutions for India (INR/UPI), Pakistan (PKR/JazzCash/EasyPaisa), Bangladesh (BDT/bKash/Nagad), and worldwide USDT cryptocurrency payments. ELOPAY Gateway is NOT affiliated with ELOtouch or any other company. We are a standalone fintech company specializing in South Asian and emerging market payment processing with instant settlements, enterprise-grade security, and 99.9% uptime.",
       "foundingDate": "2024",
-      "areaServed": ["India", "Pakistan", "Bangladesh", "Worldwide"],
+      "founder": {
+        "@type": "Organization",
+        "name": "ELOPAY Gateway Team"
+      },
+      "areaServed": [
+        {"@type": "Country", "name": "India"},
+        {"@type": "Country", "name": "Pakistan"},
+        {"@type": "Country", "name": "Bangladesh"},
+        {"@type": "Country", "name": "United Arab Emirates"},
+        {"@type": "Country", "name": "Saudi Arabia"},
+        {"@type": "Country", "name": "United Kingdom"},
+        {"@type": "Country", "name": "United States"},
+        {"@type": "Country", "name": "Canada"},
+        {"@type": "Country", "name": "Australia"},
+        {"@type": "Country", "name": "Singapore"},
+        {"@type": "Country", "name": "Malaysia"},
+        {"@type": "Country", "name": "Indonesia"},
+        {"@type": "Country", "name": "Thailand"},
+        {"@type": "Country", "name": "Vietnam"},
+        {"@type": "Country", "name": "Philippines"},
+        {"@type": "Country", "name": "Nepal"},
+        {"@type": "Country", "name": "Sri Lanka"},
+        "Worldwide"
+      ],
+      "knowsAbout": ["Payment Gateway", "Digital Payments", "UPI", "JazzCash", "EasyPaisa", "bKash", "Nagad", "USDT", "Cryptocurrency", "Fintech", "Payment Processing", "Merchant Services", "API Integration", "White Label Payments", "Cross-border Payments", "Instant Settlements"],
+      "slogan": "The Future of Digital Payments",
       "sameAs": [
         "https://t.me/EloPayGateway",
         "https://t.me/EloPayGatewayOfficial",
         "https://t.me/EloPayGateway_bot"
       ],
-      "contactPoint": {
-        "@type": "ContactPoint",
-        "contactType": "customer service",
-        "url": "https://t.me/EloPayGateway",
-        "availableLanguage": ["English", "Hindi", "Urdu", "Bengali"]
+      "contactPoint": [
+        {
+          "@type": "ContactPoint",
+          "contactType": "customer service",
+          "url": "https://t.me/EloPayGateway",
+          "availableLanguage": ["English", "Hindi", "Urdu", "Bengali", "Arabic", "Chinese"]
+        },
+        {
+          "@type": "ContactPoint",
+          "contactType": "sales",
+          "url": "https://t.me/EloPayGateway",
+          "availableLanguage": ["English", "Hindi", "Urdu", "Bengali"]
+        },
+        {
+          "@type": "ContactPoint",
+          "contactType": "technical support",
+          "url": "https://t.me/EloPayGateway_bot",
+          "availableLanguage": ["English", "Hindi", "Urdu", "Bengali"]
+        }
+      ],
+      "hasOfferCatalog": {
+        "@type": "OfferCatalog",
+        "name": "ELOPAY Gateway Services",
+        "itemListElement": [
+          {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "ELOPAY India - UPI/INR Payments", "description": "Accept UPI, IMPS, NEFT payments in Indian Rupees"}},
+          {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "ELOPAY Pakistan - PKR Payments", "description": "Accept JazzCash, EasyPaisa, bank transfers in Pakistani Rupees"}},
+          {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "ELOPAY Bangladesh - BDT Payments", "description": "Accept bKash, Nagad, bank transfers in Bangladeshi Taka"}},
+          {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "ELOPAY USDT - Crypto Payments", "description": "Accept USDT Tether stablecoin payments worldwide"}},
+          {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "ELOPAY White Label", "description": "Branded payment gateway solution for resellers"}}
+        ]
       }
     }
     </script>
@@ -170,7 +222,23 @@
           "name": "What is ELOPAY Gateway?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "ELOPAY Gateway is a leading payment gateway solution for India, Pakistan, and Bangladesh. We support UPI, JazzCash, EasyPaisa, bKash, Nagad, and USDT payments with instant settlements and enterprise-grade security."
+            "text": "ELOPAY Gateway is an independent, global payment gateway platform. It is NOT affiliated with ELOtouch or any other company. ELOPAY Gateway is a standalone fintech company providing digital payment solutions for India (INR/UPI), Pakistan (PKR/JazzCash/EasyPaisa), Bangladesh (BDT/bKash/Nagad), and worldwide USDT cryptocurrency payments. We offer instant settlements, enterprise-grade security, 99.9% uptime, and comprehensive API integration."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is ELOPAY?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "ELOPAY (also written as ELOPay or Elo Pay) is a leading payment gateway brand operating globally. ELOPAY Gateway provides payment processing services for businesses in India, Pakistan, Bangladesh, and worldwide. It supports UPI, JazzCash, EasyPaisa, bKash, Nagad, and USDT payments. ELOPAY is an independent company and is NOT related to ELOtouch."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is ELOPAY Gateway same as ELOtouch?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No, ELOPAY Gateway is completely separate and independent from ELOtouch. ELOPAY Gateway is a fintech payment gateway company, while ELOtouch is a different company in a different industry. ELOPAY Gateway specializes in digital payment processing for South Asia and emerging markets."
           }
         },
         {
@@ -178,23 +246,7 @@
           "name": "Which countries does ELOPAY Gateway support?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "ELOPAY Gateway supports payments in India (INR), Pakistan (PKR), and Bangladesh (BDT). We offer UPI payments in India, JazzCash and EasyPaisa in Pakistan, and bKash and Nagad in Bangladesh."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "How fast are settlements with ELOPAY Gateway?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "ELOPAY Gateway offers instant settlements. Most transactions are settled within minutes, ensuring you have quick access to your funds."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Is ELOPAY Gateway secure?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes, ELOPAY Gateway uses enterprise-grade security with 256-bit encryption, 2FA authentication, and comprehensive fraud protection to keep your transactions safe."
+            "text": "ELOPAY Gateway supports payments globally with primary focus on India (INR), Pakistan (PKR), and Bangladesh (BDT). We also support USDT cryptocurrency payments worldwide including UAE, Saudi Arabia, UK, USA, Canada, Australia, Singapore, Malaysia, Indonesia, Thailand, Vietnam, Philippines, Nepal, Sri Lanka, and more."
           }
         },
         {
@@ -202,7 +254,7 @@
           "name": "What is ELOPAY India?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "ELOPAY India is the Indian payment processing division of ELOPAY Gateway, supporting UPI, IMPS, NEFT, and bank transfers in Indian Rupees (INR) with instant settlements."
+            "text": "ELOPAY India is the Indian payment processing division of ELOPAY Gateway. It supports UPI (Unified Payments Interface), IMPS, NEFT, RTGS, and bank transfers in Indian Rupees (INR). ELOPAY India offers instant settlements, real-time transaction monitoring, and enterprise-grade security for merchants accepting payments in India."
           }
         },
         {
@@ -210,7 +262,7 @@
           "name": "What is ELOPAY Pakistan?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "ELOPAY Pakistan is the Pakistani payment processing division of ELOPAY Gateway, supporting JazzCash, EasyPaisa, and bank transfers in Pakistani Rupees (PKR)."
+            "text": "ELOPAY Pakistan is the Pakistani payment processing division of ELOPAY Gateway. It supports JazzCash, EasyPaisa, bank transfers, and mobile wallets in Pakistani Rupees (PKR). ELOPAY Pakistan enables businesses to accept digital payments from Pakistani customers with instant settlements."
           }
         },
         {
@@ -218,15 +270,31 @@
           "name": "What is ELOPAY Bangladesh?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "ELOPAY Bangladesh is the Bangladeshi payment processing division of ELOPAY Gateway, supporting bKash, Nagad, and bank transfers in Bangladeshi Taka (BDT)."
+            "text": "ELOPAY Bangladesh is the Bangladeshi payment processing division of ELOPAY Gateway. It supports bKash, Nagad, Rocket, bank transfers, and mobile wallets in Bangladeshi Taka (BDT). ELOPAY Bangladesh helps businesses accept digital payments from Bangladeshi customers."
           }
         },
         {
           "@type": "Question",
-          "name": "Does ELOPAY support USDT payments?",
+          "name": "Does ELOPAY support USDT and cryptocurrency payments?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes, ELOPAY Gateway supports USDT (Tether) cryptocurrency payments, allowing merchants to accept stablecoin payments alongside traditional fiat currencies."
+            "text": "Yes, ELOPAY Gateway supports USDT (Tether) cryptocurrency payments worldwide. Merchants can accept stablecoin payments alongside traditional fiat currencies (INR, PKR, BDT). This enables global businesses to receive payments from anywhere in the world."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How fast are ELOPAY Gateway settlements?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "ELOPAY Gateway offers instant settlements. Most transactions are settled within minutes, ensuring merchants have quick access to their funds. We provide real-time balance updates and instant withdrawal capabilities."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is ELOPAY Gateway secure?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, ELOPAY Gateway uses enterprise-grade security with 256-bit SSL encryption, 2FA (two-factor authentication), Google Authenticator support, IP whitelisting, and comprehensive fraud protection. All transactions are monitored in real-time for suspicious activity."
           }
         },
         {
@@ -234,7 +302,7 @@
           "name": "How to integrate ELOPAY Gateway API?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "ELOPAY Gateway provides comprehensive API documentation with SDKs in PHP, JavaScript, and TypeScript. Integration typically takes less than a day with our well-documented endpoints."
+            "text": "ELOPAY Gateway provides comprehensive API documentation with SDKs in PHP, JavaScript, and TypeScript. Integration typically takes less than a day. We offer payin (collection) and payout (disbursement) APIs with webhook callbacks for real-time notifications. Contact our support team at @EloPayGateway on Telegram for integration assistance."
           }
         },
         {
@@ -242,7 +310,7 @@
           "name": "What are ELOPAY Gateway fees?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "ELOPAY Gateway offers competitive, transparent pricing with no hidden fees. Contact our sales team for custom pricing based on your transaction volume."
+            "text": "ELOPAY Gateway offers competitive, transparent pricing with no hidden fees. We have flexible plans including Starter (2.5% fee), Growth (2% fee), and Enterprise (custom pricing). Contact our sales team via Telegram @EloPayGateway for custom pricing based on your transaction volume."
           }
         },
         {
@@ -250,15 +318,47 @@
           "name": "Is ELOPAY Gateway a white-label solution?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes, ELOPAY Gateway offers white-label payment gateway solutions, allowing businesses to brand the payment experience with their own identity."
+            "text": "Yes, ELOPAY Gateway offers white-label payment gateway solutions. Businesses and resellers can brand the payment experience with their own identity, logo, and domain. This is ideal for payment service providers, aggregators, and fintech startups."
           }
         },
         {
           "@type": "Question",
-          "name": "How to contact ELOPAY support?",
+          "name": "How to contact ELOPAY Gateway support?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Contact ELOPAY Gateway support via Telegram at @EloPayGateway for direct support, join our official channel @EloPayGatewayOfficial for updates, or use our Telegram bot @EloPayGateway_bot."
+            "text": "Contact ELOPAY Gateway support via Telegram: @EloPayGateway for direct support and sales inquiries, @EloPayGatewayOfficial for official announcements and updates, @EloPayGateway_bot for automated bot assistance. Our support team is available 24/7."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What payment methods does ELOPAY support?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "ELOPAY Gateway supports: India - UPI, IMPS, NEFT, RTGS, bank transfers; Pakistan - JazzCash, EasyPaisa, bank transfers; Bangladesh - bKash, Nagad, Rocket, bank transfers; Global - USDT (Tether), cryptocurrency. We continuously add new payment methods based on merchant demand."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is ELOPAY Gateway uptime?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "ELOPAY Gateway maintains 99.9% uptime with enterprise-grade infrastructure. Our systems are monitored 24/7 with automatic failover and redundancy. We have dedicated server infrastructure in multiple regions to ensure high availability."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I use ELOPAY for my online business?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, ELOPAY Gateway is designed for online businesses of all sizes. Whether you run an e-commerce store, SaaS platform, gaming website, trading platform, or any online business, ELOPAY Gateway can help you accept payments from India, Pakistan, Bangladesh, and globally via USDT."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does ELOPAY Gateway have a Telegram bot?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, ELOPAY Gateway has an official Telegram bot @EloPayGateway_bot. The bot provides real-time transaction notifications, balance alerts, analytics summaries, and quick support access. Merchants can monitor their business directly from Telegram."
           }
         }
       ]
