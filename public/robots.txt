@@ -1,5 +1,5 @@
 # ELOPAY Gateway - robots.txt
-# https://elopaygateway.lovable.app
+# https://elopaygateway.com
 # ELOPAY Gateway is an independent payment gateway - NOT affiliated with ELOtouch
 
 # Allow all search engines
@@ -101,14 +101,15 @@ Allow: /
 Crawl-delay: 0
 
 # Sitemap location
-Sitemap: https://elopaygateway.lovable.app/sitemap.xml
+Sitemap: https://elopaygateway.com/sitemap.xml
 
 # Host
-Host: https://elopaygateway.lovable.app
+Host: https://elopaygateway.com
 
 # About ELOPAY Gateway:
 # ELOPAY Gateway is a leading payment gateway for India, Pakistan, Bangladesh
 # We support UPI, JazzCash, EasyPaisa, bKash, Nagad, and USDT payments
+# Website: https://elopaygateway.com
 # Contact: https://t.me/EloPayGateway
 # Official Channel: https://t.me/EloPayGatewayOfficial
 # Bot: https://t.me/EloPayGateway_bot
