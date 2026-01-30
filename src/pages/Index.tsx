@@ -150,12 +150,11 @@ const Index = () => {
   };
 
   useDocumentMeta({
-    title: gatewayName ? `${gatewayName} - ${isEnglish ? 'Next-Gen Payment Gateway' : '新一代支付网关'}` : undefined,
-    description: gatewayName 
-      ? (isEnglish 
-          ? `${gatewayName} - The future of digital payments. Secure, instant, and borderless transactions.`
-          : `${gatewayName} - 数字支付的未来。安全、即时、无国界交易。`)
-      : undefined,
+    title: `ELOPAY Gateway - #1 Payment Gateway for India, Pakistan & Bangladesh | UPI, JazzCash, bKash`,
+    description: 'ELOPAY Gateway - Leading payment gateway for INR, PKR, BDT. Accept UPI, JazzCash, EasyPaisa, bKash, Nagad payments. Instant settlements, 99.9% uptime, enterprise security.',
+    ogTitle: 'ELOPAY Gateway - #1 Payment Gateway for India, Pakistan & Bangladesh',
+    ogDescription: 'ELOPAY Gateway - Leading payment gateway for INR, PKR, BDT. Accept UPI, JazzCash, EasyPaisa, bKash, Nagad payments with instant settlements.',
+    ogImage: 'https://elopaygateway.lovable.app/og-image.png',
   });
 
   const features = [
@@ -1142,42 +1141,131 @@ const Index = () => {
       </section>
 
       {/* Footer */}
-      <footer className="py-8 border-t border-border/40">
+      <footer className="py-12 border-t border-border/40">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              {logoUrl ? (
-                <img src={logoUrl} alt="Logo" className="h-8 w-8 rounded-lg object-contain" />
-              ) : (
-                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
-                  <Zap className="h-4 w-4 text-primary-foreground" />
-                </div>
-              )}
-              <span className="font-semibold">{gatewayName}</span>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+            {/* Brand */}
+            <div className="md:col-span-1">
+              <div className="flex items-center gap-3 mb-4">
+                {logoUrl ? (
+                  <img src={logoUrl} alt="ELOPAY Gateway Logo" className="h-10 w-10 rounded-lg object-contain" />
+                ) : (
+                  <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
+                    <Zap className="h-5 w-5 text-primary-foreground" />
+                  </div>
+                )}
+                <span className="font-bold text-lg">{gatewayName}</span>
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                {isEnglish 
+                  ? 'Leading payment gateway for India, Pakistan & Bangladesh. UPI, JazzCash, EasyPaisa, bKash, Nagad payments.'
+                  : '印度、巴基斯坦和孟加拉国领先的支付网关。UPI、JazzCash、EasyPaisa、bKash、Nagad支付。'}
+              </p>
             </div>
+
+            {/* Quick Links */}
+            <div>
+              <h4 className="font-semibold mb-4">{isEnglish ? 'Quick Links' : '快速链接'}</h4>
+              <ul className="space-y-2 text-sm">
+                <li>
+                  <a href="#features" onClick={(e) => { e.preventDefault(); document.querySelector('#features')?.scrollIntoView({ behavior: 'smooth' }); }} className="text-muted-foreground hover:text-foreground transition-colors">
+                    {isEnglish ? 'Features' : '特性'}
+                  </a>
+                </li>
+                <li>
+                  <a href="#pricing" onClick={(e) => { e.preventDefault(); document.querySelector('#pricing')?.scrollIntoView({ behavior: 'smooth' }); }} className="text-muted-foreground hover:text-foreground transition-colors">
+                    {isEnglish ? 'Pricing' : '定价'}
+                  </a>
+                </li>
+                <li>
+                  <Link to="/docs" className="text-muted-foreground hover:text-foreground transition-colors">
+                    {isEnglish ? 'API Documentation' : 'API文档'}
+                  </Link>
+                </li>
+                <li>
+                  <a href="#faq" onClick={(e) => { e.preventDefault(); document.querySelector('#faq')?.scrollIntoView({ behavior: 'smooth' }); }} className="text-muted-foreground hover:text-foreground transition-colors">
+                    {isEnglish ? 'FAQ' : '常见问题'}
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            {/* Legal */}
+            <div>
+              <h4 className="font-semibold mb-4">{isEnglish ? 'Legal' : '法律'}</h4>
+              <ul className="space-y-2 text-sm">
+                <li>
+                  <Link to="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">
+                    {isEnglish ? 'Privacy Policy' : '隐私政策'}
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/terms" className="text-muted-foreground hover:text-foreground transition-colors">
+                    {isEnglish ? 'Terms & Conditions' : '服务条款'}
+                  </Link>
+                </li>
+                <li>
+                  <a href="#contact" onClick={(e) => { e.preventDefault(); document.querySelector('#contact')?.scrollIntoView({ behavior: 'smooth' }); }} className="text-muted-foreground hover:text-foreground transition-colors">
+                    {isEnglish ? 'Contact Support' : '联系支持'}
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            {/* Connect - Telegram */}
+            <div>
+              <h4 className="font-semibold mb-4">{isEnglish ? 'Connect With Us' : '联系我们'}</h4>
+              <ul className="space-y-3 text-sm">
+                <li>
+                  <a 
+                    href="https://t.me/EloPayGateway" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    <Send className="h-4 w-4" />
+                    {isEnglish ? 'Direct Support' : '直接支持'}
+                  </a>
+                </li>
+                <li>
+                  <a 
+                    href="https://t.me/EloPayGatewayOfficial" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                    {isEnglish ? 'Official Channel' : '官方频道'}
+                  </a>
+                </li>
+                <li>
+                  <a 
+                    href="https://t.me/EloPayGateway_bot" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    <Zap className="h-4 w-4" />
+                    {isEnglish ? 'Telegram Bot' : 'Telegram 机器人'}
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Bottom bar */}
+          <div className="pt-8 border-t border-border/40 flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-sm text-muted-foreground">
               © {new Date().getFullYear()} {gatewayName}. {isEnglish ? 'All rights reserved.' : '保留所有权利。'}
             </p>
-            <div className="flex items-center gap-4">
-              <Link to="/privacy" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                {isEnglish ? 'Privacy Policy' : '隐私政策'}
-              </Link>
-              <Link to="/terms" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                {isEnglish ? 'Terms & Conditions' : '服务条款'}
-              </Link>
-              <Link to="/docs" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                {isEnglish ? 'Documentation' : '文档'}
-              </Link>
-              <a 
-                href="#contact" 
-                onClick={(e) => {
-                  e.preventDefault();
-                  document.querySelector('#contact')?.scrollIntoView({ behavior: 'smooth' });
-                }}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-              >
-                {isEnglish ? 'Support' : '支持'}
-              </a>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>🇮🇳 INR</span>
+              <span>•</span>
+              <span>🇵🇰 PKR</span>
+              <span>•</span>
+              <span>🇧🇩 BDT</span>
+              <span>•</span>
+              <span>💎 USDT</span>
             </div>
           </div>
         </div>
