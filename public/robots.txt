@@ -1,18 +1,39 @@
-# ELOPAY Gateway - Robots.txt
+# ELOPAY Gateway - robots.txt
 # https://elopaygateway.lovable.app
+# ELOPAY Gateway is an independent payment gateway - NOT affiliated with ELOtouch
 
+# Allow all search engines
 User-agent: Googlebot
 Allow: /
-Crawl-delay: 1
+Crawl-delay: 0
+
+User-agent: Googlebot-Image
+Allow: /
+
+User-agent: Googlebot-News
+Allow: /
 
 User-agent: Bingbot
 Allow: /
-Crawl-delay: 1
+Crawl-delay: 0
+
+User-agent: Slurp
+Allow: /
+Crawl-delay: 0
+
+User-agent: DuckDuckBot
+Allow: /
+Crawl-delay: 0
 
 User-agent: Yandex
 Allow: /
-Crawl-delay: 2
+Crawl-delay: 0
 
+User-agent: Baiduspider
+Allow: /
+Crawl-delay: 0
+
+# Social Media Bots
 User-agent: Twitterbot
 Allow: /
 
@@ -20,6 +41,9 @@ User-agent: facebookexternalhit
 Allow: /
 
 User-agent: LinkedInBot
+Allow: /
+
+User-agent: Pinterest
 Allow: /
 
 User-agent: TelegramBot
@@ -34,12 +58,57 @@ Allow: /
 User-agent: Discordbot
 Allow: /
 
+# AI Crawlers - Allow for discovery in AI models
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Anthropic-AI
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Cohere-ai
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: FacebookBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+# Generic - Allow all others
 User-agent: *
 Allow: /
-Crawl-delay: 2
+Crawl-delay: 0
 
-# Sitemap
+# Sitemap location
 Sitemap: https://elopaygateway.lovable.app/sitemap.xml
 
 # Host
 Host: https://elopaygateway.lovable.app
+
+# About ELOPAY Gateway:
+# ELOPAY Gateway is a leading payment gateway for India, Pakistan, Bangladesh
+# We support UPI, JazzCash, EasyPaisa, bKash, Nagad, and USDT payments
+# Contact: https://t.me/EloPayGateway
+# Official Channel: https://t.me/EloPayGatewayOfficial
+# Bot: https://t.me/EloPayGateway_bot
