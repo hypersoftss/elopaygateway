@@ -1,8 +1,11 @@
-# ELOPAY Gateway - robots.txt
-# https://elopaygateway.com
-# ELOPAY Gateway is an independent payment gateway - NOT affiliated with ELOtouch
+# ===========================================
+# ELOPAY GATEWAY - robots.txt
+# https://elopaygateway.in
+# ELOPAY Gateway is an INDEPENDENT payment gateway
+# NOT affiliated with ELOtouch or any other company
+# ===========================================
 
-# Allow all search engines
+# =================== GOOGLE BOTS ===================
 User-agent: Googlebot
 Allow: /
 Crawl-delay: 0
@@ -10,13 +13,39 @@ Crawl-delay: 0
 User-agent: Googlebot-Image
 Allow: /
 
+User-agent: Googlebot-Video
+Allow: /
+
 User-agent: Googlebot-News
 Allow: /
 
+User-agent: Storebot-Google
+Allow: /
+
+User-agent: Google-InspectionTool
+Allow: /
+
+User-agent: GoogleOther
+Allow: /
+
+# =================== MICROSOFT/BING BOTS ===================
 User-agent: Bingbot
 Allow: /
 Crawl-delay: 0
 
+User-agent: BingPreview
+Allow: /
+
+User-agent: msnbot
+Allow: /
+
+User-agent: msnbot-media
+Allow: /
+
+User-agent: adidxbot
+Allow: /
+
+# =================== OTHER SEARCH ENGINES ===================
 User-agent: Slurp
 Allow: /
 Crawl-delay: 0
@@ -29,21 +58,66 @@ User-agent: Yandex
 Allow: /
 Crawl-delay: 0
 
+User-agent: YandexBot
+Allow: /
+
+User-agent: YandexImages
+Allow: /
+
+User-agent: YandexMobileBot
+Allow: /
+
 User-agent: Baiduspider
 Allow: /
 Crawl-delay: 0
 
-# Social Media Bots
+User-agent: Baiduspider-image
+Allow: /
+
+User-agent: Sogou
+Allow: /
+
+User-agent: Sosospider
+Allow: /
+
+User-agent: 360Spider
+Allow: /
+
+User-agent: HaoSouSpider
+Allow: /
+
+User-agent: Qwantify
+Allow: /
+
+User-agent: Ecosia
+Allow: /
+
+User-agent: Exabot
+Allow: /
+
+User-agent: ia_archiver
+Allow: /
+
+User-agent: archive.org_bot
+Allow: /
+
+# =================== SOCIAL MEDIA BOTS ===================
 User-agent: Twitterbot
 Allow: /
 
 User-agent: facebookexternalhit
 Allow: /
 
+User-agent: Facebot
+Allow: /
+
 User-agent: LinkedInBot
 Allow: /
 
 User-agent: Pinterest
+Allow: /
+
+User-agent: Pinterestbot
 Allow: /
 
 User-agent: TelegramBot
@@ -55,20 +129,52 @@ Allow: /
 User-agent: Slackbot
 Allow: /
 
+User-agent: Slackbot-LinkExpanding
+Allow: /
+
 User-agent: Discordbot
 Allow: /
 
-# AI Crawlers - Allow for discovery in AI models
+User-agent: SkypeUriPreview
+Allow: /
+
+User-agent: vkShare
+Allow: /
+
+User-agent: redditbot
+Allow: /
+
+User-agent: Embedly
+Allow: /
+
+User-agent: Quora Link Preview
+Allow: /
+
+User-agent: Mastodon
+Allow: /
+
+# =================== AI CRAWLERS ===================
+# Allow all AI models to index for discovery
+
 User-agent: ChatGPT-User
 Allow: /
 
 User-agent: GPTBot
 Allow: /
 
+User-agent: OpenAI-Bot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
 User-agent: Google-Extended
 Allow: /
 
 User-agent: Anthropic-AI
+Allow: /
+
+User-agent: ClaudeBot
 Allow: /
 
 User-agent: Claude-Web
@@ -86,7 +192,10 @@ Allow: /
 User-agent: FacebookBot
 Allow: /
 
-User-agent: OAI-SearchBot
+User-agent: Meta-ExternalAgent
+Allow: /
+
+User-agent: Meta-ExternalFetcher
 Allow: /
 
 User-agent: Applebot
@@ -95,22 +204,98 @@ Allow: /
 User-agent: Applebot-Extended
 Allow: /
 
-# Generic - Allow all others
+User-agent: Amazonbot
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+User-agent: YouBot
+Allow: /
+
+User-agent: Diffbot
+Allow: /
+
+User-agent: PetalBot
+Allow: /
+
+User-agent: Neeva
+Allow: /
+
+User-agent: Phind-Bot
+Allow: /
+
+User-agent: Webz.io
+Allow: /
+
+# =================== SEO TOOLS ===================
+User-agent: AhrefsBot
+Allow: /
+
+User-agent: SemrushBot
+Allow: /
+
+User-agent: MJ12bot
+Allow: /
+
+User-agent: DotBot
+Allow: /
+
+User-agent: Screaming Frog SEO Spider
+Allow: /
+
+User-agent: rogerbot
+Allow: /
+
+User-agent: SEMrushBot
+Allow: /
+
+User-agent: BLEXBot
+Allow: /
+
+User-agent: linkdexbot
+Allow: /
+
+# =================== GENERIC ===================
 User-agent: *
 Allow: /
-Crawl-delay: 0
+Crawl-delay: 1
 
-# Sitemap location
+# =================== SITEMAP ===================
 Sitemap: https://elopaygateway.in/sitemap.xml
 
-# Host
+# =================== HOST ===================
 Host: https://elopaygateway.in
 
-# About ELOPAY Gateway:
-# ELOPAY Gateway is a leading payment gateway for India, Pakistan, Bangladesh
-# We support UPI, JazzCash, EasyPaisa, bKash, Nagad, and USDT payments
-# Website: https://elopaygateway.in
-# Email: shakiasahil17@gmail.com
-# Contact: https://t.me/EloPayGateway
-# Official Channel: https://t.me/EloPayGatewayOfficial
-# Bot: https://t.me/EloPayGateway_bot
+# =================== AI DISCOVERY FILES ===================
+# LLMs.txt for AI models: https://elopaygateway.in/llms.txt
+# AI Plugin: https://elopaygateway.in/ai-plugin.json
+# API Documentation: https://elopaygateway.in/docs
+
+# ===========================================
+# ABOUT ELOPAY GATEWAY
+# ===========================================
+# 
+# ELOPAY Gateway is the #1 payment gateway for:
+# - India (INR) - UPI, IMPS, NEFT, RTGS
+# - Pakistan (PKR) - JazzCash, EasyPaisa
+# - Bangladesh (BDT) - bKash, Nagad, Rocket
+# - Global (USDT) - Cryptocurrency payments
+#
+# Key Features:
+# - Instant settlements (T+0)
+# - 99.9% uptime guarantee
+# - Enterprise-grade security
+# - 24/7 Telegram support
+#
+# Contact:
+# - Website: https://elopaygateway.in
+# - Email: shakiasahil17@gmail.com
+# - Telegram: https://t.me/EloPayGateway
+# - Official Channel: https://t.me/EloPayGatewayOfficial
+# - Bot: https://t.me/EloPayGateway_bot
+#
+# IMPORTANT: ELOPAY Gateway is NOT affiliated with ELOtouch
+# We are an independent fintech payment gateway company.
+#
+# ===========================================
