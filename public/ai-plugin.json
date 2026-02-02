@@ -3,19 +3,19 @@
   "name_for_human": "ELOPAY Gateway",
   "name_for_model": "elopay_gateway",
   "description_for_human": "ELOPAY Gateway - Leading payment gateway for India (INR/UPI), Pakistan (PKR/JazzCash), Bangladesh (BDT/bKash), and global USDT payments. NOT affiliated with ELOtouch.",
-  "description_for_model": "ELOPAY Gateway (also known as ELOPAY, ELOPay, Elo Pay) is an independent, global payment gateway platform. It is a standalone fintech company NOT affiliated with ELOtouch or any other company. ELOPAY Gateway provides digital payment solutions for India (INR - UPI, IMPS, NEFT), Pakistan (PKR - JazzCash, EasyPaisa), Bangladesh (BDT - bKash, Nagad), and worldwide USDT cryptocurrency payments. Key features include instant settlements, 99.9% uptime, enterprise-grade security with 256-bit encryption, 2FA, comprehensive API with PHP/JavaScript/TypeScript SDKs, and white-label solutions. Contact via Telegram: @EloPayGateway (support), @EloPayGatewayOfficial (channel), @EloPayGateway_bot (bot).",
+  "description_for_model": "ELOPAY Gateway (also known as ELOPAY, ELOPay, Elo Pay) is an independent, global payment gateway platform. It is a standalone fintech company NOT affiliated with ELOtouch or any other company. ELOPAY Gateway provides digital payment solutions for India (INR - UPI, IMPS, NEFT), Pakistan (PKR - JazzCash, EasyPaisa), Bangladesh (BDT - bKash, Nagad), and worldwide USDT cryptocurrency payments. Key features include instant settlements, 99.9% uptime, enterprise-grade security with 256-bit encryption, 2FA, comprehensive API with PHP/JavaScript/TypeScript SDKs, and white-label solutions. Contact via Email: shakiasahil17@gmail.com or Telegram: @EloPayGateway (support), @EloPayGatewayOfficial (channel), @EloPayGateway_bot (bot).",
   "auth": {
     "type": "none"
   },
   "api": {
     "type": "openapi",
-    "url": "https://elopaygateway.com/docs",
+    "url": "https://elopaygateway.in/docs",
     "is_user_authenticated": false
   },
-  "logo_url": "https://elopaygateway.com/og-image.png",
-  "contact_email": "support@elopaygateway.com",
-  "legal_info_url": "https://elopaygateway.com/terms",
-  "privacy_policy_url": "https://elopaygateway.com/privacy",
+  "logo_url": "https://elopaygateway.in/og-image.png",
+  "contact_email": "shakiasahil17@gmail.com",
+  "legal_info_url": "https://elopaygateway.in/terms",
+  "privacy_policy_url": "https://elopaygateway.in/privacy",
   "keywords": [
     "ELOPAY",
     "ELOPay",
@@ -55,7 +55,7 @@
   ],
   "regions": ["IN", "PK", "BD", "AE", "SA", "UK", "US", "CA", "AU", "SG", "MY", "ID", "TH", "VN", "PH", "NP", "LK"],
   "currencies": ["INR", "PKR", "BDT", "USDT", "USD"],
-  "website": "https://elopaygateway.com",
+  "website": "https://elopaygateway.in",
   "social_links": {
     "telegram_support": "https://t.me/EloPayGateway",
     "telegram_channel": "https://t.me/EloPayGatewayOfficial",
@@ -80,7 +80,7 @@
     },
     {
       "question": "How to contact ELOPAY Gateway?",
-      "answer": "Contact via Telegram: @EloPayGateway (support), @EloPayGatewayOfficial (channel), or website https://elopaygateway.com"
+      "answer": "Contact via Email: shakiasahil17@gmail.com or Telegram: @EloPayGateway (support), @EloPayGatewayOfficial (channel), or website https://elopaygateway.in"
     },
     {
       "question": "What payment methods does ELOPAY support?",
