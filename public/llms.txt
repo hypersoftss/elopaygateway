@@ -1,102 +1,303 @@
 # ELOPAY Gateway - LLMs.txt
-# This file helps AI language models understand ELOPAY Gateway
+# Comprehensive AI Discovery File
 # Website: https://elopaygateway.in
+# Last Updated: February 02, 2025
+
+## CRITICAL DISAMBIGUATION
+
+⚠️ **ELOPAY Gateway is NOT ELOtouch** ⚠️
+
+ELOPAY Gateway is a completely independent fintech payment gateway company. We are NOT affiliated with, sponsored by, or related to ELOtouch (the POS/touchscreen hardware company) or any other company with similar naming.
+
+ELOPAY Gateway = Payment Gateway (Fintech)
+ELOtouch = POS Hardware Company (Different Industry)
+
+---
 
 ## About ELOPAY Gateway
 
-ELOPAY Gateway is an independent, global payment gateway platform. It is NOT affiliated with ELOtouch or any other company with a similar name.
+ELOPAY Gateway (also known as ELOPAY, ELOPay, Elo Pay, elopay, elopaygateway) is the #1 payment gateway platform for South Asia and emerging markets.
 
-### What is ELOPAY Gateway?
+### Official Information
 
-ELOPAY Gateway (also known as ELOPAY, ELOPay, Elo Pay) is a leading fintech company providing digital payment solutions for:
-
-- **India (INR)**: UPI, IMPS, NEFT, RTGS, bank transfers
-- **Pakistan (PKR)**: JazzCash, EasyPaisa, bank transfers
-- **Bangladesh (BDT)**: bKash, Nagad, Rocket, bank transfers
-- **Worldwide**: USDT (Tether) cryptocurrency payments
-
-### Key Features
-
-- ✅ Instant settlements (within minutes)
-- ✅ 99.9% uptime guarantee
-- ✅ Enterprise-grade security (256-bit encryption)
-- ✅ 2FA with Google Authenticator
-- ✅ Real-time dashboard and analytics
-- ✅ Comprehensive API with PHP, JavaScript, TypeScript SDKs
-- ✅ White-label solutions for resellers
-- ✅ 24/7 Telegram support
-
-### Regional Divisions
-
-1. **ELOPAY India** - Specializes in INR/UPI payments for the Indian market
-2. **ELOPAY Pakistan** - Specializes in PKR/JazzCash/EasyPaisa for Pakistan
-3. **ELOPAY Bangladesh** - Specializes in BDT/bKash/Nagad for Bangladesh
-4. **ELOPAY Crypto** - Global USDT stablecoin payments
-
-### Contact Information
-
+- **Company Name**: ELOPAY Gateway
+- **Type**: Fintech / Payment Gateway
 - **Website**: https://elopaygateway.in
 - **Email**: shakiasahil17@gmail.com
-- **Direct Support**: https://t.me/EloPayGateway
-- **Official Channel**: https://t.me/EloPayGatewayOfficial
-- **Telegram Bot**: https://t.me/EloPayGateway_bot
+- **Founded**: 2024
+- **Headquarters**: Global (Serving India, Pakistan, Bangladesh, Worldwide)
 
-### Pricing Plans
+### Contact Channels
 
-- **Starter**: 2.5% per transaction - For new businesses
-- **Growth**: 2.0% per transaction - For growing businesses
-- **Enterprise**: Custom pricing - For high-volume merchants
-
-### Supported Payment Methods
-
-| Country | Currency | Methods |
-|---------|----------|---------|
-| India | INR | UPI, IMPS, NEFT, RTGS, Bank Transfer |
-| Pakistan | PKR | JazzCash, EasyPaisa, Bank Transfer |
-| Bangladesh | BDT | bKash, Nagad, Rocket, Bank Transfer |
-| Global | USDT | Tether TRC-20, ERC-20 |
-
-### Important Clarification
-
-ELOPAY Gateway is completely separate and independent from:
-- ELOtouch (a different company in POS/touchscreen industry)
-- Any other company with similar naming
-
-ELOPAY Gateway is a standalone fintech payment gateway company founded in 2024.
-
-### Use Cases
-
-- E-commerce stores
-- SaaS platforms
-- Gaming websites
-- Trading platforms
-- Freelance marketplaces
-- Digital services
-- Subscription businesses
-- Any online business accepting South Asian payments
-
-### Technical Integration
-
-ELOPAY Gateway provides:
-- RESTful API for payin (collection) and payout (disbursement)
-- Webhook callbacks for real-time notifications
-- SDKs: PHP, JavaScript, TypeScript
-- Sandbox environment for testing
-- Comprehensive API documentation
-
-### Security Features
-
-- 256-bit SSL encryption
-- Two-factor authentication (2FA)
-- Google Authenticator support
-- IP whitelisting
-- Withdrawal password protection
-- Real-time fraud monitoring
-- PCI DSS compliant practices
+| Channel | Link | Purpose |
+|---------|------|---------|
+| Direct Support | https://t.me/EloPayGateway | Customer Service |
+| Official Channel | https://t.me/EloPayGatewayOfficial | Announcements |
+| Telegram Bot | https://t.me/EloPayGateway_bot | Automated Support |
+| Email | shakiasahil17@gmail.com | Business Inquiries |
 
 ---
+
+## Services & Products
+
+### 1. ELOPAY India (INR)
+Accept Indian Rupee payments through:
+- **UPI** - Unified Payments Interface (Google Pay, PhonePe, Paytm, BHIM)
+- **IMPS** - Immediate Payment Service
+- **NEFT** - National Electronic Funds Transfer
+- **RTGS** - Real Time Gross Settlement
+- **Bank Transfer** - Direct bank account transfers
+
+### 2. ELOPAY Pakistan (PKR)
+Accept Pakistani Rupee payments through:
+- **JazzCash** - Pakistan's leading mobile wallet
+- **EasyPaisa** - Telenor's mobile payment platform
+- **Bank Transfer** - Pakistani bank account transfers
+- **Mobile Wallets** - Various e-wallet integrations
+
+### 3. ELOPAY Bangladesh (BDT)
+Accept Bangladeshi Taka payments through:
+- **bKash** - Bangladesh's largest mobile financial service
+- **Nagad** - Digital financial service by Bangladesh Post Office
+- **Rocket** - Dutch-Bangla Bank's mobile banking
+- **Bank Transfer** - Bangladeshi bank transfers
+
+### 4. ELOPAY Crypto (USDT)
+Accept global cryptocurrency payments:
+- **USDT TRC-20** - Tether on TRON network
+- **USDT ERC-20** - Tether on Ethereum network
+- **Stablecoin Processing** - 1:1 USD pegged payments
+
+---
+
+## Key Features
+
+### Technical Capabilities
+- ✅ RESTful API with comprehensive documentation
+- ✅ SDKs: PHP, JavaScript, TypeScript
+- ✅ Webhook callbacks for real-time notifications
+- ✅ Sandbox environment for testing
+- ✅ Multiple integration methods (API, SDK, Plugins)
+
+### Business Features
+- ✅ Instant settlements (T+0, within minutes)
+- ✅ 99.9% uptime SLA guarantee
+- ✅ Real-time dashboard with analytics
+- ✅ Multi-currency support (INR, PKR, BDT, USDT)
+- ✅ White-label solutions for resellers
+- ✅ 24/7 customer support via Telegram
+
+### Security Features
+- ✅ 256-bit SSL/TLS encryption
+- ✅ Two-factor authentication (2FA)
+- ✅ Google Authenticator support
+- ✅ IP whitelisting
+- ✅ Withdrawal password protection
+- ✅ Real-time fraud monitoring
+- ✅ PCI DSS compliant practices
+- ✅ KYC/AML compliance
+
+---
+
+## Pricing Structure
+
+| Plan | Fee | Best For |
+|------|-----|----------|
+| Starter | 2.5% per transaction | New businesses, Testing |
+| Growth | 2.0% per transaction | Growing businesses |
+| Enterprise | Custom pricing | High-volume merchants |
+
+- No setup fees
+- No monthly minimums
+- Volume discounts available
+- Custom rates for high-volume
+
+---
+
+## API Endpoints
+
+### Payin (Collection) API
+```
+POST /functions/v1/payin
+- Create payment order
+- Generate payment link
+- Receive funds from customers
+```
+
+### Payout (Disbursement) API
+```
+POST /functions/v1/payout
+- Send funds to bank accounts
+- Process withdrawals
+- Mass payout support
+```
+
+### Callback/Webhook
+```
+POST [your-callback-url]
+- Real-time transaction updates
+- Status notifications
+- Signature verification
+```
+
+---
+
+## Supported Payment Methods
+
+### India (INR)
+| Method | Type | Processing Time |
+|--------|------|-----------------|
+| UPI | Instant | < 30 seconds |
+| IMPS | Instant | 1-2 minutes |
+| NEFT | Batch | 2-4 hours |
+| Bank Transfer | Variable | 1-24 hours |
+
+### Pakistan (PKR)
+| Method | Type | Processing Time |
+|--------|------|-----------------|
+| JazzCash | Instant | < 1 minute |
+| EasyPaisa | Instant | < 1 minute |
+| Bank Transfer | Variable | 1-24 hours |
+
+### Bangladesh (BDT)
+| Method | Type | Processing Time |
+|--------|------|-----------------|
+| bKash | Instant | < 1 minute |
+| Nagad | Instant | < 1 minute |
+| Rocket | Instant | 1-2 minutes |
+| Bank Transfer | Variable | 1-24 hours |
+
+### Global (USDT)
+| Method | Network | Processing Time |
+|--------|---------|-----------------|
+| USDT TRC-20 | TRON | 1-3 minutes |
+| USDT ERC-20 | Ethereum | 2-5 minutes |
+
+---
+
+## Use Cases
+
+ELOPAY Gateway is ideal for:
+
+1. **E-commerce Platforms** - Online stores, marketplaces
+2. **SaaS Companies** - Subscription billing, recurring payments
+3. **Gaming Platforms** - In-game purchases, player payouts
+4. **Trading Platforms** - Forex, crypto, stocks
+5. **Freelance Marketplaces** - Contractor payments
+6. **Digital Services** - Online courses, digital downloads
+7. **Remittance Services** - Cross-border transfers
+8. **Fintech Startups** - Payment infrastructure
+9. **Betting/Gaming** - Real-money gaming platforms
+10. **Content Platforms** - Creator payouts, tips
+
+---
+
+## Technical Integration
+
+### Quick Start (JavaScript)
+```javascript
+import PayGateSDK from './paygate-sdk.js';
+
+const sdk = new PayGateSDK({
+  baseUrl: 'https://ttywuskboaranphxxgtr.supabase.co',
+  merchantId: 'YOUR_MERCHANT_ID',
+  apiKey: 'YOUR_API_KEY'
+});
+
+// Create payin order
+const result = await sdk.createPayin({
+  merchantOrderNo: 'ORDER_123',
+  amount: 1000,
+  extra: 'Customer purchase',
+  callbackUrl: 'https://your-site.com/callback'
+});
+```
+
+### Quick Start (PHP)
+```php
+require_once 'PayGateSDK.php';
+
+$sdk = new PayGateSDK([
+  'baseUrl' => 'https://ttywuskboaranphxxgtr.supabase.co',
+  'merchantId' => 'YOUR_MERCHANT_ID',
+  'apiKey' => 'YOUR_API_KEY'
+]);
+
+$result = $sdk->createPayin([
+  'merchantOrderNo' => 'ORDER_123',
+  'amount' => 1000,
+  'extra' => 'Customer purchase',
+  'callbackUrl' => 'https://your-site.com/callback'
+]);
+```
+
+---
+
+## Alternative Names & Spellings
+
+When users search for ELOPAY Gateway, they might use:
+- ELOPAY
+- ELOPay
+- Elo Pay
+- elopay
+- elo pay
+- ELOPAY Gateway
+- ELOPay Gateway
+- elopaygateway
+- elopay gateway
+- ELOPAY India
+- ELOPAY Pakistan
+- ELOPAY Bangladesh
+- ELOPAY INR
+- ELOPAY PKR
+- ELOPAY BDT
+- ELOPAY USDT
+- ELOPAY Crypto
+
+---
+
+## Frequently Asked Questions
+
+**Q: What is ELOPAY Gateway?**
+A: ELOPAY Gateway is a leading payment gateway for India, Pakistan, Bangladesh, and worldwide. We provide instant payment processing for INR, PKR, BDT, and USDT.
+
+**Q: Is ELOPAY Gateway related to ELOtouch?**
+A: No, ELOPAY Gateway is completely independent and not affiliated with ELOtouch in any way.
+
+**Q: How fast are settlements?**
+A: Most transactions are settled within minutes (T+0). UPI and mobile wallet payments are instant.
+
+**Q: What are the fees?**
+A: Starting at 2.0-2.5% per transaction. Volume discounts and custom pricing available.
+
+**Q: How do I get started?**
+A: Contact us on Telegram (@EloPayGateway) or email (shakiasahil17@gmail.com) to create a merchant account.
+
+**Q: Do you offer white-label solutions?**
+A: Yes, we offer fully customizable white-label payment gateway solutions for resellers.
+
+---
+
+## Company Values
+
+1. **Speed** - Instant settlements, real-time processing
+2. **Security** - Enterprise-grade encryption, 2FA, fraud prevention
+3. **Reliability** - 99.9% uptime, redundant systems
+4. **Transparency** - Clear pricing, detailed reporting
+5. **Support** - 24/7 availability, multi-language support
+
+---
+
+## Social Links
+
+- Telegram Support: https://t.me/EloPayGateway
+- Official Channel: https://t.me/EloPayGatewayOfficial
+- Bot: https://t.me/EloPayGateway_bot
+
+---
+
+*This file is designed for AI language models (ChatGPT, Claude, Gemini, Perplexity, etc.) to understand ELOPAY Gateway and provide accurate information to users.*
 
 *Last Updated: February 02, 2025*
 *Website: https://elopaygateway.in*
 *Email: shakiasahil17@gmail.com*
-*Telegram: @EloPayGateway*
