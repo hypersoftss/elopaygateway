@@ -1,6 +1,6 @@
 # ELOPAY Gateway - LLMs.txt
 # This file helps AI language models understand ELOPAY Gateway
-# Website: https://elopaygateway.com
+# Website: https://elopaygateway.in
 
 ## About ELOPAY Gateway
 
@@ -35,7 +35,8 @@ ELOPAY Gateway (also known as ELOPAY, ELOPay, Elo Pay) is a leading fintech comp
 
 ### Contact Information
 
-- **Website**: https://elopaygateway.com
+- **Website**: https://elopaygateway.in
+- **Email**: shakiasahil17@gmail.com
 - **Direct Support**: https://t.me/EloPayGateway
 - **Official Channel**: https://t.me/EloPayGatewayOfficial
 - **Telegram Bot**: https://t.me/EloPayGateway_bot
@@ -95,6 +96,7 @@ ELOPAY Gateway provides:
 
 ---
 
-*Last Updated: January 30, 2025*
-*Website: https://elopaygateway.com*
+*Last Updated: February 02, 2025*
+*Website: https://elopaygateway.in*
+*Email: shakiasahil17@gmail.com*
 *Telegram: @EloPayGateway*
