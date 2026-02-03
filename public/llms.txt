@@ -199,7 +199,7 @@ ELOPAY Gateway is ideal for:
 import PayGateSDK from './paygate-sdk.js';
 
 const sdk = new PayGateSDK({
-  baseUrl: 'https://ttywuskboaranphxxgtr.supabase.co',
+  baseUrl: 'https://elopaygateway.in',
   merchantId: 'YOUR_MERCHANT_ID',
   apiKey: 'YOUR_API_KEY'
 });
@@ -218,7 +218,7 @@ const result = await sdk.createPayin({
 require_once 'PayGateSDK.php';
 
 $sdk = new PayGateSDK([
-  'baseUrl' => 'https://ttywuskboaranphxxgtr.supabase.co',
+  'baseUrl' => 'https://elopaygateway.in',
   'merchantId' => 'YOUR_MERCHANT_ID',
   'apiKey' => 'YOUR_API_KEY'
 ]);
