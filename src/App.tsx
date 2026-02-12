@@ -8,6 +8,7 @@ import { useAuthStore, initializeAuth } from "@/lib/auth";
 import { Require2FA } from "@/components/Require2FA";
 import { useGatewaySettings } from "@/hooks/useGatewaySettings";
 import { useFavicon } from "@/hooks/useFavicon";
+import { Analytics } from "@vercel/analytics/react";
 
 // Pages
 import Index from "./pages/Index";
@@ -152,6 +153,7 @@ const App = () => (
       <BrowserRouter>
         <AppRoutes />
       </BrowserRouter>
+      <Analytics />
     </TooltipProvider>
   </QueryClientProvider>
 );
