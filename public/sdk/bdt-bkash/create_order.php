@@ -15,22 +15,18 @@ $config = include __DIR__ . '/config.php';
 // 1. Signature Generation (ASCII-sorted MD5)
 // ============================================
 function generateEloPaySignature($params, $secretKey) {
-    // Remove empty values and 'sign' field
     $filtered = array_filter($params, function($v, $k) {
         return $k !== 'sign' && $v !== '' && $v !== null;
     }, ARRAY_FILTER_USE_BOTH);
 
-    // Sort by key (ASCII order)
     ksort($filtered);
 
-    // Build query string: key1=value1&key2=value2&...&key=SECRET
     $parts = [];
     foreach ($filtered as $k => $v) {
         $parts[] = $k . '=' . $v;
     }
     $signStr = implode('&', $parts) . '&key=' . $secretKey;
 
-    // MD5 + uppercase
     return strtoupper(md5($signStr));
 }
 
@@ -48,13 +44,12 @@ $orderNo = isset($_GET['order_id']) ? $_GET['order_id'] : 'ORD_' . date('Ymd') .
 
 $params = [
     'app_id'            => $config['APP_ID'],
-    'amount'            => (string)((int)((float)$amount * 100)), // Convert to cents
+    'amount'            => (string)((int)((float)$amount * 100)),
     'merchant_order_no' => $orderNo,
     'trade_type'        => $config['TRADE_TYPE'],
     'notify_url'        => $config['NOTIFY_URL'],
 ];
 
-// Generate signature
 $params['sign'] = generateEloPaySignature($params, $config['API_KEY']);
 
 // ============================================
@@ -70,32 +65,46 @@ curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
 curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
 curl_setopt($ch, CURLOPT_TIMEOUT, 25);
+curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
 $response = curl_exec($ch);
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 $curlErr  = curl_error($ch);
 curl_close($ch);
 
 // Log
-file_put_contents($config['LOG_FILE'], date('c') . " | CREATE_ORDER | HTTP={$httpCode} | {$response}\n", FILE_APPEND);
+$logDir = dirname($config['LOG_FILE']);
+if (!is_dir($logDir) && $logDir !== '.' && $logDir !== '') {
+    @mkdir($logDir, 0755, true);
+}
+@file_put_contents($config['LOG_FILE'], date('c') . " | CREATE_ORDER | HTTP={$httpCode} | REQ=" . json_encode($params) . " | RES={$response}\n", FILE_APPEND);
 
 if ($curlErr) {
     echo json_encode(['status' => false, 'message' => 'Gateway error', 'debug' => $curlErr]);
     exit;
 }
 
+if (empty($response)) {
+    echo json_encode(['status' => false, 'message' => 'Empty response from gateway', 'debug' => "HTTP {$httpCode} - No response body"]);
+    exit;
+}
+
 $result = json_decode($response, true);
+
+if ($result === null) {
+    echo json_encode(['status' => false, 'message' => 'Invalid JSON response', 'debug' => substr($response, 0, 500)]);
+    exit;
+}
 
 // ============================================
 // 4. Handle Response
 // ============================================
 if (isset($result['status']) && $result['status'] == 1 && !empty($result['payment_url'])) {
-    // Success - redirect user to payment page
     header('Location: ' . $result['payment_url']);
     exit;
 } else {
     echo json_encode([
         'status'  => false,
-        'message' => $result['message'] ?? 'Failed to create order',
+        'message' => $result['message'] ?? $result['msg'] ?? 'Failed to create order',
         'debug'   => $result
     ]);
 }
