@@ -95,52 +95,18 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders })
   }
 
-  // Handle GET requests - show branded API page
+  // Handle GET requests - return JSON API info
   if (req.method === 'GET') {
-    const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>ELOPAY Gateway - API</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0a0a1a 0%,#0d1033 50%,#0a0a1a 100%);font-family:'Segoe UI',system-ui,sans-serif;color:#fff}
-.bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(99,102,241,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(99,102,241,.03) 1px,transparent 1px);background-size:50px 50px}
-.container{text-align:center;position:relative;z-index:2;max-width:500px;padding:40px 30px}
-.shield{width:64px;height:64px;margin:0 auto 24px}
-.shield svg{width:100%;height:100%}
-.badge{display:inline-block;padding:4px 14px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:20px}
-.badge.live{background:rgba(34,197,94,.15);color:#4ade80;border:1px solid rgba(34,197,94,.2)}
-h1{font-size:22px;font-weight:700;margin-bottom:8px;background:linear-gradient(135deg,#e2e8f0,#fff);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-p.sub{color:#64748b;font-size:14px;margin-bottom:32px;line-height:1.6}
-.info-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:20px;text-align:left;margin-bottom:16px}
-.info-card h3{font-size:13px;color:#94a3b8;margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px}
-.param{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px}
-.param:last-child{border:none}
-.param .k{color:#818cf8}.param .v{color:#64748b}
-.method-badge{display:inline-block;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:700;background:rgba(99,102,241,.15);color:#818cf8;border:1px solid rgba(99,102,241,.2);margin-bottom:20px}
-.footer{margin-top:24px;font-size:11px;color:#334155}
-</style></head><body>
-<div class="bg-grid"></div>
-<div class="container">
-  <div class="shield"><svg viewBox="0 0 24 24" fill="none" stroke="url(#g)" stroke-width="1.5"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#818cf8"/><stop offset="100%" stop-color="#06b6d4"/></linearGradient></defs><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4" stroke="#4ade80" stroke-width="2"/></svg></div>
-  <span class="badge live">● API Online</span>
-  <h1>ELOPAY Gateway</h1>
-  <p class="sub">Payment API is running and ready to accept requests.</p>
-  <span class="method-badge">POST</span>
-  <div class="info-card">
-    <h3>Required Parameters</h3>
-    <div class="param"><span class="k">merchant_id</span><span class="v">string</span></div>
-    <div class="param"><span class="k">amount</span><span class="v">number</span></div>
-    <div class="param"><span class="k">merchant_order_no</span><span class="v">string</span></div>
-    <div class="param"><span class="k">sign</span><span class="v">md5 hash</span></div>
-  </div>
-  <div class="info-card">
-    <h3>Optional Parameters</h3>
-    <div class="param"><span class="k">callback_url</span><span class="v">url</span></div>
-    <div class="param"><span class="k">trade_type</span><span class="v">string</span></div>
-    <div class="param"><span class="k">extra</span><span class="v">string</span></div>
-  </div>
-  <p class="footer">© ELOPAY Gateway · Secure Payment Infrastructure</p>
-</div>
-</body></html>`
-    return new Response(html, { headers: { ...corsHeaders, 'Content-Type': 'text/html; charset=utf-8' } })
+    return new Response(
+      JSON.stringify({
+        status: 'online',
+        service: 'ELOPAY Gateway - Payin API',
+        method: 'POST',
+        required_params: ['merchant_id', 'amount', 'merchant_order_no', 'sign'],
+        optional_params: ['callback_url', 'trade_type', 'extra'],
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
   }
 
   try {
