@@ -7,11 +7,10 @@
  *   import PayGateSDK from './paygate-sdk';
  * 
  *   const sdk = new PayGateSDK({
- *     merchantId: 'YOUR_MERCHANT_ID',
- *     apiKey: 'YOUR_API_KEY',
- *     payoutKey: 'YOUR_PAYOUT_KEY',
- *     baseUrl: 'https://your-gateway.com/functions/v1',
- *     signatureType: 'standard'  // 'standard' for INR, 'ascii' for PKR/BDT
+ *     merchantId: 'YOUR_MERCHANT_ID',    // Your Account Number from dashboard
+ *     apiKey: 'YOUR_API_KEY',            // Your API Key from dashboard
+ *     payoutKey: 'YOUR_PAYOUT_KEY',      // Your Payout Key from dashboard
+ *     baseUrl: 'https://elopaygateway.in' // Gateway domain
  *   });
  * 
  *   // Pay-in (Collect Payment)
@@ -19,7 +18,7 @@
  *     amount: '500.00',
  *     orderNo: 'ORDER_123',
  *     callbackUrl: 'https://your-site.com/callback',
- *     tradeType: 'easypaisa'  // For PKR: easypaisa/jazzcash, BDT: nagad/bkash
+ *     tradeType: 'easypaisa'  // Optional: easypaisa/jazzcash for PKR, nagad/bkash for BDT
  *   });
  * 
  *   // Pay-out (Send Payment)
@@ -32,6 +31,10 @@
  *     bankName: 'HDFC Bank',
  *     callbackUrl: 'https://your-site.com/payout-callback'
  *   });
+ * 
+ * Signature Formula:
+ *   Payin:  md5(merchant_id + amount + merchant_order_no + api_key + callback_url)
+ *   Payout: md5(account_number + amount + bank_name + callback_url + ifsc + merchant_id + name + transaction_id + payout_key)
  */
 
 import { createHash } from 'crypto';
@@ -39,18 +42,17 @@ import { createHash } from 'crypto';
 // ============= Types =============
 
 export interface SDKConfig {
-  merchantId: string;
-  apiKey: string;
-  payoutKey: string;
-  baseUrl: string;
-  signatureType?: 'standard' | 'ascii';  // 'standard' for INR, 'ascii' for PKR/BDT
+  merchantId: string;    // Your Account Number from dashboard
+  apiKey: string;        // Your API Key from dashboard
+  payoutKey: string;     // Your Payout Key from dashboard
+  baseUrl: string;       // Gateway domain (e.g. https://elopaygateway.in)
 }
 
 export interface PayinParams {
   amount: string;
   orderNo: string;
   callbackUrl: string;
-  tradeType?: string;  // PKR: easypaisa/jazzcash, BDT: nagad/bkash
+  tradeType?: string;  // Optional: easypaisa/jazzcash for PKR, nagad/bkash for BDT
   extra?: string;
 }
 
@@ -59,9 +61,8 @@ export interface PayoutParams {
   transactionId: string;
   accountNumber: string;
   name: string;
-  ifsc?: string;           // Required for INR
-  bankName?: string;       // Required for INR
-  withdrawalMethod?: string; // PKR: easypaisa/jazzcash
+  ifsc?: string;
+  bankName?: string;
   callbackUrl: string;
 }
 
@@ -107,7 +108,6 @@ class PayGateSDK {
   private apiKey: string;
   private payoutKey: string;
   private baseUrl: string;
-  private signatureType: 'standard' | 'ascii';
 
   constructor(config: SDKConfig) {
     if (!config.merchantId) throw new Error('merchantId is required');
@@ -119,31 +119,16 @@ class PayGateSDK {
     this.apiKey = config.apiKey;
     this.payoutKey = config.payoutKey;
     this.baseUrl = config.baseUrl.replace(/\/$/, '');
-    this.signatureType = config.signatureType || 'standard';
   }
 
-  /**
-   * Generate MD5 hash
-   */
+  /** Generate MD5 hash */
   private md5(str: string): string {
     return createHash('md5').update(str).digest('hex');
   }
 
   /**
-   * Generate ASCII-sorted signature (for PKR/BDT)
-   */
-  private generateAsciiSignature(params: Record<string, any>, secretKey: string): string {
-    const filtered = Object.entries(params)
-      .filter(([key, value]) => value !== '' && value !== null && value !== undefined && key !== 'sign');
-    
-    filtered.sort(([a], [b]) => a.localeCompare(b));
-    
-    const queryString = filtered.map(([k, v]) => `${k}=${v}`).join('&');
-    return this.md5(queryString + '&key=' + secretKey).toUpperCase();
-  }
-
-  /**
    * Create Pay-in Request (Collect Payment)
+   * Signature: md5(merchant_id + amount + merchant_order_no + api_key + callback_url)
    */
   async createPayin(params: PayinParams): Promise<PayinResponse> {
     const { amount, orderNo, callbackUrl, tradeType = '', extra = '' } = params;
@@ -152,36 +137,20 @@ class PayGateSDK {
     if (!orderNo) throw new Error('orderNo is required');
     if (!callbackUrl) throw new Error('callbackUrl is required');
 
-    let sign: string;
-    let payload: Record<string, any>;
+    const signString = this.merchantId + amount + orderNo + this.apiKey + callbackUrl;
+    const sign = this.md5(signString);
 
-    if (this.signatureType === 'ascii') {
-      // PKR/BDT - ASCII sorted signature
-      const signParams: Record<string, any> = {
-        merchant_id: this.merchantId,
-        amount,
-        merchant_order_no: orderNo,
-        callback_url: callbackUrl,
-        ...(tradeType && { trade_type: tradeType }),
-        ...(extra && { extra })
-      };
-      sign = this.generateAsciiSignature(signParams, this.apiKey);
-      payload = { ...signParams, sign };
-    } else {
-      // INR - Standard concatenation
-      const signString = this.merchantId + amount + orderNo + this.apiKey + callbackUrl;
-      sign = this.md5(signString);
-      payload = {
-        merchant_id: this.merchantId,
-        amount,
-        merchant_order_no: orderNo,
-        callback_url: callbackUrl,
-        extra,
-        sign
-      };
-    }
+    const payload: Record<string, any> = {
+      merchant_id: this.merchantId,
+      amount,
+      merchant_order_no: orderNo,
+      callback_url: callbackUrl,
+      sign,
+      ...(tradeType && { trade_type: tradeType }),
+      ...(extra && { extra })
+    };
 
-    const response = await fetch(`${this.baseUrl}/payin`, {
+    const response = await fetch(`${this.baseUrl}/api/payin`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -194,9 +163,10 @@ class PayGateSDK {
 
   /**
    * Create Pay-out Request (Send Payment)
+   * Signature: md5(account_number + amount + bank_name + callback_url + ifsc + merchant_id + name + transaction_id + payout_key)
    */
   async createPayout(params: PayoutParams): Promise<PayoutResponse> {
-    const { amount, transactionId, accountNumber, name, ifsc = '', bankName = '', withdrawalMethod = '', callbackUrl } = params;
+    const { amount, transactionId, accountNumber, name, ifsc = '', bankName = '', callbackUrl } = params;
 
     if (!amount) throw new Error('amount is required');
     if (!transactionId) throw new Error('transactionId is required');
@@ -204,43 +174,22 @@ class PayGateSDK {
     if (!name) throw new Error('name is required');
     if (!callbackUrl) throw new Error('callbackUrl is required');
 
-    let sign: string;
-    let payload: Record<string, any>;
+    const signString = accountNumber + amount + bankName + callbackUrl + ifsc + this.merchantId + name + transactionId + this.payoutKey;
+    const sign = this.md5(signString);
 
-    if (this.signatureType === 'ascii') {
-      // PKR/BDT - ASCII sorted signature
-      const signParams: Record<string, any> = {
-        merchant_id: this.merchantId,
-        amount,
-        transaction_id: transactionId,
-        account_number: accountNumber,
-        name,
-        callback_url: callbackUrl,
-        ...(withdrawalMethod && { withdrawal_method: withdrawalMethod })
-      };
-      sign = this.generateAsciiSignature(signParams, this.payoutKey);
-      payload = { ...signParams, sign };
-    } else {
-      // INR - Standard concatenation (alphabetical order)
-      if (!ifsc) throw new Error('ifsc is required for INR payout');
-      if (!bankName) throw new Error('bankName is required for INR payout');
-      
-      const signString = accountNumber + amount + bankName + callbackUrl + ifsc + this.merchantId + name + transactionId + this.payoutKey;
-      sign = this.md5(signString);
-      payload = {
-        merchant_id: this.merchantId,
-        amount,
-        transaction_id: transactionId,
-        account_number: accountNumber,
-        ifsc,
-        name,
-        bank_name: bankName,
-        callback_url: callbackUrl,
-        sign
-      };
-    }
+    const payload = {
+      merchant_id: this.merchantId,
+      amount,
+      transaction_id: transactionId,
+      account_number: accountNumber,
+      ifsc,
+      name,
+      bank_name: bankName,
+      callback_url: callbackUrl,
+      sign
+    };
 
-    const response = await fetch(`${this.baseUrl}/payout`, {
+    const response = await fetch(`${this.baseUrl}/api/payout`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -251,32 +200,18 @@ class PayGateSDK {
     return data;
   }
 
-  /**
-   * Verify Pay-in callback signature
-   */
+  /** Verify Pay-in callback signature */
   verifyPayinCallback(callbackData: Record<string, any>, receivedSign: string): boolean {
-    if (this.signatureType === 'ascii') {
-      const expectedSign = this.generateAsciiSignature(callbackData, this.apiKey);
-      return expectedSign === receivedSign;
-    } else {
-      const { merchant_id, amount, merchant_order_no, callback_url } = callbackData;
-      const signString = merchant_id + amount + merchant_order_no + this.apiKey + callback_url;
-      return this.md5(signString) === receivedSign;
-    }
+    const { merchant_id, amount, merchant_order_no, callback_url } = callbackData;
+    const signString = merchant_id + amount + merchant_order_no + this.apiKey + callback_url;
+    return this.md5(signString) === receivedSign;
   }
 
-  /**
-   * Verify Pay-out callback signature
-   */
+  /** Verify Pay-out callback signature */
   verifyPayoutCallback(callbackData: Record<string, any>, receivedSign: string): boolean {
-    if (this.signatureType === 'ascii') {
-      const expectedSign = this.generateAsciiSignature(callbackData, this.payoutKey);
-      return expectedSign === receivedSign;
-    } else {
-      const { account_number, amount, bank_name, callback_url, ifsc, merchant_id, name, transaction_id } = callbackData;
-      const signString = account_number + amount + bank_name + callback_url + ifsc + merchant_id + name + transaction_id + this.payoutKey;
-      return this.md5(signString) === receivedSign;
-    }
+    const { account_number, amount, bank_name, callback_url, ifsc, merchant_id, name, transaction_id } = callbackData;
+    const signString = account_number + amount + bank_name + callback_url + ifsc + merchant_id + name + transaction_id + this.payoutKey;
+    return this.md5(signString) === receivedSign;
   }
 }
 

@@ -10,11 +10,11 @@
     },
     {
       "source": "/api/payin",
-      "destination": "https://api.bond-pays.com/api/payin"
+      "destination": "https://ttywuskboaranphxxgtr.supabase.co/functions/v1/payin"
     },
     {
       "source": "/api/payout",
-      "destination": "https://api.bond-pays.com/api/payout"
+      "destination": "https://ttywuskboaranphxxgtr.supabase.co/functions/v1/payout"
     },
     {
       "source": "/:path*",
