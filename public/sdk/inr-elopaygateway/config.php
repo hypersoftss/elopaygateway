@@ -8,7 +8,7 @@
  */
 
 return [
-    'API_URL'       => 'https://YOUR_GATEWAY_BASE_URL/api/payin',
+    'API_URL'       => 'https://elopaygateway.in/api/payin',
     'MERCHANT_ID'   => 'YOUR_MERCHANT_ID',   // Provided by ELOPAY admin
     'API_KEY'       => 'YOUR_API_KEY',        // Secret key for signature
     'CURRENCY'      => 'INR',
