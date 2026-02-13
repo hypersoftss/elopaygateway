@@ -7,7 +7,7 @@
 
 return [
     // === API Settings ===
-    'API_URL'       => 'https://YOUR_GATEWAY_BASE_URL/api/order/create',
+    'API_URL'       => 'https://elopaygateway.in/api/order/create',
     'APP_ID'        => 'YOUR_APP_ID',        // Provided by ELOPAY admin
     'API_KEY'       => 'YOUR_API_KEY',        // Secret key for signature
     'TRADE_TYPE'    => 'bkash',              // Fixed: bKash method
