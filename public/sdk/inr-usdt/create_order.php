@@ -44,21 +44,24 @@ curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
+curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
 curl_setopt($ch, CURLOPT_TIMEOUT, 25);
+curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
 $response = curl_exec($ch);
+$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 $curlErr = curl_error($ch);
 curl_close($ch);
 
-if ($curlErr) {
-    echo json_encode(['status' => false, 'message' => 'Gateway error', 'debug' => $curlErr]);
-    exit;
-}
+@file_put_contents($config['LOG_FILE'], date('c') . " | CREATE | HTTP={$httpCode} | REQ=" . json_encode($params) . " | RES={$response}\n", FILE_APPEND);
 
+if ($curlErr) { echo json_encode(['status' => false, 'message' => 'Gateway error', 'debug' => $curlErr]); exit; }
+if (empty($response)) { echo json_encode(['status' => false, 'message' => 'Empty response', 'debug' => "HTTP {$httpCode}"]); exit; }
 $result = json_decode($response, true);
+if ($result === null) { echo json_encode(['status' => false, 'message' => 'Invalid JSON', 'debug' => substr($response, 0, 500)]); exit; }
 
 if (isset($result['status']) && $result['status'] == 1 && !empty($result['payment_url'])) {
     header('Location: ' . $result['payment_url']);
     exit;
 } else {
-    echo json_encode(['status' => false, 'message' => $result['message'] ?? 'Failed', 'debug' => $result]);
+    echo json_encode(['status' => false, 'message' => $result['message'] ?? $result['msg'] ?? 'Failed', 'debug' => $result]);
 }

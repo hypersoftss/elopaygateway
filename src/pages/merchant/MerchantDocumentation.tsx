@@ -36,7 +36,7 @@ const MerchantDocumentation = () => {
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const gatewayName = 'ELOPAY';
-  const apiBaseUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+  const apiBaseUrl = 'https://elopaygateway.in/api';
 
   useEffect(() => {
     const fetchCredentials = async () => {
@@ -192,8 +192,8 @@ const MerchantDocumentation = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="relative">
-            <code className="block p-4 bg-muted rounded-lg text-sm font-mono">{apiBaseUrl}/payin</code>
-            <Button variant="ghost" size="sm" className="absolute right-2 top-2" onClick={() => copyToClipboard(`${apiBaseUrl}/payin`, 'pkr-payin')}>
+            <code className="block p-4 bg-muted rounded-lg text-sm font-mono">https://elopaygateway.in/api/payin</code>
+            <Button variant="ghost" size="sm" className="absolute right-2 top-2" onClick={() => copyToClipboard('https://elopaygateway.in/api/payin', 'pkr-payin')}>
               {copiedField === 'pkr-payin' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             </Button>
           </div>
@@ -260,7 +260,7 @@ const MerchantDocumentation = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="relative">
-            <code className="block p-4 bg-muted rounded-lg text-sm font-mono">{apiBaseUrl}/payout</code>
+            <code className="block p-4 bg-muted rounded-lg text-sm font-mono">https://elopaygateway.in/api/payout</code>
           </div>
 
           <div className="overflow-x-auto">
@@ -364,8 +364,8 @@ const MerchantDocumentation = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="relative">
-            <code className="block p-4 bg-muted rounded-lg text-sm font-mono">{apiBaseUrl}/payin</code>
-            <Button variant="ghost" size="sm" className="absolute right-2 top-2" onClick={() => copyToClipboard(`${apiBaseUrl}/payin`, 'bdt-payin')}>
+            <code className="block p-4 bg-muted rounded-lg text-sm font-mono">https://elopaygateway.in/api/payin</code>
+            <Button variant="ghost" size="sm" className="absolute right-2 top-2" onClick={() => copyToClipboard('https://elopaygateway.in/api/payin', 'bdt-payin')}>
               {copiedField === 'bdt-payin' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             </Button>
           </div>
@@ -432,7 +432,7 @@ const MerchantDocumentation = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="relative">
-            <code className="block p-4 bg-muted rounded-lg text-sm font-mono">{apiBaseUrl}/payout</code>
+            <code className="block p-4 bg-muted rounded-lg text-sm font-mono">https://elopaygateway.in/api/payout</code>
           </div>
 
           <div className="overflow-x-auto">
@@ -533,8 +533,8 @@ const MerchantDocumentation = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="relative">
-            <code className="block p-4 bg-muted rounded-lg text-sm font-mono">{apiBaseUrl}/payin</code>
-            <Button variant="ghost" size="sm" className="absolute right-2 top-2" onClick={() => copyToClipboard(`${apiBaseUrl}/payin`, 'inr-payin')}>
+            <code className="block p-4 bg-muted rounded-lg text-sm font-mono">https://elopaygateway.in/api/payin</code>
+            <Button variant="ghost" size="sm" className="absolute right-2 top-2" onClick={() => copyToClipboard('https://elopaygateway.in/api/payin', 'inr-payin')}>
               {copiedField === 'inr-payin' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             </Button>
           </div>
@@ -599,7 +599,7 @@ const MerchantDocumentation = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="relative">
-            <code className="block p-4 bg-muted rounded-lg text-sm font-mono">{apiBaseUrl}/payout</code>
+            <code className="block p-4 bg-muted rounded-lg text-sm font-mono">https://elopaygateway.in/api/payout</code>
           </div>
 
           <div className="overflow-x-auto">
