@@ -925,6 +925,239 @@ console.log(order.payment_url);`}
           </pre>
         </CardContent>
       </Card>
+
+      {/* PHP Integration Kits */}
+      <Card className="border-primary/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Download className="h-5 w-5" />
+            PHP Integration Kits
+          </CardTitle>
+          <CardDescription>
+            Ready-to-use PHP files for each payment method. Each kit includes config, create_order, and callback files.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* BDT Methods */}
+            {(credentials?.currency === 'BDT' || !credentials?.currency) && (
+              <>
+                <Card className="hover:border-orange-500/50 transition-colors border-orange-500/20">
+                  <CardContent className="p-5">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center text-white text-lg">🇧🇩</div>
+                      <div>
+                        <h4 className="font-semibold">Nagad</h4>
+                        <p className="text-xs text-muted-foreground">BDT • ASCII MD5</p>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5 mb-3">
+                      <button onClick={() => downloadFile('bdt-nagad/config.php')} className="text-xs text-primary hover:underline block">📄 config.php</button>
+                      <button onClick={() => downloadFile('bdt-nagad/create_order.php')} className="text-xs text-primary hover:underline block">📄 create_order.php</button>
+                      <button onClick={() => downloadFile('bdt-nagad/callback.php')} className="text-xs text-primary hover:underline block">📄 callback.php</button>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => downloadFile('bdt-nagad/config.php')}>
+                        <Download className="h-3 w-3 mr-1" /> Config
+                      </Button>
+                      <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => downloadFile('bdt-nagad/create_order.php')}>
+                        <Download className="h-3 w-3 mr-1" /> Order
+                      </Button>
+                      <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => downloadFile('bdt-nagad/callback.php')}>
+                        <Download className="h-3 w-3 mr-1" /> Callback
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="hover:border-pink-500/50 transition-colors border-pink-500/20">
+                  <CardContent className="p-5">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 bg-pink-500 rounded-lg flex items-center justify-center text-white text-lg">🇧🇩</div>
+                      <div>
+                        <h4 className="font-semibold">bKash</h4>
+                        <p className="text-xs text-muted-foreground">BDT • ASCII MD5</p>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5 mb-3">
+                      <button onClick={() => downloadFile('bdt-bkash/config.php')} className="text-xs text-primary hover:underline block">📄 config.php</button>
+                      <button onClick={() => downloadFile('bdt-bkash/create_order.php')} className="text-xs text-primary hover:underline block">📄 create_order.php</button>
+                      <button onClick={() => downloadFile('bdt-bkash/callback.php')} className="text-xs text-primary hover:underline block">📄 callback.php</button>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => downloadFile('bdt-bkash/config.php')}>
+                        <Download className="h-3 w-3 mr-1" /> Config
+                      </Button>
+                      <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => downloadFile('bdt-bkash/create_order.php')}>
+                        <Download className="h-3 w-3 mr-1" /> Order
+                      </Button>
+                      <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => downloadFile('bdt-bkash/callback.php')}>
+                        <Download className="h-3 w-3 mr-1" /> Callback
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            )}
+
+            {/* PKR Methods */}
+            {(credentials?.currency === 'PKR' || !credentials?.currency) && (
+              <>
+                <Card className="hover:border-green-500/50 transition-colors border-green-500/20">
+                  <CardContent className="p-5">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center text-white text-lg">🇵🇰</div>
+                      <div>
+                        <h4 className="font-semibold">Easypaisa</h4>
+                        <p className="text-xs text-muted-foreground">PKR • ASCII MD5</p>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5 mb-3">
+                      <button onClick={() => downloadFile('pkr-easypaisa/config.php')} className="text-xs text-primary hover:underline block">📄 config.php</button>
+                      <button onClick={() => downloadFile('pkr-easypaisa/create_order.php')} className="text-xs text-primary hover:underline block">📄 create_order.php</button>
+                      <button onClick={() => downloadFile('pkr-easypaisa/callback.php')} className="text-xs text-primary hover:underline block">📄 callback.php</button>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => downloadFile('pkr-easypaisa/config.php')}>
+                        <Download className="h-3 w-3 mr-1" /> Config
+                      </Button>
+                      <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => downloadFile('pkr-easypaisa/create_order.php')}>
+                        <Download className="h-3 w-3 mr-1" /> Order
+                      </Button>
+                      <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => downloadFile('pkr-easypaisa/callback.php')}>
+                        <Download className="h-3 w-3 mr-1" /> Callback
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="hover:border-red-500/50 transition-colors border-red-500/20">
+                  <CardContent className="p-5">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 bg-red-500 rounded-lg flex items-center justify-center text-white text-lg">🇵🇰</div>
+                      <div>
+                        <h4 className="font-semibold">JazzCash</h4>
+                        <p className="text-xs text-muted-foreground">PKR • ASCII MD5</p>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5 mb-3">
+                      <button onClick={() => downloadFile('pkr-jazzcash/config.php')} className="text-xs text-primary hover:underline block">📄 config.php</button>
+                      <button onClick={() => downloadFile('pkr-jazzcash/create_order.php')} className="text-xs text-primary hover:underline block">📄 create_order.php</button>
+                      <button onClick={() => downloadFile('pkr-jazzcash/callback.php')} className="text-xs text-primary hover:underline block">📄 callback.php</button>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => downloadFile('pkr-jazzcash/config.php')}>
+                        <Download className="h-3 w-3 mr-1" /> Config
+                      </Button>
+                      <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => downloadFile('pkr-jazzcash/create_order.php')}>
+                        <Download className="h-3 w-3 mr-1" /> Order
+                      </Button>
+                      <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => downloadFile('pkr-jazzcash/callback.php')}>
+                        <Download className="h-3 w-3 mr-1" /> Callback
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            )}
+
+            {/* INR Methods */}
+            {(credentials?.currency === 'INR' || !credentials?.currency) && (
+              <>
+                <Card className="hover:border-blue-500/50 transition-colors border-blue-500/20">
+                  <CardContent className="p-5">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center text-white text-lg">🇮🇳</div>
+                      <div>
+                        <h4 className="font-semibold">ELOPAY INR (UPI)</h4>
+                        <p className="text-xs text-muted-foreground">INR • ASCII MD5</p>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5 mb-3">
+                      <button onClick={() => downloadFile('inr-elopay/config.php')} className="text-xs text-primary hover:underline block">📄 config.php</button>
+                      <button onClick={() => downloadFile('inr-elopay/create_order.php')} className="text-xs text-primary hover:underline block">📄 create_order.php</button>
+                      <button onClick={() => downloadFile('inr-elopay/callback.php')} className="text-xs text-primary hover:underline block">📄 callback.php</button>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => downloadFile('inr-elopay/config.php')}>
+                        <Download className="h-3 w-3 mr-1" /> Config
+                      </Button>
+                      <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => downloadFile('inr-elopay/create_order.php')}>
+                        <Download className="h-3 w-3 mr-1" /> Order
+                      </Button>
+                      <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => downloadFile('inr-elopay/callback.php')}>
+                        <Download className="h-3 w-3 mr-1" /> Callback
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="hover:border-teal-500/50 transition-colors border-teal-500/20">
+                  <CardContent className="p-5">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 bg-teal-500 rounded-lg flex items-center justify-center text-white text-lg">🇮🇳</div>
+                      <div>
+                        <h4 className="font-semibold">ELOPAY INR (USDT)</h4>
+                        <p className="text-xs text-muted-foreground">INR • ASCII MD5</p>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5 mb-3">
+                      <button onClick={() => downloadFile('inr-usdt/config.php')} className="text-xs text-primary hover:underline block">📄 config.php</button>
+                      <button onClick={() => downloadFile('inr-usdt/create_order.php')} className="text-xs text-primary hover:underline block">📄 create_order.php</button>
+                      <button onClick={() => downloadFile('inr-usdt/callback.php')} className="text-xs text-primary hover:underline block">📄 callback.php</button>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => downloadFile('inr-usdt/config.php')}>
+                        <Download className="h-3 w-3 mr-1" /> Config
+                      </Button>
+                      <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => downloadFile('inr-usdt/create_order.php')}>
+                        <Download className="h-3 w-3 mr-1" /> Order
+                      </Button>
+                      <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => downloadFile('inr-usdt/callback.php')}>
+                        <Download className="h-3 w-3 mr-1" /> Callback
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="hover:border-purple-500/50 transition-colors border-purple-500/20">
+                  <CardContent className="p-5">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center text-white text-lg">🇮🇳</div>
+                      <div>
+                        <h4 className="font-semibold">ELOPAYGATEWAY INR</h4>
+                        <p className="text-xs text-muted-foreground">INR • Standard MD5</p>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5 mb-3">
+                      <button onClick={() => downloadFile('inr-elopaygateway/config.php')} className="text-xs text-primary hover:underline block">📄 config.php</button>
+                      <button onClick={() => downloadFile('inr-elopaygateway/create_order.php')} className="text-xs text-primary hover:underline block">📄 create_order.php</button>
+                      <button onClick={() => downloadFile('inr-elopaygateway/callback.php')} className="text-xs text-primary hover:underline block">📄 callback.php</button>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => downloadFile('inr-elopaygateway/config.php')}>
+                        <Download className="h-3 w-3 mr-1" /> Config
+                      </Button>
+                      <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => downloadFile('inr-elopaygateway/create_order.php')}>
+                        <Download className="h-3 w-3 mr-1" /> Order
+                      </Button>
+                      <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => downloadFile('inr-elopaygateway/callback.php')}>
+                        <Download className="h-3 w-3 mr-1" /> Callback
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            )}
+          </div>
+
+          <div className="mt-4 p-4 bg-muted rounded-lg">
+            <p className="text-sm text-muted-foreground">
+              <strong>📌 Setup:</strong> Download all 3 files for your payment method → Edit <code className="bg-background px-1 rounded">config.php</code> with your credentials → Upload to your PHP server → Done!
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 
