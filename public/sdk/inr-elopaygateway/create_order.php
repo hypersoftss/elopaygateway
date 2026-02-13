@@ -1,14 +1,13 @@
 <?php
 /**
  * ELOPAYGATEWAY INR: Create Payment Order
- * Signature Algorithm: Standard MD5
- * Formula: md5(merchant_id + amount + merchant_order_no + api_key + callback_url)
+ * Signature: md5(merchant_id + amount + merchant_order_no + api_key + callback_url)
  */
 
 header('Content-Type: application/json; charset=utf-8');
 $config = include __DIR__ . '/config.php';
 
-function generateEloPayGatewaySignature($merchantId, $amount, $orderNo, $apiKey, $callbackUrl) {
+function generateSignature($merchantId, $amount, $orderNo, $apiKey, $callbackUrl) {
     return md5($merchantId . $amount . $orderNo . $apiKey . $callbackUrl);
 }
 
@@ -20,18 +19,16 @@ if ((float)$amount < 1.00) {
 
 $orderNo = isset($_GET['order_id']) ? $_GET['order_id'] : 'ORD_' . date('Ymd') . '_' . time() . '_' . random_int(1000, 9999);
 
-$signature = generateEloPayGatewaySignature(
+$signature = generateSignature(
     $config['MERCHANT_ID'], $amount, $orderNo, $config['API_KEY'], $config['NOTIFY_URL']
 );
 
 $payload = [
     'merchant_id'       => $config['MERCHANT_ID'],
-    'api_key'           => $config['API_KEY'],
     'amount'            => $amount,
     'merchant_order_no' => $orderNo,
     'callback_url'      => $config['NOTIFY_URL'],
-    'extra'             => 0,
-    'signature'         => $signature,
+    'sign'              => $signature,
 ];
 
 $ch = curl_init();
@@ -57,8 +54,8 @@ if (empty($response)) { echo json_encode(['status' => false, 'message' => 'Empty
 $result = json_decode($response, true);
 if ($result === null) { echo json_encode(['status' => false, 'message' => 'Invalid JSON', 'debug' => substr($response, 0, 500)]); exit; }
 
-if ($httpCode >= 200 && $httpCode < 300 && !empty($result['success']) && !empty($result['payment_url'])) {
-    header('Location: ' . $result['payment_url']);
+if ($httpCode >= 200 && $httpCode < 300 && !empty($result['success']) && !empty($result['data']['payment_url'])) {
+    header('Location: ' . $result['data']['payment_url']);
     exit;
 } else {
     echo json_encode(['status' => false, 'message' => $result['message'] ?? 'Failed to create order', 'debug' => $result]);

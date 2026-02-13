@@ -2,14 +2,14 @@
 /**
  * ELOPAY PKR - JazzCash Configuration
  * Gateway: ELOPAY Pakistan (JazzCash)
- * Signature: ASCII-sorted MD5 (uppercase)
+ * Signature: md5(merchant_id + amount + merchant_order_no + api_key + callback_url)
  */
 
 return [
-    'API_URL'       => 'https://elopaygateway.in/api/order/create',
-    'APP_ID'        => 'YOUR_APP_ID',
-    'API_KEY'       => 'YOUR_API_KEY',
-    'TRADE_TYPE'    => 'PKRPH',              // JazzCash deposit trade type
+    'API_URL'       => 'https://elopaygateway.in/api/payin',
+    'MERCHANT_ID'   => 'YOUR_MERCHANT_ID',   // Your Merchant ID (Account Number from dashboard)
+    'API_KEY'       => 'YOUR_API_KEY',        // Your API Key from dashboard
+    'TRADE_TYPE'    => 'PKRPH',               // JazzCash deposit trade type
     'CURRENCY'      => 'PKR',
 
     'NOTIFY_URL'    => 'https://yourdomain.com/elopay/pkr-jazzcash/callback.php',
