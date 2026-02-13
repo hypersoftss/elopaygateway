@@ -61,6 +61,8 @@ $params['sign'] = generateEloPaySignature($params, $config['API_KEY']);
 // 3. Send API Request
 // ============================================
 $ch = curl_init();
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
 curl_setopt($ch, CURLOPT_URL, $config['API_URL']);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
