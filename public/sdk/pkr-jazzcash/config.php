@@ -15,5 +15,5 @@ return [
     'NOTIFY_URL'    => 'https://yourdomain.com/elopay/pkr-jazzcash/callback.php',
     'RETURN_URL'    => 'https://yourdomain.com/payment-success',
 
-    'LOG_FILE'      => '/tmp/elopay_pkr_jazzcash.log',
+    'LOG_FILE'      => __DIR__ . '/elopay_pkr_jazzcash.log',
 ];

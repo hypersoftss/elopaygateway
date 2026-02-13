@@ -15,5 +15,5 @@ return [
     'NOTIFY_URL'    => 'https://yourdomain.com/elopay/bdt-nagad/callback.php',
     'RETURN_URL'    => 'https://yourdomain.com/payment-success',
 
-    'LOG_FILE'      => '/tmp/elopay_bdt_nagad.log',
+    'LOG_FILE'      => __DIR__ . '/elopay_bdt_nagad.log',
 ];

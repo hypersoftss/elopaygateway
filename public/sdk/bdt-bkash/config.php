@@ -18,5 +18,5 @@ return [
     'RETURN_URL'    => 'https://yourdomain.com/payment-success',
 
     // === Logging ===
-    'LOG_FILE'      => '/tmp/elopay_bdt_bkash.log',
+    'LOG_FILE'      => __DIR__ . '/elopay_bdt_bkash.log',
 ];

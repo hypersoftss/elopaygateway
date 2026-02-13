@@ -16,5 +16,5 @@ return [
     'NOTIFY_URL'    => 'https://yourdomain.com/elopay/inr-elopaygateway/callback.php',
     'RETURN_URL'    => 'https://yourdomain.com/payment-success',
 
-    'LOG_FILE'      => '/tmp/elopaygateway_inr.log',
+    'LOG_FILE'      => __DIR__ . '/elopaygateway_inr.log',
 ];
