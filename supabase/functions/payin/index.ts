@@ -95,6 +95,20 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders })
   }
 
+  // Handle GET requests gracefully (browser visits, health checks)
+  if (req.method === 'GET') {
+    return new Response(
+      JSON.stringify({ 
+        code: 200, 
+        message: 'ELOPAY Gateway Payin API is running. Use POST method with required parameters.',
+        method: 'POST',
+        required_params: ['merchant_id', 'amount', 'merchant_order_no', 'sign'],
+        optional_params: ['callback_url', 'extra', 'trade_type']
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+
   try {
     const body = await req.json()
     const { merchant_id, amount, merchant_order_no, callback_url, sign, extra, trade_type: requestTradeType } = body

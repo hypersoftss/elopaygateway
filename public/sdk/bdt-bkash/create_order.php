@@ -152,9 +152,11 @@ if ($result === null) {
     exit;
 }
 
-if ($httpCode >= 200 && $httpCode < 300 && !empty($result['success']) && !empty($result['data']['payment_url'])) {
+if ($httpCode >= 200 && $httpCode < 300 && !empty($result['data']['payment_url'])) {
     $url = $result['data']['payment_url'];
     echo '<script>doRedirect(' . json_encode($url) . ');</script></body></html>';
+} elseif (!empty($result['payment_url'])) {
+    echo '<script>doRedirect(' . json_encode($result['payment_url']) . ');</script></body></html>';
 } else {
     $msg = $result['message'] ?? 'Failed to create order';
     echo '<script>showError(' . json_encode($msg) . ');</script></body></html>';
