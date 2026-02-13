@@ -1,16 +1,14 @@
 <?php
 /**
  * ELOPAYGATEWAY INR Configuration
- * Gateway: ELOPAYGATEWAY India (Standard MD5 - BondPay style)
- * Signature: Standard MD5 (merchant_id + amount + order_no + api_key + callback_url)
- * 
- * This gateway uses a DIFFERENT signature algorithm than ELOPAY INR/PKR/BDT.
+ * Gateway: ELOPAY India (Standard)
+ * Signature: md5(merchant_id + amount + merchant_order_no + api_key + callback_url)
  */
 
 return [
     'API_URL'       => 'https://elopaygateway.in/api/payin',
-    'MERCHANT_ID'   => 'YOUR_MERCHANT_ID',   // Provided by ELOPAY admin
-    'API_KEY'       => 'YOUR_API_KEY',        // Secret key for signature
+    'MERCHANT_ID'   => 'YOUR_MERCHANT_ID',   // Your Merchant ID (Account Number from dashboard)
+    'API_KEY'       => 'YOUR_API_KEY',        // Your API Key from dashboard
     'CURRENCY'      => 'INR',
 
     'NOTIFY_URL'    => 'https://yourdomain.com/elopay/inr-elopaygateway/callback.php',

@@ -1,17 +1,15 @@
 <?php
 /**
- * ELOPAY INR - UPI/USDT Configuration
- * Gateway: ELOPAY India (INRUPI / USDT)
- * Signature: ASCII-sorted MD5 (uppercase)
- * 
- * Trade Types: 'INRUPI' for UPI, 'usdt' for USDT
+ * ELOPAY INR - UPI Configuration
+ * Gateway: ELOPAY India (UPI)
+ * Signature: md5(merchant_id + amount + merchant_order_no + api_key + callback_url)
  */
 
 return [
-    'API_URL'       => 'https://elopaygateway.in/api/order/create',
-    'APP_ID'        => 'YOUR_APP_ID',
-    'API_KEY'       => 'YOUR_API_KEY',
-    'TRADE_TYPE'    => 'INRUPI',             // Change to 'usdt' for USDT payments
+    'API_URL'       => 'https://elopaygateway.in/api/payin',
+    'MERCHANT_ID'   => 'YOUR_MERCHANT_ID',   // Your Merchant ID (Account Number from dashboard)
+    'API_KEY'       => 'YOUR_API_KEY',        // Your API Key from dashboard
+    'TRADE_TYPE'    => 'INRUPI',              // Change to 'usdt' for USDT payments
     'CURRENCY'      => 'INR',
 
     'NOTIFY_URL'    => 'https://yourdomain.com/elopay/inr-elopay/callback.php',
