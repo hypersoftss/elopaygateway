@@ -15,5 +15,5 @@ return [
     'NOTIFY_URL'    => 'https://yourdomain.com/elopay/inr-usdt/callback.php',
     'RETURN_URL'    => 'https://yourdomain.com/payment-success',
 
-    'LOG_FILE'      => '/tmp/elopay_inr_usdt.log',
+    'LOG_FILE'      => __DIR__ . '/elopay_inr_usdt.log',
 ];

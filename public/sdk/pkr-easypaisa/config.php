@@ -15,5 +15,5 @@ return [
     'NOTIFY_URL'    => 'https://yourdomain.com/elopay/pkr-easypaisa/callback.php',
     'RETURN_URL'    => 'https://yourdomain.com/payment-success',
 
-    'LOG_FILE'      => '/tmp/elopay_pkr_easypaisa.log',
+    'LOG_FILE'      => __DIR__ . '/elopay_pkr_easypaisa.log',
 ];
