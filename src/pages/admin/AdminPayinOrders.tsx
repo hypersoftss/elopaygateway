@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { useTranslation } from '@/lib/i18n';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,7 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { StatusBadge } from '@/components/StatusBadge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
-import { Search, Download, ArrowDownToLine, Trash2, CheckCircle2, RefreshCw, Loader2 } from 'lucide-react';
+import { Search, Download, ArrowDownToLine, Trash2, CheckCircle2, RefreshCw, Loader2, Zap, ZapOff } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -52,6 +53,57 @@ const AdminPayinOrders = () => {
   const [checkingId, setCheckingId] = useState<string | null>(null);
   const [bulkChecking, setBulkChecking] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ checked: 0, updated: 0, total: 0 });
+  const [autoCheck, setAutoCheck] = useState(false);
+  const [autoCheckCount, setAutoCheckCount] = useState(0);
+  const autoCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const runAutoCheck = useCallback(async () => {
+    // Fetch fresh pending payin orders
+    const { data: pendingOrders } = await supabase
+      .from('transactions')
+      .select('order_no')
+      .eq('transaction_type', 'payin')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+
+    if (!pendingOrders || pendingOrders.length === 0) return;
+
+    let updated = 0;
+    for (const order of pendingOrders) {
+      try {
+        const { data } = await supabase.functions.invoke('check-order-status', {
+          body: { order_no: order.order_no, auto_update: true },
+        });
+        if (data?.auto_updated) updated++;
+      } catch { /* skip */ }
+    }
+
+    setAutoCheckCount(prev => prev + 1);
+    if (updated > 0) {
+      toast({
+        title: `⚡ Auto-Check: ${updated} order(s) updated`,
+        description: `Checked ${pendingOrders.length} pending orders automatically.`,
+      });
+      fetchTransactions();
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    if (autoCheck) {
+      // Run immediately on enable
+      runAutoCheck();
+      autoCheckRef.current = setInterval(runAutoCheck, 30000); // every 30s
+    } else {
+      if (autoCheckRef.current) {
+        clearInterval(autoCheckRef.current);
+        autoCheckRef.current = null;
+      }
+      setAutoCheckCount(0);
+    }
+    return () => {
+      if (autoCheckRef.current) clearInterval(autoCheckRef.current);
+    };
+  }, [autoCheck, runAutoCheck]);
 
   const fetchTransactions = async () => {
     setIsLoading(true);
@@ -279,6 +331,13 @@ const AdminPayinOrders = () => {
                   ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{bulkProgress.checked}/{bulkProgress.total} ({bulkProgress.updated} updated)</>
                   : <><RefreshCw className="h-4 w-4 mr-2" />Bulk Check ({pendingTransactions.length})</>}
               </Button>
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-muted/30">
+                {autoCheck ? <Zap className="h-4 w-4 text-yellow-500 animate-pulse" /> : <ZapOff className="h-4 w-4 text-muted-foreground" />}
+                <Switch checked={autoCheck} onCheckedChange={setAutoCheck} />
+                <span className="text-sm font-medium whitespace-nowrap">
+                  {autoCheck ? `Auto-Check ON (${autoCheckCount})` : 'Auto-Check'}
+                </span>
+              </div>
             </div>
           </CardContent>
         </Card>
