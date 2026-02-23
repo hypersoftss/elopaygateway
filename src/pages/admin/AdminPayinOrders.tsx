@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { StatusBadge } from '@/components/StatusBadge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
-import { Search, Download, ArrowDownToLine, Trash2, CheckCircle2 } from 'lucide-react';
+import { Search, Download, ArrowDownToLine, Trash2, CheckCircle2, RefreshCw, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -23,6 +23,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface Transaction {
   id: string;
@@ -48,6 +49,7 @@ const AdminPayinOrders = () => {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [checkingId, setCheckingId] = useState<string | null>(null);
 
   const fetchTransactions = async () => {
     setIsLoading(true);
@@ -61,12 +63,8 @@ const AdminPayinOrders = () => {
       if (statusFilter !== 'all') {
         query = query.eq('status', statusFilter as 'pending' | 'success' | 'failed');
       }
-      if (dateFrom) {
-        query = query.gte('created_at', dateFrom);
-      }
-      if (dateTo) {
-        query = query.lte('created_at', dateTo + 'T23:59:59');
-      }
+      if (dateFrom) query = query.gte('created_at', dateFrom);
+      if (dateTo) query = query.lte('created_at', dateTo + 'T23:59:59');
 
       const { data, error } = await query;
       if (error) throw error;
@@ -90,15 +88,41 @@ const AdminPayinOrders = () => {
     tx.merchants?.account_number.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleSearch = () => {
-    fetchTransactions();
+  const handleSearch = () => fetchTransactions();
+
+  const handleCheckGateway = async (tx: Transaction) => {
+    setCheckingId(tx.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('check-order-status', {
+        body: { order_no: tx.order_no, auto_update: true },
+      });
+
+      if (error) throw error;
+
+      if (data.auto_updated) {
+        toast({
+          title: '✅ Gateway Verified & Updated!',
+          description: `Payment confirmed on gateway. ₹${data.net_amount?.toLocaleString()} credited to ${data.merchant}.`,
+        });
+        fetchTransactions();
+      } else {
+        toast({
+          title: `Gateway Status: ${data.gateway_status?.toUpperCase()}`,
+          description: `Our status: ${data.our_status} | Gateway: ${data.gateway_status}`,
+          variant: data.gateway_status === 'pending' ? 'default' : 'destructive',
+        });
+      }
+    } catch (error: any) {
+      toast({ title: 'Gateway Check Failed', description: error.message, variant: 'destructive' });
+    } finally {
+      setCheckingId(null);
+    }
   };
 
   const handleManualSuccess = async (tx: Transaction) => {
     if (tx.status !== 'pending') return;
     setProcessingId(tx.id);
     try {
-      // 1. Update transaction status to success
       const { error: txError } = await supabase
         .from('transactions')
         .update({
@@ -110,27 +134,19 @@ const AdminPayinOrders = () => {
           } as any,
         })
         .eq('id', tx.id);
-
       if (txError) throw txError;
 
-      // 2. Credit merchant balance
       const currentBalance = tx.merchants?.balance || 0;
-      const newBalance = currentBalance + (tx.net_amount || 0);
-
       const { error: balanceError } = await supabase
         .from('merchants')
-        .update({ balance: newBalance })
+        .update({ balance: currentBalance + (tx.net_amount || 0) })
         .eq('id', tx.merchant_id);
-
       if (balanceError) throw balanceError;
 
       toast({
         title: '✅ Success',
-        description: language === 'zh'
-          ? `交易已手动标记为成功，商户余额已增加 ₹${tx.net_amount?.toLocaleString()}`
-          : `Transaction marked as success. ₹${tx.net_amount?.toLocaleString()} credited to merchant balance.`,
+        description: `₹${tx.net_amount?.toLocaleString()} credited to merchant balance.`,
       });
-
       fetchTransactions();
     } catch (error: any) {
       toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
@@ -158,15 +174,15 @@ const AdminPayinOrders = () => {
     a.download = `payin-orders-${format(new Date(), 'yyyy-MM-dd')}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
-    toast({ title: t('common.success'), description: language === 'zh' ? '导出成功' : 'Export successful' });
+    toast({ title: t('common.success'), description: 'Export successful' });
   };
 
   const handleDeleteTransaction = async (txId: string) => {
-    if (!confirm(language === 'zh' ? '确定删除此交易吗？' : 'Are you sure you want to delete this transaction?')) return;
+    if (!confirm('Are you sure you want to delete this transaction?')) return;
     try {
       const { error } = await supabase.from('transactions').delete().eq('id', txId);
       if (error) throw error;
-      toast({ title: t('common.success'), description: language === 'zh' ? '交易已删除' : 'Transaction deleted' });
+      toast({ title: t('common.success'), description: 'Transaction deleted' });
       fetchTransactions();
     } catch (error: any) {
       toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
@@ -176,7 +192,6 @@ const AdminPayinOrders = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
-        {/* Header */}
         <div className="flex items-center gap-3">
           <div className="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5">
             <ArrowDownToLine className="h-6 w-6 text-primary" />
@@ -186,7 +201,6 @@ const AdminPayinOrders = () => {
           </div>
         </div>
 
-        {/* Filters */}
         <Card>
           <CardContent className="pt-6">
             <div className="flex flex-wrap gap-4 items-end">
@@ -203,9 +217,7 @@ const AdminPayinOrders = () => {
               </div>
               <div className="w-40">
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t('common.all')} />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t('common.all')} /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">{t('common.all')}</SelectItem>
                     <SelectItem value="pending">{t('status.pending')}</SelectItem>
@@ -221,18 +233,15 @@ const AdminPayinOrders = () => {
                 <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
               </div>
               <Button variant="outline" onClick={handleSearch}>
-                <Search className="h-4 w-4 mr-2" />
-                {t('common.search')}
+                <Search className="h-4 w-4 mr-2" />{t('common.search')}
               </Button>
               <Button onClick={exportToCSV} className="btn-gradient-primary">
-                <Download className="h-4 w-4 mr-2" />
-                {t('common.export')}
+                <Download className="h-4 w-4 mr-2" />{t('common.export')}
               </Button>
             </div>
           </CardContent>
         </Card>
 
-        {/* Transactions Table */}
         <Card>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -276,64 +285,87 @@ const AdminPayinOrders = () => {
                         </TableCell>
                         <TableCell className="text-right font-semibold">₹{tx.amount.toLocaleString()}</TableCell>
                         <TableCell className="text-right text-muted-foreground">₹{(tx.fee || 0).toLocaleString()}</TableCell>
-                        <TableCell>
-                          <StatusBadge status={tx.status} />
-                        </TableCell>
+                        <TableCell><StatusBadge status={tx.status} /></TableCell>
                         <TableCell>{tx.bank_name || '-'}</TableCell>
                         <TableCell className="text-muted-foreground">
                           {format(new Date(tx.created_at), 'yyyy-MM-dd HH:mm')}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center justify-center gap-1">
-                            {tx.status === 'pending' && (
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
+                          <TooltipProvider>
+                            <div className="flex items-center justify-center gap-1">
+                              {tx.status === 'pending' && (
+                                <>
+                                  {/* Check Gateway Status */}
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950"
+                                        onClick={() => handleCheckGateway(tx)}
+                                        disabled={checkingId === tx.id}
+                                      >
+                                        {checkingId === tx.id
+                                          ? <Loader2 className="h-4 w-4 animate-spin" />
+                                          : <RefreshCw className="h-4 w-4" />}
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Check Gateway Status</TooltipContent>
+                                  </Tooltip>
+
+                                  {/* Manual Success */}
+                                  <AlertDialog>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <AlertDialogTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950"
+                                            disabled={processingId === tx.id}
+                                          >
+                                            <CheckCircle2 className="h-4 w-4" />
+                                          </Button>
+                                        </AlertDialogTrigger>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Manual Success</TooltipContent>
+                                    </Tooltip>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Confirm Manual Success?</AlertDialogTitle>
+                                        <AlertDialogDescription className="space-y-2">
+                                          <p>This will mark order <strong>{tx.order_no}</strong> as SUCCESS and credit <strong>₹{tx.net_amount?.toLocaleString()}</strong> to the merchant's balance.</p>
+                                          <p className="font-semibold text-destructive">This action cannot be undone!</p>
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction
+                                          onClick={() => handleManualSuccess(tx)}
+                                          className="bg-green-600 hover:bg-green-700"
+                                        >
+                                          Confirm Success
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </>
+                              )}
+                              <Tooltip>
+                                <TooltipTrigger asChild>
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950"
-                                    disabled={processingId === tx.id}
+                                    className="h-8 w-8 text-destructive hover:text-destructive"
+                                    onClick={() => handleDeleteTransaction(tx.id)}
                                   >
-                                    <CheckCircle2 className="h-4 w-4" />
+                                    <Trash2 className="h-4 w-4" />
                                   </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>
-                                      {language === 'zh' ? '确认手动标记成功？' : 'Confirm Manual Success?'}
-                                    </AlertDialogTitle>
-                                    <AlertDialogDescription className="space-y-2">
-                                      <p>
-                                        {language === 'zh'
-                                          ? `此操作将标记订单 ${tx.order_no} 为成功，并将 ₹${tx.net_amount?.toLocaleString()} 添加到商户余额。`
-                                          : `This will mark order ${tx.order_no} as SUCCESS and credit ₹${tx.net_amount?.toLocaleString()} to the merchant's balance.`}
-                                      </p>
-                                      <p className="font-semibold text-destructive">
-                                        {language === 'zh' ? '此操作不可撤销！' : 'This action cannot be undone!'}
-                                      </p>
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>{language === 'zh' ? '取消' : 'Cancel'}</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => handleManualSuccess(tx)}
-                                      className="bg-green-600 hover:bg-green-700"
-                                    >
-                                      {language === 'zh' ? '确认成功' : 'Confirm Success'}
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-destructive hover:text-destructive"
-                              onClick={() => handleDeleteTransaction(tx.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
+                                </TooltipTrigger>
+                                <TooltipContent>Delete</TooltipContent>
+                              </Tooltip>
+                            </div>
+                          </TooltipProvider>
                         </TableCell>
                       </TableRow>
                     ))
