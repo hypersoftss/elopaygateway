@@ -46,6 +46,8 @@ const AdminPayoutOrders = () => {
   const [dateTo, setDateTo] = useState('');
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [checkingId, setCheckingId] = useState<string | null>(null);
+  const [bulkChecking, setBulkChecking] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState({ checked: 0, updated: 0, total: 0 });
 
   const fetchTransactions = async () => {
     setIsLoading(true);
@@ -79,6 +81,35 @@ const AdminPayoutOrders = () => {
     tx.bank_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     tx.account_holder_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const pendingTransactions = filteredTransactions.filter(tx => tx.status === 'pending');
+
+  const handleBulkCheck = async () => {
+    if (pendingTransactions.length === 0) {
+      toast({ title: 'No pending orders', description: 'There are no pending payout orders to check.' });
+      return;
+    }
+    setBulkChecking(true);
+    setBulkProgress({ checked: 0, updated: 0, total: pendingTransactions.length });
+
+    let updated = 0;
+    for (let i = 0; i < pendingTransactions.length; i++) {
+      try {
+        const { data, error } = await supabase.functions.invoke('check-order-status', {
+          body: { order_no: pendingTransactions[i].order_no, auto_update: true },
+        });
+        if (!error && data?.auto_updated) updated++;
+      } catch (e) { /* skip */ }
+      setBulkProgress({ checked: i + 1, updated, total: pendingTransactions.length });
+    }
+
+    setBulkChecking(false);
+    toast({
+      title: `✅ Bulk Check Complete`,
+      description: `Checked ${pendingTransactions.length} orders. ${updated} updated to success.`,
+    });
+    if (updated > 0) fetchTransactions();
+  };
 
   const handleCheckGateway = async (tx: Transaction) => {
     setCheckingId(tx.id);
@@ -203,6 +234,16 @@ const AdminPayoutOrders = () => {
               <div className="w-40"><Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} /></div>
               <Button variant="outline" onClick={() => fetchTransactions()}><Search className="h-4 w-4 mr-2" />{t('common.search')}</Button>
               <Button onClick={exportToCSV} className="btn-gradient-primary"><Download className="h-4 w-4 mr-2" />{t('common.export')}</Button>
+              <Button
+                variant="outline"
+                onClick={handleBulkCheck}
+                disabled={bulkChecking || pendingTransactions.length === 0}
+                className="border-blue-300 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950"
+              >
+                {bulkChecking
+                  ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{bulkProgress.checked}/{bulkProgress.total} ({bulkProgress.updated} updated)</>
+                  : <><RefreshCw className="h-4 w-4 mr-2" />Bulk Check ({pendingTransactions.length})</>}
+              </Button>
             </div>
           </CardContent>
         </Card>
