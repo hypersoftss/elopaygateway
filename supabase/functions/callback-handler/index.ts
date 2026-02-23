@@ -202,9 +202,12 @@ Deno.serve(async (req) => {
       }
 
       // SECURITY: Verify amount matches
-      const callbackAmount = parseFloat(money)
-      if (Math.abs(callbackAmount - transaction.amount) > 0.01) {
-        console.error(`SECURITY: Amount mismatch - expected ${transaction.amount}, got ${callbackAmount}`)
+      // ELOPAY sends money in cents (we multiply by 100 when creating order)
+      const rawCallbackAmount = parseFloat(money)
+      const callbackAmount = rawCallbackAmount >= transaction.amount * 10 ? rawCallbackAmount / 100 : rawCallbackAmount
+      console.log('Amount comparison:', { rawCallbackAmount, callbackAmount, transactionAmount: transaction.amount })
+      if (Math.abs(callbackAmount - transaction.amount) > 1) {
+        console.error(`SECURITY: Amount mismatch - expected ${transaction.amount}, got ${callbackAmount} (raw: ${rawCallbackAmount})`)
         return new Response(
           JSON.stringify({ status: 'error', message: 'Amount mismatch' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
