@@ -10,8 +10,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { StatusBadge } from '@/components/StatusBadge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
-import { Search, Download, ArrowDownToLine, Trash2 } from 'lucide-react';
+import { Search, Download, ArrowDownToLine, Trash2, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface Transaction {
   id: string;
@@ -23,7 +34,8 @@ interface Transaction {
   status: 'pending' | 'success' | 'failed';
   bank_name: string | null;
   created_at: string;
-  merchants: { merchant_name: string; account_number: string } | null;
+  merchant_id: string;
+  merchants: { merchant_name: string; account_number: string; balance: number } | null;
 }
 
 const AdminPayinOrders = () => {
@@ -35,39 +47,33 @@ const AdminPayinOrders = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   const fetchTransactions = async () => {
     setIsLoading(true);
     try {
       let query = supabase
         .from('transactions')
-        .select('*, merchants(merchant_name, account_number)')
+        .select('*, merchants(merchant_name, account_number, balance)')
         .eq('transaction_type', 'payin')
         .order('created_at', { ascending: false });
 
       if (statusFilter !== 'all') {
         query = query.eq('status', statusFilter as 'pending' | 'success' | 'failed');
       }
-
       if (dateFrom) {
         query = query.gte('created_at', dateFrom);
       }
-
       if (dateTo) {
         query = query.lte('created_at', dateTo + 'T23:59:59');
       }
 
       const { data, error } = await query;
-
       if (error) throw error;
       setTransactions(data || []);
     } catch (error: any) {
       console.error('Error fetching transactions:', error);
-      toast({
-        title: t('common.error'),
-        description: error.message,
-        variant: 'destructive',
-      });
+      toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
@@ -77,7 +83,7 @@ const AdminPayinOrders = () => {
     fetchTransactions();
   }, [statusFilter, dateFrom, dateTo]);
 
-  const filteredTransactions = transactions.filter(tx => 
+  const filteredTransactions = transactions.filter(tx =>
     tx.order_no.toLowerCase().includes(searchTerm.toLowerCase()) ||
     tx.merchant_order_no?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     tx.merchants?.merchant_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -86,6 +92,51 @@ const AdminPayinOrders = () => {
 
   const handleSearch = () => {
     fetchTransactions();
+  };
+
+  const handleManualSuccess = async (tx: Transaction) => {
+    if (tx.status !== 'pending') return;
+    setProcessingId(tx.id);
+    try {
+      // 1. Update transaction status to success
+      const { error: txError } = await supabase
+        .from('transactions')
+        .update({
+          status: 'success' as any,
+          callback_data: {
+            manual_approval: true,
+            approved_at: new Date().toISOString(),
+            approved_by: 'admin',
+          } as any,
+        })
+        .eq('id', tx.id);
+
+      if (txError) throw txError;
+
+      // 2. Credit merchant balance
+      const currentBalance = tx.merchants?.balance || 0;
+      const newBalance = currentBalance + (tx.net_amount || 0);
+
+      const { error: balanceError } = await supabase
+        .from('merchants')
+        .update({ balance: newBalance })
+        .eq('id', tx.merchant_id);
+
+      if (balanceError) throw balanceError;
+
+      toast({
+        title: '✅ Success',
+        description: language === 'zh'
+          ? `交易已手动标记为成功，商户余额已增加 ₹${tx.net_amount?.toLocaleString()}`
+          : `Transaction marked as success. ₹${tx.net_amount?.toLocaleString()} credited to merchant balance.`,
+      });
+
+      fetchTransactions();
+    } catch (error: any) {
+      toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
+    } finally {
+      setProcessingId(null);
+    }
   };
 
   const exportToCSV = () => {
@@ -99,7 +150,6 @@ const AdminPayinOrders = () => {
       tx.bank_name || '-',
       format(new Date(tx.created_at), 'yyyy-MM-dd HH:mm:ss')
     ]);
-    
     const csvContent = [headers.join(','), ...csvData.map(row => row.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -108,37 +158,18 @@ const AdminPayinOrders = () => {
     a.download = `payin-orders-${format(new Date(), 'yyyy-MM-dd')}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
-    
-    toast({
-      title: t('common.success'),
-      description: language === 'zh' ? '导出成功' : 'Export successful',
-    });
+    toast({ title: t('common.success'), description: language === 'zh' ? '导出成功' : 'Export successful' });
   };
 
   const handleDeleteTransaction = async (txId: string) => {
-    if (!confirm(language === 'zh' ? '确定删除此交易吗？' : 'Are you sure you want to delete this transaction?')) {
-      return;
-    }
-
+    if (!confirm(language === 'zh' ? '确定删除此交易吗？' : 'Are you sure you want to delete this transaction?')) return;
     try {
-      const { error } = await supabase
-        .from('transactions')
-        .delete()
-        .eq('id', txId);
-
+      const { error } = await supabase.from('transactions').delete().eq('id', txId);
       if (error) throw error;
-
-      toast({
-        title: t('common.success'),
-        description: language === 'zh' ? '交易已删除' : 'Transaction deleted',
-      });
+      toast({ title: t('common.success'), description: language === 'zh' ? '交易已删除' : 'Transaction deleted' });
       fetchTransactions();
     } catch (error: any) {
-      toast({
-        title: t('common.error'),
-        description: error.message,
-        variant: 'destructive',
-      });
+      toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
     }
   };
 
@@ -184,20 +215,10 @@ const AdminPayinOrders = () => {
                 </Select>
               </div>
               <div className="w-40">
-                <Input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  placeholder="dd-mm-yyyy"
-                />
+                <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
               </div>
               <div className="w-40">
-                <Input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  placeholder="dd-mm-yyyy"
-                />
+                <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
               </div>
               <Button variant="outline" onClick={handleSearch}>
                 <Search className="h-4 w-4 mr-2" />
@@ -233,9 +254,7 @@ const AdminPayinOrders = () => {
                     Array.from({ length: 5 }).map((_, i) => (
                       <TableRow key={i}>
                         {Array.from({ length: 8 }).map((_, j) => (
-                          <TableCell key={j}>
-                            <Skeleton className="h-4 w-full" />
-                          </TableCell>
+                          <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                         ))}
                       </TableRow>
                     ))
@@ -264,15 +283,57 @@ const AdminPayinOrders = () => {
                         <TableCell className="text-muted-foreground">
                           {format(new Date(tx.created_at), 'yyyy-MM-dd HH:mm')}
                         </TableCell>
-                        <TableCell className="text-center">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => handleDeleteTransaction(tx.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                        <TableCell>
+                          <div className="flex items-center justify-center gap-1">
+                            {tx.status === 'pending' && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950"
+                                    disabled={processingId === tx.id}
+                                  >
+                                    <CheckCircle2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>
+                                      {language === 'zh' ? '确认手动标记成功？' : 'Confirm Manual Success?'}
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription className="space-y-2">
+                                      <p>
+                                        {language === 'zh'
+                                          ? `此操作将标记订单 ${tx.order_no} 为成功，并将 ₹${tx.net_amount?.toLocaleString()} 添加到商户余额。`
+                                          : `This will mark order ${tx.order_no} as SUCCESS and credit ₹${tx.net_amount?.toLocaleString()} to the merchant's balance.`}
+                                      </p>
+                                      <p className="font-semibold text-destructive">
+                                        {language === 'zh' ? '此操作不可撤销！' : 'This action cannot be undone!'}
+                                      </p>
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>{language === 'zh' ? '取消' : 'Cancel'}</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => handleManualSuccess(tx)}
+                                      className="bg-green-600 hover:bg-green-700"
+                                    >
+                                      {language === 'zh' ? '确认成功' : 'Confirm Success'}
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={() => handleDeleteTransaction(tx.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
