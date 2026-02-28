@@ -11,6 +11,7 @@ import { useAuthStore, initializeAuth } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { getLoginErrorMessage } from '@/lib/loginErrors';
+import { BackendStatus } from '@/components/BackendStatus';
 import * as OTPAuth from 'otpauth';
 
 interface GatewaySettings {
@@ -481,11 +482,14 @@ const MerchantLogin = () => {
               </form>
             )}
 
-            {/* Security Notice */}
+            {/* Status Indicators */}
             <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-border">
-              <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                <Shield className="h-3.5 w-3.5 text-primary" />
-                <span>{language === 'zh' ? '256位SSL加密保护' : '256-bit SSL protected'}</span>
+              <div className="flex flex-col items-center gap-2">
+                <BackendStatus language={language} />
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Shield className="h-3.5 w-3.5 text-primary" />
+                  <span>{language === 'zh' ? '256位SSL加密保护' : '256-bit SSL protected'}</span>
+                </div>
               </div>
             </div>
           </div>
