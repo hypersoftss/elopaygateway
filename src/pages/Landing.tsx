@@ -66,7 +66,7 @@ const Landing = () => {
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {settings.logoUrl ? (
-              <img src={settings.logoUrl} alt="Logo" className="h-10 w-10 rounded-xl object-contain shadow-lg" />
+              <img src={settings.logoUrl} alt="ELOPAY Gateway Logo" width={40} height={40} decoding="async" className="h-10 w-10 rounded-xl object-contain shadow-lg" />
             ) : !isLoading ? (
               <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg shadow-primary/25">
                 <Zap className="h-5 w-5 text-primary-foreground" />
