@@ -295,7 +295,7 @@ const Index = () => {
         }`}>
           <div className="flex items-center gap-3">
             {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className={`rounded-xl object-contain transition-all duration-300 ${
+              <img src={logoUrl} alt="ELOPAY Gateway Logo" width={36} height={36} decoding="async" className={`rounded-xl object-contain transition-all duration-300 ${
                 showBackToTop ? 'h-7 w-7' : 'h-9 w-9'
               }`} />
             ) : !isLoading ? (
@@ -361,7 +361,7 @@ const Index = () => {
                 <SheetHeader>
                   <SheetTitle className="flex items-center gap-3">
                     {logoUrl ? (
-                      <img src={logoUrl} alt="Logo" className="h-8 w-8 rounded-xl object-contain" />
+                      <img src={logoUrl} alt="ELOPAY Gateway Logo" width={32} height={32} decoding="async" className="h-8 w-8 rounded-xl object-contain" />
                     ) : (
                       <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
                         <Zap className="h-4 w-4 text-primary-foreground" />
@@ -1148,7 +1148,7 @@ const Index = () => {
             <div className="md:col-span-1">
               <div className="flex items-center gap-3 mb-4">
                 {logoUrl ? (
-                  <img src={logoUrl} alt="ELOPAY Gateway Logo" className="h-10 w-10 rounded-lg object-contain" />
+                  <img src={logoUrl} alt="ELOPAY Gateway Logo" width={40} height={40} loading="lazy" decoding="async" className="h-10 w-10 rounded-lg object-contain" />
                 ) : (
                   <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
                     <Zap className="h-5 w-5 text-primary-foreground" />
