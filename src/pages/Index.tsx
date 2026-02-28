@@ -154,7 +154,7 @@ const Index = () => {
     description: 'ELOPAY Gateway - Leading payment gateway for INR, PKR, BDT. Accept UPI, JazzCash, EasyPaisa, bKash, Nagad payments. Instant settlements, 99.9% uptime, enterprise security.',
     ogTitle: 'ELOPAY Gateway - #1 Payment Gateway for India, Pakistan & Bangladesh',
     ogDescription: 'ELOPAY Gateway - Leading payment gateway for INR, PKR, BDT. Accept UPI, JazzCash, EasyPaisa, bKash, Nagad payments with instant settlements.',
-    ogImage: 'https://elopaygateway.lovable.app/og-image.png',
+    ogImage: 'https://elopaygateway.in/og-image.png',
   });
 
   const features = [
