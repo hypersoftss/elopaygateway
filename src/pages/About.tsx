@@ -31,7 +31,7 @@ const About = () => {
     description: 'ELOPAY Gateway provides secure payment processing for India, Pakistan & Bangladesh. Fast payins, payouts with UPI, bKash, JazzCash & more.',
     ogTitle: 'About ELOPAY Gateway - Trusted Payment Solution',
     ogDescription: 'Secure payment gateway for South Asia. UPI, bKash, JazzCash, Easypaisa supported.',
-    ogImage: 'https://elopaygateway.in/og-image.png',
+    ogImage: 'https://elopaygateway.in/og-image.webp',
     keywords: 'ELOPAY, payment gateway, UPI, bKash, JazzCash, India payments, Pakistan payments, Bangladesh payments',
     canonicalUrl: 'https://elopaygateway.in/about',
   });

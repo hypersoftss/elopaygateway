@@ -154,7 +154,7 @@ const Index = () => {
     description: 'Accept UPI, JazzCash, bKash, Nagad & USDT payments with ELOPAY Gateway. Instant settlements, 99.9% uptime, enterprise security for INR, PKR, BDT.',
     ogTitle: 'ELOPAY Gateway - Payment Gateway India, Pakistan, Bangladesh',
     ogDescription: 'Accept UPI, JazzCash, bKash, Nagad & USDT payments. Instant settlements, 99.9% uptime, enterprise security.',
-    ogImage: 'https://elopaygateway.in/og-image.png',
+    ogImage: 'https://elopaygateway.in/og-image.webp',
   });
 
   const features = [
