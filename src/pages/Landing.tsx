@@ -5,6 +5,7 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { LanguageSwitch } from '@/components/LanguageSwitch';
 import { useTranslation } from '@/lib/i18n';
 import { useGatewaySettings } from '@/hooks/useGatewaySettings';
+import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 
 // Floating gradient orb
 const GradientOrb = ({ className, delay = 0 }: { className: string; delay?: number }) => (
@@ -18,6 +19,16 @@ const Landing = () => {
   const { language } = useTranslation();
   const { settings, isLoading } = useGatewaySettings();
   const isEnglish = language === 'en';
+
+  useDocumentMeta({
+    title: 'ELOPAY Gateway - Payment Gateway for India, Pakistan & Bangladesh',
+    description: 'Secure payment gateway with UPI, bKash, JazzCash, Easypaisa & USDT. Instant payins & payouts for South Asia.',
+    ogTitle: 'ELOPAY Gateway - Fast & Secure Payments',
+    ogDescription: 'Accept payments via UPI, bKash, JazzCash, Easypaisa. Instant settlement for merchants.',
+    ogImage: 'https://elopaygateway.in/og-image.png',
+    keywords: 'payment gateway, UPI gateway, bKash gateway, JazzCash, Easypaisa, ELOPAY, South Asia payments',
+    canonicalUrl: 'https://elopaygateway.in/',
+  });
 
   const features = [
     {

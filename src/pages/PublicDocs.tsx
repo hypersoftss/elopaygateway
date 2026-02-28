@@ -16,11 +16,22 @@ import { useTranslation } from '@/lib/i18n';
 import { useGatewaySettings } from '@/hooks/useGatewaySettings';
 import { ScrollReveal } from '@/hooks/useScrollReveal';
 import { toast } from 'sonner';
+import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 
 const PublicDocs = () => {
   const { language } = useTranslation();
   const { settings } = useGatewaySettings();
   const isEnglish = language === 'en';
+
+  useDocumentMeta({
+    title: 'API Documentation - ELOPAY Gateway',
+    description: 'Integrate ELOPAY payment gateway with our simple REST API. Support for UPI, bKash, JazzCash, Easypaisa. Get started in minutes.',
+    ogTitle: 'API Documentation - ELOPAY Gateway',
+    ogDescription: 'Easy-to-use payment API for India, Pakistan & Bangladesh. Complete integration guide with code examples.',
+    ogImage: 'https://elopaygateway.in/og-image.png',
+    keywords: 'ELOPAY API, payment API documentation, UPI API, bKash API, JazzCash API, payment integration',
+    canonicalUrl: 'https://elopaygateway.in/docs',
+  });
 
   // Use gateway name from settings
   const gatewayName = settings.gatewayName || 'ELOPAY';
