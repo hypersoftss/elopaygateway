@@ -28,7 +28,7 @@ const PublicDocs = () => {
     description: 'Integrate ELOPAY payment gateway with our simple REST API. Support for UPI, bKash, JazzCash, Easypaisa. Get started in minutes.',
     ogTitle: 'API Documentation - ELOPAY Gateway',
     ogDescription: 'Easy-to-use payment API for India, Pakistan & Bangladesh. Complete integration guide with code examples.',
-    ogImage: 'https://elopaygateway.in/og-image.png',
+    ogImage: 'https://elopaygateway.in/og-image.webp',
     keywords: 'ELOPAY API, payment API documentation, UPI API, bKash API, JazzCash API, payment integration',
     canonicalUrl: 'https://elopaygateway.in/docs',
   });

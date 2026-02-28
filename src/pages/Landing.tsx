@@ -25,7 +25,7 @@ const Landing = () => {
     description: 'Secure payment gateway with UPI, bKash, JazzCash, Easypaisa & USDT. Instant payins & payouts for South Asia.',
     ogTitle: 'ELOPAY Gateway - Fast & Secure Payments',
     ogDescription: 'Accept payments via UPI, bKash, JazzCash, Easypaisa. Instant settlement for merchants.',
-    ogImage: 'https://elopaygateway.in/og-image.png',
+    ogImage: 'https://elopaygateway.in/og-image.webp',
     keywords: 'payment gateway, UPI gateway, bKash gateway, JazzCash, Easypaisa, ELOPAY, South Asia payments',
     canonicalUrl: 'https://elopaygateway.in/',
   });
