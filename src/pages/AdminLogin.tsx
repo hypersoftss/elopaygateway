@@ -11,6 +11,7 @@ import { useAuthStore, initializeAuth } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { getLoginErrorMessage } from '@/lib/loginErrors';
+import { BackendStatus } from '@/components/BackendStatus';
 import * as OTPAuth from 'otpauth';
 
 interface GatewaySettings {
@@ -552,8 +553,9 @@ const AdminLogin = () => {
               </Button>
             </form>
 
-            {/* Security Badge */}
-            <div className="mt-6 flex justify-center">
+            {/* Status Indicators */}
+            <div className="mt-6 flex flex-col items-center gap-2">
+              <BackendStatus language={language} />
               <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/50 text-xs text-muted-foreground">
                 <Shield className="h-3 w-3 text-primary" />
                 <span>{language === 'zh' ? 'AES-256 加密' : 'AES-256 Encrypted'}</span>
