@@ -24,6 +24,7 @@ Deno.serve(async (req) => {
       )
     }
 
+    console.log('Setup key comparison:', { receivedLength: setupKey?.length, expectedLength: validSetupKey.length, match: setupKey === validSetupKey })
     if (!setupKey || setupKey !== validSetupKey) {
       return new Response(
         JSON.stringify({ error: 'Invalid setup key' }),
