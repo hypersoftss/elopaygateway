@@ -10,6 +10,7 @@ import { useTranslation } from '@/lib/i18n';
 import { useAuthStore, initializeAuth } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { getLoginErrorMessage } from '@/lib/loginErrors';
 import * as OTPAuth from 'otpauth';
 
 interface GatewaySettings {
@@ -116,7 +117,7 @@ const AdminLogin = () => {
       if (error) {
         toast({
           title: t('auth.loginFailed'),
-          description: t('auth.invalidCredentials'),
+          description: getLoginErrorMessage(error, language, t('auth.invalidCredentials')),
           variant: 'destructive',
         });
         setIsSubmitting(false);
@@ -145,9 +146,10 @@ const AdminLogin = () => {
         }
       }
     } catch (error) {
+      const errorMessage = getLoginErrorMessage(error as { message?: string } | null, language, t('auth.invalidCredentials'));
       toast({
         title: t('auth.loginFailed'),
-        description: String(error),
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
@@ -195,16 +197,17 @@ const AdminLogin = () => {
       if (error) {
         toast({
           title: t('auth.loginFailed'),
-          description: error.message,
+          description: getLoginErrorMessage(error, language, t('auth.invalidCredentials')),
           variant: 'destructive',
         });
         // Restore 2FA step on error
         setShow2FAStep(true);
       }
     } catch (error) {
+      const errorMessage = getLoginErrorMessage(error as { message?: string } | null, language, t('auth.invalidCredentials'));
       toast({
         title: t('auth.loginFailed'),
-        description: String(error),
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
