@@ -14,7 +14,15 @@ Deno.serve(async (req) => {
   try {
     const { email, password, setupKey } = await req.json()
 
-    const validSetupKey = 'PAYGATE2024'
+    // SECURITY FIX: Require ADMIN_SETUP_KEY environment variable - no default fallback
+    const validSetupKey = Deno.env.get('ADMIN_SETUP_KEY')
+    if (!validSetupKey) {
+      console.error('ADMIN_SETUP_KEY environment variable is not configured')
+      return new Response(
+        JSON.stringify({ error: 'Setup key not configured. Please set ADMIN_SETUP_KEY in environment variables.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     if (!setupKey || setupKey !== validSetupKey) {
       return new Response(

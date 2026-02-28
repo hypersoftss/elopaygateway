@@ -10,6 +10,7 @@ import { useTranslation } from '@/lib/i18n';
 import { useAuthStore, initializeAuth } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { getLoginErrorMessage } from '@/lib/loginErrors';
 import * as OTPAuth from 'otpauth';
 
 interface GatewaySettings {
@@ -111,7 +112,7 @@ const MerchantLogin = () => {
       if (error) {
         toast({
           title: t('auth.loginFailed'),
-          description: t('auth.invalidCredentials'),
+          description: getLoginErrorMessage(error, language, t('auth.invalidCredentials')),
           variant: 'destructive',
         });
         setIsSubmitting(false);
@@ -154,9 +155,10 @@ const MerchantLogin = () => {
         }
       }
     } catch (error) {
+      const errorMessage = getLoginErrorMessage(error as { message?: string } | null, language, t('auth.invalidCredentials'));
       toast({
         title: t('auth.loginFailed'),
-        description: String(error),
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
@@ -198,7 +200,7 @@ const MerchantLogin = () => {
       if (error) {
         toast({
           title: t('auth.loginFailed'),
-          description: t('auth.invalidCredentials'),
+          description: getLoginErrorMessage(error, language, t('auth.invalidCredentials')),
           variant: 'destructive',
         });
       } else {
@@ -218,9 +220,10 @@ const MerchantLogin = () => {
         setPendingSession(null);
       }
     } catch (error) {
+      const errorMessage = getLoginErrorMessage(error as { message?: string } | null, language, t('auth.invalidCredentials'));
       toast({
         title: t('auth.loginFailed'),
-        description: String(error),
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
