@@ -180,7 +180,7 @@ Deno.serve(async (req) => {
           app_id: gateway.app_id,
           order_sn: transaction.order_no,
           currency: withdrawalCode,
-          money: Math.round(transaction.amount * 100), // HYPER SOFTS uses cents
+          money: Math.round((transaction.net_amount || transaction.amount) * 100), // Send net_amount (after fee) to gateway
           notify_url: internalCallbackUrl,
           name: (transaction.account_holder_name || merchant?.merchant_name || '').trim(),
           card_number: (transaction.account_number || '').trim(),
@@ -230,7 +230,7 @@ Deno.serve(async (req) => {
         // ELOPAYGATEWAY payout (default)
         const eloPayGatewaySignature = generateHyperPayPayoutSignature(
           transaction.account_number || '',
-          transaction.amount.toString(),
+          (transaction.net_amount || transaction.amount).toString(),
           transaction.bank_name || '',
           internalCallbackUrl,
           transaction.ifsc_code || '',
@@ -244,7 +244,7 @@ Deno.serve(async (req) => {
 
         const formData = new URLSearchParams()
         formData.append('merchant_id', gateway.app_id)
-        formData.append('amount', transaction.amount.toString())
+        formData.append('amount', (transaction.net_amount || transaction.amount).toString())
         formData.append('transaction_id', transaction.order_no)
         formData.append('account_number', transaction.account_number || '')
         formData.append('ifsc', transaction.ifsc_code || '')
