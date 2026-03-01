@@ -47,6 +47,8 @@ const ACTION_TYPE_LABELS: Record<string, { label: string; color: string }> = {
   status_change: { label: 'Status Change', color: 'bg-green-500/10 text-green-600 border-green-500/20' },
   delete: { label: 'Deleted', color: 'bg-destructive/10 text-destructive border-destructive/20' },
   create: { label: 'Created', color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' },
+  balance_add: { label: 'Balance Added', color: 'bg-green-500/10 text-green-600 border-green-500/20' },
+  balance_deduct: { label: 'Balance Deducted', color: 'bg-red-500/10 text-red-600 border-red-500/20' },
   // Merchant actions
   login: { label: 'Login', color: 'bg-sky-500/10 text-sky-600 border-sky-500/20' },
   logout: { label: 'Logout', color: 'bg-slate-500/10 text-slate-600 border-slate-500/20' },
@@ -129,6 +131,10 @@ const AdminActivityLogs = () => {
     if (log.action_type === 'gateway_update' || log.action_type === 'bulk_gateway_assign') {
       return `Gateway: ${details.gateway_name || 'Unknown'}${details.trade_type ? ` (${details.trade_type})` : ''}`;
     }
+
+    if (log.action_type === 'balance_add' || log.action_type === 'balance_deduct') {
+      return `${details.type === 'add' ? '+' : '-'}${details.amount} | Reason: ${details.reason || '-'} | Balance: ${log.old_values?.balance} → ${log.new_values?.balance}`;
+    }
     
     return JSON.stringify(details).slice(0, 100);
   };
@@ -181,6 +187,10 @@ const AdminActivityLogs = () => {
                   <SelectItem value="password_reset">Password Reset</SelectItem>
                   <SelectItem value="2fa_reset">2FA Reset</SelectItem>
                   <SelectItem value="status_change">Status Change</SelectItem>
+                  <SelectItem value="balance_add">Balance Added</SelectItem>
+                  <SelectItem value="balance_deduct">Balance Deducted</SelectItem>
+                  <SelectItem value="login">Login</SelectItem>
+                  <SelectItem value="withdrawal_request">Withdrawal Request</SelectItem>
                 </SelectContent>
               </Select>
             </div>
