@@ -179,13 +179,11 @@ Deno.serve(async (req) => {
         const hsParams: Record<string, any> = {
           app_id: gateway.app_id,
           order_sn: transaction.order_no,
-          currency: withdrawalCode, // Use withdrawal-specific code
+          currency: withdrawalCode,
           money: Math.round(transaction.amount * 100), // HYPER SOFTS uses cents
           notify_url: internalCallbackUrl,
-          name: transaction.account_holder_name || merchant?.merchant_name || '',
-          card_number: transaction.account_number || '',
-          bank_name: transaction.bank_name || '',
-          addon2: 'v1.0',
+          name: (transaction.account_holder_name || merchant?.merchant_name || '').trim(),
+          card_number: (transaction.account_number || '').trim(),
         }
 
         // Add addon1 based on currency and method
@@ -265,15 +263,41 @@ Deno.serve(async (req) => {
         console.log('ELOPAYGATEWAY Payout response:', gatewayResponse)
       }
 
+      // Check if gateway accepted the payout
+      const isGatewaySuccess = gatewayResponse && (
+        gatewayResponse.status === 1 || 
+        gatewayResponse.status === '1' || 
+        gatewayResponse.code === 200 || 
+        gatewayResponse.code === '200' ||
+        gatewayResponse.success === true
+      )
+
       // Update transaction with gateway response
       await supabaseAdmin
         .from('transactions')
         .update({ 
-          callback_data: { gateway_response: gatewayResponse, approved_at: new Date().toISOString() }
+          callback_data: { 
+            gateway_response: gatewayResponse, 
+            approved_at: new Date().toISOString(),
+            gateway_accepted: isGatewaySuccess
+          }
         })
         .eq('id', transaction_id)
 
-      // Remove from frozen balance
+      if (!isGatewaySuccess) {
+        // Gateway rejected - do NOT deduct frozen balance, keep transaction pending
+        console.error('Gateway rejected payout:', gatewayResponse?.msg || gatewayResponse?.message || 'Unknown error')
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            message: `Gateway rejected: ${gatewayResponse?.msg || gatewayResponse?.message || 'Unknown error'}`,
+            gateway_response: gatewayResponse
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // Gateway accepted - remove from frozen balance
       if (merchant) {
         await supabaseAdmin
           .from('merchants')
