@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { StatusBadge } from '@/components/StatusBadge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
-import { Search, Download, ArrowUpFromLine, Trash2, CheckCircle2, RefreshCw, Loader2, Pencil } from 'lucide-react';
+import { Search, Download, ArrowUpFromLine, Trash2, CheckCircle2, XCircle, RefreshCw, Loader2, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import {
@@ -232,14 +232,55 @@ const AdminPayoutOrders = () => {
   };
 
   const handleDeleteTransaction = async (txId: string) => {
-    if (!confirm('Are you sure you want to delete this transaction?')) return;
+    if (!confirm('Are you sure you want to delete this payout? If pending, frozen balance will be returned to merchant.')) return;
     try {
+      // Find the transaction to check if we need to unfreeze balance
+      const tx = transactions.find(t => t.id === txId);
+      if (tx && tx.status === 'pending') {
+        // Unfreeze balance back to merchant
+        const { data: merchant } = await supabase
+          .from('merchants')
+          .select('balance, frozen_balance')
+          .eq('id', tx.merchant_id)
+          .single();
+        
+        if (merchant) {
+          const unfreezeAmount = tx.amount + (tx.fee || 0);
+          await supabase
+            .from('merchants')
+            .update({
+              balance: (merchant.balance || 0) + unfreezeAmount,
+              frozen_balance: Math.max(0, (merchant.frozen_balance || 0) - unfreezeAmount),
+            })
+            .eq('id', tx.merchant_id);
+        }
+      }
+
       const { error } = await supabase.from('transactions').delete().eq('id', txId);
       if (error) throw error;
-      toast({ title: t('common.success'), description: 'Transaction deleted' });
+      toast({ title: t('common.success'), description: 'Transaction deleted & balance restored' });
       fetchTransactions();
     } catch (error: any) {
       toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
+    }
+  };
+
+  const handleRejectPayout = async (tx: Transaction) => {
+    if (tx.status !== 'pending') return;
+    setProcessingId(tx.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('process-payout', {
+        body: { transaction_id: tx.id, action: 'reject' },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.message || 'Reject failed');
+
+      toast({ title: '✅ Rejected', description: 'Payout rejected. Frozen balance returned to merchant.' });
+      fetchTransactions();
+    } catch (error: any) {
+      toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
+    } finally {
+      setProcessingId(null);
     }
   };
 
@@ -422,6 +463,24 @@ const AdminPayoutOrders = () => {
                                         </AlertDialogFooter>
                                       </AlertDialogContent>
                                     </AlertDialog>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button 
+                                          variant="ghost" 
+                                          size="icon" 
+                                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" 
+                                          onClick={() => {
+                                            if (confirm(`Reject this payout? ₹${(tx.amount + (tx.fee || 0)).toLocaleString()} will be returned to ${tx.merchants?.merchant_name || 'merchant'}'s balance.`)) {
+                                              handleRejectPayout(tx);
+                                            }
+                                          }}
+                                          disabled={processingId === tx.id}
+                                        >
+                                          <XCircle className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Reject & Return Balance</TooltipContent>
+                                    </Tooltip>
                                   </>
                                 )}
                                 {/* Edit button - available for all statuses */}
