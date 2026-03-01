@@ -116,15 +116,17 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'approve') {
-      // Get gateway configuration
+      // Get gateway configuration - try transaction's gateway_id first, then merchant's gateway_id
       let gateway = null
-      if (transaction.gateway_id) {
+      const gatewayId = transaction.gateway_id || merchant?.gateway_id
+      if (gatewayId) {
         const { data: gatewayData } = await supabaseAdmin
           .from('payment_gateways')
           .select('*')
-          .eq('id', transaction.gateway_id)
+          .eq('id', gatewayId)
           .single()
         gateway = gatewayData
+        console.log('Using gateway:', gatewayId, 'from', transaction.gateway_id ? 'transaction' : 'merchant')
       }
 
       // Fallback to HYPER PAY from admin_settings

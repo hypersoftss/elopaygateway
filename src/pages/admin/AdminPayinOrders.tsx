@@ -26,6 +26,9 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
+const CURRENCY_SYMBOLS: Record<string, string> = { INR: '₹', PKR: 'Rs.', BDT: '৳' };
+const getCurrencySymbol = (currency?: string | null) => CURRENCY_SYMBOLS[currency || 'INR'] || '₹';
+
 interface Transaction {
   id: string;
   order_no: string;
@@ -37,7 +40,9 @@ interface Transaction {
   bank_name: string | null;
   created_at: string;
   merchant_id: string;
-  merchants: { merchant_name: string; account_number: string; balance: number } | null;
+  gateway_id: string | null;
+  merchants: { merchant_name: string; account_number: string; balance: number; gateway_id: string | null } | null;
+  payment_gateways: { currency: string } | null;
 }
 
 const AdminPayinOrders = () => {
@@ -46,6 +51,7 @@ const AdminPayinOrders = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [merchantGatewayCurrencies, setMerchantGatewayCurrencies] = useState<Record<string, string>>({});
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -110,7 +116,7 @@ const AdminPayinOrders = () => {
     try {
       let query = supabase
         .from('transactions')
-        .select('*, merchants(merchant_name, account_number, balance)')
+        .select('*, merchants(merchant_name, account_number, balance, gateway_id), payment_gateways(currency)')
         .eq('transaction_type', 'payin')
         .order('created_at', { ascending: false });
 
@@ -123,6 +129,21 @@ const AdminPayinOrders = () => {
       const { data, error } = await query;
       if (error) throw error;
       setTransactions(data || []);
+
+      // Fetch merchant gateway currencies for txns without gateway_id
+      const merchantGatewayIds = new Set<string>();
+      (data || []).forEach((tx: any) => {
+        if (!tx.gateway_id && tx.merchants?.gateway_id) merchantGatewayIds.add(tx.merchants.gateway_id);
+      });
+      if (merchantGatewayIds.size > 0) {
+        const { data: gateways } = await supabase
+          .from('payment_gateways')
+          .select('id, currency')
+          .in('id', Array.from(merchantGatewayIds));
+        const map: Record<string, string> = {};
+        (gateways || []).forEach(g => { map[g.id] = g.currency; });
+        setMerchantGatewayCurrencies(map);
+      }
     } catch (error: any) {
       console.error('Error fetching transactions:', error);
       toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
@@ -141,6 +162,12 @@ const AdminPayinOrders = () => {
     tx.merchants?.merchant_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     tx.merchants?.account_number.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const getTxCurrency = (tx: Transaction) => {
+    if (tx.payment_gateways?.currency) return tx.payment_gateways.currency;
+    if (tx.merchants?.gateway_id && merchantGatewayCurrencies[tx.merchants.gateway_id]) return merchantGatewayCurrencies[tx.merchants.gateway_id];
+    return 'INR';
+  };
 
   const handleSearch = () => fetchTransactions();
 
@@ -374,7 +401,9 @@ const AdminPayinOrders = () => {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredTransactions.map((tx) => (
+                    filteredTransactions.map((tx) => {
+                      const sym = getCurrencySymbol(getTxCurrency(tx));
+                      return (
                       <TableRow key={tx.id} className="hover:bg-muted/50 transition-colors">
                         <TableCell className="font-mono text-sm">{tx.order_no}</TableCell>
                         <TableCell>
@@ -383,8 +412,8 @@ const AdminPayinOrders = () => {
                             <p className="text-xs text-muted-foreground">{tx.merchants?.account_number}</p>
                           </div>
                         </TableCell>
-                        <TableCell className="text-right font-semibold">₹{tx.amount.toLocaleString()}</TableCell>
-                        <TableCell className="text-right text-muted-foreground">₹{(tx.fee || 0).toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-semibold">{sym}{tx.amount.toLocaleString()}</TableCell>
+                        <TableCell className="text-right text-muted-foreground">{sym}{(tx.fee || 0).toLocaleString()}</TableCell>
                         <TableCell><StatusBadge status={tx.status} /></TableCell>
                         <TableCell>{tx.bank_name || '-'}</TableCell>
                         <TableCell className="text-muted-foreground">
@@ -434,7 +463,7 @@ const AdminPayinOrders = () => {
                                       <AlertDialogHeader>
                                         <AlertDialogTitle>Confirm Manual Success?</AlertDialogTitle>
                                         <AlertDialogDescription className="space-y-2">
-                                          <p>This will mark order <strong>{tx.order_no}</strong> as SUCCESS and credit <strong>₹{tx.net_amount?.toLocaleString()}</strong> to the merchant's balance.</p>
+                                          <p>This will mark order <strong>{tx.order_no}</strong> as SUCCESS and credit <strong>{sym}{tx.net_amount?.toLocaleString()}</strong> to the merchant's balance.</p>
                                           <p className="font-semibold text-destructive">This action cannot be undone!</p>
                                         </AlertDialogDescription>
                                       </AlertDialogHeader>
@@ -468,7 +497,8 @@ const AdminPayinOrders = () => {
                           </TooltipProvider>
                         </TableCell>
                       </TableRow>
-                    ))
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>
