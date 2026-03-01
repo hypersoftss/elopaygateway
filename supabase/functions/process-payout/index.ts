@@ -180,7 +180,7 @@ Deno.serve(async (req) => {
           currency: withdrawalCode, // Use withdrawal-specific code
           money: Math.round(transaction.amount * 100), // HYPER SOFTS uses cents
           notify_url: internalCallbackUrl,
-          name: transaction.account_holder_name || '',
+          name: transaction.account_holder_name || merchant?.merchant_name || '',
           card_number: transaction.account_number || '',
           bank_name: transaction.bank_name || '',
           addon2: 'v1.0',
@@ -235,7 +235,7 @@ Deno.serve(async (req) => {
           internalCallbackUrl,
           transaction.ifsc_code || '',
           gateway.app_id,
-          transaction.account_holder_name || '',
+          transaction.account_holder_name || merchant?.merchant_name || '',
           transaction.order_no,
           gateway.payout_key
         )

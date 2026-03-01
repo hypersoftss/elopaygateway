@@ -143,25 +143,29 @@ const AdminPayoutOrders = () => {
     if (tx.status !== 'pending') return;
     setProcessingId(tx.id);
     try {
-      const { error: txError } = await supabase
+      // Call process-payout to actually send payment through gateway API
+      const { data, error } = await supabase.functions.invoke('process-payout', {
+        body: { transaction_id: tx.id, action: 'approve' },
+      });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.message || 'Gateway processing failed');
+
+      // Now mark as success in DB
+      await supabase
         .from('transactions')
         .update({
           status: 'success' as any,
-          callback_data: { manual_approval: true, approved_at: new Date().toISOString(), approved_by: 'admin' } as any,
+          callback_data: { 
+            manual_approval: true, 
+            approved_at: new Date().toISOString(), 
+            approved_by: 'admin',
+            gateway_response: data.gateway_response 
+          } as any,
         })
         .eq('id', tx.id);
-      if (txError) throw txError;
 
-      // Unfreeze the frozen amount for payout
-      const unfreezeAmount = tx.amount + (tx.fee || 0);
-      const currentFrozen = tx.merchants?.frozen_balance || 0;
-      const { error: balanceError } = await supabase
-        .from('merchants')
-        .update({ frozen_balance: Math.max(0, currentFrozen - unfreezeAmount) })
-        .eq('id', tx.merchant_id);
-      if (balanceError) throw balanceError;
-
-      toast({ title: '✅ Success', description: `Payout marked as success. Frozen balance released.` });
+      toast({ title: '✅ Success', description: `Payout processed through gateway & marked as success.` });
       fetchTransactions();
     } catch (error: any) {
       toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
