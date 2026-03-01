@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, MoreHorizontal, RefreshCw, Power, Eye, EyeOff, Copy, Download, Users, TrendingUp, Wallet, Shield, ShieldOff, KeyRound, Lock, RotateCcw, Edit, Trash2, CheckSquare, Square } from 'lucide-react';
+import { Plus, Search, MoreHorizontal, RefreshCw, Power, Eye, EyeOff, Copy, Download, Users, TrendingUp, Wallet, Shield, ShieldOff, KeyRound, Lock, RotateCcw, Edit, Trash2, CheckSquare, Square, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -97,6 +97,12 @@ const AdminMerchants = () => {
   const [editPayinFee, setEditPayinFee] = useState('');
   const [editPayoutFee, setEditPayoutFee] = useState('');
   const [editGatewayId, setEditGatewayId] = useState('');
+  
+  // Balance adjustment
+  const [balanceAdjustAmount, setBalanceAdjustAmount] = useState('');
+  const [balanceAdjustType, setBalanceAdjustType] = useState<'add' | 'deduct'>('add');
+  const [balanceAdjustReason, setBalanceAdjustReason] = useState('');
+  const [isAdjustingBalance, setIsAdjustingBalance] = useState(false);
 
   const [gateways, setGateways] = useState<Gateway[]>([]);
   const [selectedMerchants, setSelectedMerchants] = useState<Set<string>>(new Set());
@@ -238,6 +244,9 @@ const AdminMerchants = () => {
     setEditPayinFee(merchant.payin_fee?.toString() || '9');
     setEditPayoutFee(merchant.payout_fee?.toString() || '4');
     setEditGatewayId(merchant.gateway_id || '');
+    setBalanceAdjustAmount('');
+    setBalanceAdjustType('add');
+    setBalanceAdjustReason('');
     setIsEditOpen(true);
   };
 
@@ -437,6 +446,59 @@ const AdminMerchants = () => {
       });
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleBalanceAdjustment = async () => {
+    if (!editingMerchant || !balanceAdjustAmount || parseFloat(balanceAdjustAmount) <= 0) {
+      toast({ title: t('common.error'), description: 'Enter a valid amount', variant: 'destructive' });
+      return;
+    }
+    if (!balanceAdjustReason.trim()) {
+      toast({ title: t('common.error'), description: 'Please provide a reason', variant: 'destructive' });
+      return;
+    }
+
+    const amount = parseFloat(balanceAdjustAmount);
+    const newBalance = balanceAdjustType === 'add' 
+      ? Number(editingMerchant.balance) + amount 
+      : Number(editingMerchant.balance) - amount;
+
+    if (newBalance < 0) {
+      toast({ title: t('common.error'), description: 'Insufficient balance for deduction', variant: 'destructive' });
+      return;
+    }
+
+    setIsAdjustingBalance(true);
+    try {
+      const { error } = await supabase
+        .from('merchants')
+        .update({ balance: newBalance })
+        .eq('id', editingMerchant.id);
+
+      if (error) throw error;
+
+      await logMerchantActivity(
+        editingMerchant.id,
+        `balance_${balanceAdjustType}`,
+        { reason: balanceAdjustReason.trim(), amount, type: balanceAdjustType },
+        { balance: editingMerchant.balance },
+        { balance: newBalance }
+      );
+
+      toast({
+        title: t('common.success'),
+        description: `${balanceAdjustType === 'add' ? '+' : '-'}${amount} adjusted. New balance: ${newBalance.toFixed(2)}`,
+      });
+
+      setEditingMerchant({ ...editingMerchant, balance: newBalance });
+      setBalanceAdjustAmount('');
+      setBalanceAdjustReason('');
+      fetchMerchants();
+    } catch (err: any) {
+      toast({ title: t('common.error'), description: err.message, variant: 'destructive' });
+    } finally {
+      setIsAdjustingBalance(false);
     }
   };
 
@@ -1216,7 +1278,74 @@ const AdminMerchants = () => {
                 </Button>
               </div>
 
-              {/* Gateway Assignment */}
+              {/* Balance Adjustment */}
+              <div className="space-y-3 p-4 rounded-lg bg-muted/50 border border-primary/20">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Wallet className="h-4 w-4 text-primary" />
+                    <Label className="font-medium">{language === 'zh' ? '余额调整' : 'Balance Adjustment'}</Label>
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    {language === 'zh' ? '当前' : 'Current'}: {Number(editingMerchant?.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </Badge>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant={balanceAdjustType === 'add' ? 'default' : 'outline'}
+                    onClick={() => setBalanceAdjustType('add')}
+                    className="flex-1"
+                  >
+                    <ArrowUpCircle className="h-3 w-3 mr-1" /> {language === 'zh' ? '增加' : 'Add'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={balanceAdjustType === 'deduct' ? 'destructive' : 'outline'}
+                    onClick={() => setBalanceAdjustType('deduct')}
+                    className="flex-1"
+                  >
+                    <ArrowDownCircle className="h-3 w-3 mr-1" /> {language === 'zh' ? '扣除' : 'Deduct'}
+                  </Button>
+                </div>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder={language === 'zh' ? '输入金额' : 'Enter amount'}
+                  value={balanceAdjustAmount}
+                  onChange={(e) => setBalanceAdjustAmount(e.target.value)}
+                />
+                <Input
+                  placeholder={language === 'zh' ? '原因 (必填)' : 'Reason (required) e.g. Fee recovery, Manual credit'}
+                  value={balanceAdjustReason}
+                  onChange={(e) => setBalanceAdjustReason(e.target.value)}
+                />
+                {balanceAdjustAmount && parseFloat(balanceAdjustAmount) > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    {language === 'zh' ? '调整后余额' : 'After adjustment'}: {' '}
+                    <span className="font-medium text-foreground">
+                      {(balanceAdjustType === 'add' 
+                        ? Number(editingMerchant?.balance || 0) + parseFloat(balanceAdjustAmount)
+                        : Number(editingMerchant?.balance || 0) - parseFloat(balanceAdjustAmount)
+                      ).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </span>
+                  </p>
+                )}
+                <Button 
+                  onClick={handleBalanceAdjustment} 
+                  disabled={isAdjustingBalance || !balanceAdjustAmount || !balanceAdjustReason.trim()} 
+                  size="sm" 
+                  className="w-full"
+                  variant={balanceAdjustType === 'deduct' ? 'destructive' : 'default'}
+                >
+                  {isAdjustingBalance 
+                    ? t('common.loading') 
+                    : (balanceAdjustType === 'add' 
+                      ? (language === 'zh' ? '增加余额' : 'Add Balance') 
+                      : (language === 'zh' ? '扣除余额' : 'Deduct Balance'))}
+                </Button>
+              </div>
+
               <div className="space-y-3 p-4 rounded-lg bg-muted/50 border">
                 <div className="flex items-center gap-2">
                   <TrendingUp className="h-4 w-4 text-blue-500" />
