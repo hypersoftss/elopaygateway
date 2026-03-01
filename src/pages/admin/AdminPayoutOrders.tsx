@@ -316,10 +316,16 @@ const AdminPayoutOrders = () => {
                                     </Tooltip>
                                     <AlertDialogContent>
                                       <AlertDialogHeader>
-                                        <AlertDialogTitle>Confirm Manual Payout Success?</AlertDialogTitle>
-                                        <AlertDialogDescription className="space-y-2">
-                                          <p>This will mark payout <strong>{tx.order_no}</strong> as SUCCESS and release frozen balance of <strong>₹{(tx.amount + (tx.fee || 0)).toLocaleString()}</strong>.</p>
-                                          <p className="font-semibold text-destructive">This action cannot be undone!</p>
+                                        <AlertDialogTitle>⚠️ Confirm Gateway Payout?</AlertDialogTitle>
+                                        <AlertDialogDescription className="space-y-3">
+                                          <p>This will <strong>process the payout through the payment gateway</strong> and send <strong>₹{tx.amount.toLocaleString()}</strong> to:</p>
+                                          <div className="rounded-md bg-muted p-3 text-sm space-y-1">
+                                            <p><strong>Name:</strong> {tx.account_holder_name || tx.merchants?.merchant_name || 'N/A'}</p>
+                                            <p><strong>Account:</strong> {tx.account_number || 'N/A'}</p>
+                                            <p><strong>Bank/Wallet:</strong> {tx.bank_name || 'N/A'}</p>
+                                          </div>
+                                          <p className="text-destructive font-semibold">⚠️ Real money will be sent via gateway API. This action cannot be undone!</p>
+                                          <p className="text-xs text-muted-foreground">Frozen balance of ₹{(tx.amount + (tx.fee || 0)).toLocaleString()} will be released.</p>
                                         </AlertDialogDescription>
                                       </AlertDialogHeader>
                                       <AlertDialogFooter>
