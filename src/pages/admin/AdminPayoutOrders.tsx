@@ -232,15 +232,14 @@ const AdminPayoutOrders = () => {
   };
 
   const handleDeleteTransaction = async (txId: string) => {
-    if (!confirm('Are you sure you want to delete this payout? If pending, frozen balance will be returned to merchant.')) return;
+    if (!confirm('Are you sure you want to delete this payout? Transaction will be permanently removed. Balance will NOT be returned to merchant.')) return;
     try {
-      // Find the transaction to check if we need to unfreeze balance
+      // If pending, just remove frozen balance (no refund to merchant)
       const tx = transactions.find(t => t.id === txId);
       if (tx && tx.status === 'pending') {
-        // Unfreeze balance back to merchant
         const { data: merchant } = await supabase
           .from('merchants')
-          .select('balance, frozen_balance')
+          .select('frozen_balance')
           .eq('id', tx.merchant_id)
           .single();
         
@@ -249,7 +248,6 @@ const AdminPayoutOrders = () => {
           await supabase
             .from('merchants')
             .update({
-              balance: (merchant.balance || 0) + unfreezeAmount,
               frozen_balance: Math.max(0, (merchant.frozen_balance || 0) - unfreezeAmount),
             })
             .eq('id', tx.merchant_id);
@@ -258,7 +256,7 @@ const AdminPayoutOrders = () => {
 
       const { error } = await supabase.from('transactions').delete().eq('id', txId);
       if (error) throw error;
-      toast({ title: t('common.success'), description: 'Transaction deleted & balance restored' });
+      toast({ title: t('common.success'), description: 'Transaction deleted permanently' });
       fetchTransactions();
     } catch (error: any) {
       toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
