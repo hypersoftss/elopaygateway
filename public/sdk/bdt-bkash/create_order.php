@@ -49,11 +49,15 @@ $payload = [
     'trade_type'        => $config['TRADE_TYPE'],
 ];
 
+$requestUrl = rtrim($config['API_URL'], '/');
+if (preg_match('#/api$#', $requestUrl)) {
+    $requestUrl .= '/payin';
+}
+
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-curl_setopt($ch, CURLOPT_URL, $config['API_URL']);
-curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_URL, $requestUrl);
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
