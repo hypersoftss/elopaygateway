@@ -36,7 +36,7 @@ const MerchantDocumentation = () => {
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const gatewayName = 'ELOPAY';
-  const apiBaseUrl = 'https://elopaygateway.in/api';
+  const apiBaseUrl = 'https://ttywuskboaranphxxgtr.supabase.co/functions/v1';
 
   useEffect(() => {
     const fetchCredentials = async () => {
@@ -192,8 +192,8 @@ const MerchantDocumentation = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="relative">
-            <code className="block p-4 bg-muted rounded-lg text-sm font-mono">https://elopaygateway.in/api/payin</code>
-            <Button variant="ghost" size="sm" className="absolute right-2 top-2" onClick={() => copyToClipboard('https://elopaygateway.in/api/payin', 'pkr-payin')}>
+            <code className="block p-4 bg-muted rounded-lg text-sm font-mono">{apiBaseUrl}/payin</code>
+            <Button variant="ghost" size="sm" className="absolute right-2 top-2" onClick={() => copyToClipboard(`${apiBaseUrl}/payin`, 'pkr-payin')}>
               {copiedField === 'pkr-payin' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             </Button>
           </div>
@@ -260,7 +260,7 @@ const MerchantDocumentation = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="relative">
-            <code className="block p-4 bg-muted rounded-lg text-sm font-mono">https://elopaygateway.in/api/payout</code>
+            <code className="block p-4 bg-muted rounded-lg text-sm font-mono">{apiBaseUrl}/payout</code>
           </div>
 
           <div className="overflow-x-auto">
@@ -364,8 +364,8 @@ const MerchantDocumentation = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="relative">
-            <code className="block p-4 bg-muted rounded-lg text-sm font-mono">https://elopaygateway.in/api/payin</code>
-            <Button variant="ghost" size="sm" className="absolute right-2 top-2" onClick={() => copyToClipboard('https://elopaygateway.in/api/payin', 'bdt-payin')}>
+            <code className="block p-4 bg-muted rounded-lg text-sm font-mono">{apiBaseUrl}/payin</code>
+            <Button variant="ghost" size="sm" className="absolute right-2 top-2" onClick={() => copyToClipboard(`${apiBaseUrl}/payin`, 'bdt-payin')}>
               {copiedField === 'bdt-payin' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             </Button>
           </div>
@@ -432,7 +432,7 @@ const MerchantDocumentation = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="relative">
-            <code className="block p-4 bg-muted rounded-lg text-sm font-mono">https://elopaygateway.in/api/payout</code>
+            <code className="block p-4 bg-muted rounded-lg text-sm font-mono">{apiBaseUrl}/payout</code>
           </div>
 
           <div className="overflow-x-auto">
@@ -533,8 +533,8 @@ const MerchantDocumentation = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="relative">
-            <code className="block p-4 bg-muted rounded-lg text-sm font-mono">https://elopaygateway.in/api/payin</code>
-            <Button variant="ghost" size="sm" className="absolute right-2 top-2" onClick={() => copyToClipboard('https://elopaygateway.in/api/payin', 'inr-payin')}>
+            <code className="block p-4 bg-muted rounded-lg text-sm font-mono">{apiBaseUrl}/payin</code>
+            <Button variant="ghost" size="sm" className="absolute right-2 top-2" onClick={() => copyToClipboard(`${apiBaseUrl}/payin`, 'inr-payin')}>
               {copiedField === 'inr-payin' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             </Button>
           </div>
@@ -599,7 +599,7 @@ const MerchantDocumentation = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="relative">
-            <code className="block p-4 bg-muted rounded-lg text-sm font-mono">https://elopaygateway.in/api/payout</code>
+            <code className="block p-4 bg-muted rounded-lg text-sm font-mono">{apiBaseUrl}/payout</code>
           </div>
 
           <div className="overflow-x-auto">
@@ -886,7 +886,7 @@ ok`}
 {`<?php
 return [
     // === API Settings ===
-    'API_URL'       => 'https://elopaygateway.in/api/payin',
+    'API_URL'       => '${apiBaseUrl}/payin',
     'MERCHANT_ID'   => '${merchantId}',
     'API_KEY'       => '${showApiKey ? apiKey : 'YOUR_API_KEY'}',
     'TRADE_TYPE'    => '${getTradeTypeForCurrency()}',   // Options: ${getTradeTypeOptions()}
@@ -902,7 +902,7 @@ return [
               </pre>
               <Button variant="ghost" size="sm" className="absolute right-2 top-2" onClick={() => copyToClipboard(`<?php
 return [
-    'API_URL'       => 'https://elopaygateway.in/api/payin',
+    'API_URL'       => '${apiBaseUrl}/payin',
     'MERCHANT_ID'   => '${merchantId}',
     'API_KEY'       => '${apiKey}',
     'TRADE_TYPE'    => '${getTradeTypeForCurrency()}',
@@ -1073,7 +1073,7 @@ if (!empty($result['success']) && !empty($result['data']['payment_url'])) {
             <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
                 <p className="text-sm font-medium text-blue-700">📥 Request Format</p>
-                <p className="text-xs text-muted-foreground mt-1">JSON POST to <code>https://elopaygateway.in/api/payin</code></p>
+                <p className="text-xs text-muted-foreground mt-1">JSON POST to <code>{apiBaseUrl}/payin</code></p>
               </div>
               <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
                 <p className="text-sm font-medium text-green-700">📤 Success Response</p>
