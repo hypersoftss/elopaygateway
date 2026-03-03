@@ -6,7 +6,7 @@
  */
 
 return [
-    'API_URL'       => 'https://ttywuskboaranphxxgtr.supabase.co/functions/v1/payin',
+    'API_URL'       => 'https://api.elopaygateway.in/api/payin',
     'MERCHANT_ID'   => 'YOUR_MERCHANT_ID',   // Your Merchant ID (Account Number from dashboard)
     'API_KEY'       => 'YOUR_API_KEY',        // Your API Key from dashboard
     'TRADE_TYPE'    => 'PKRPH-EASY',          // Easypaisa deposit trade type

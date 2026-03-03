@@ -36,7 +36,7 @@ const MerchantDocumentation = () => {
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const gatewayName = 'ELOPAY';
-  const apiBaseUrl = 'https://ttywuskboaranphxxgtr.supabase.co/functions/v1';
+  const apiBaseUrl = 'https://api.elopaygateway.in/api';
 
   useEffect(() => {
     const fetchCredentials = async () => {
