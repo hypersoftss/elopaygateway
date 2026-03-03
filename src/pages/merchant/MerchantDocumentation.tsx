@@ -851,6 +851,401 @@ ok`}
     </Card>
   );
 
+  // PHP Integration Code Section
+  const renderPHPCodeDocs = () => {
+    const merchantId = credentials?.accountNumber || 'YOUR_MERCHANT_ID';
+    const apiKey = credentials?.apiKey || 'YOUR_API_KEY';
+    const currency = credentials?.currency || 'INR';
+
+    const getTradeTypeForCurrency = () => {
+      if (currency === 'BDT') return 'bkash';
+      if (currency === 'PKR') return 'PKRPH';
+      return 'INRUPI';
+    };
+
+    const getTradeTypeOptions = () => {
+      if (currency === 'BDT') return "'bkash' or 'nagad'";
+      if (currency === 'PKR') return "'PKRPH' (JazzCash) or 'PKRPH-EASY' (Easypaisa)";
+      return "'INRUPI' or 'usdt'";
+    };
+
+    return (
+      <div className="space-y-6">
+        {/* Step 1: config.php */}
+        <Card className="border-green-500/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Badge className="bg-green-500">Step 1</Badge>
+              config.php — Configuration
+            </CardTitle>
+            <CardDescription>Create this file and fill in your credentials. Your Merchant ID is pre-filled below.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="relative">
+              <pre className="p-4 bg-muted rounded-lg text-sm overflow-x-auto font-mono">
+{`<?php
+return [
+    // === API Settings ===
+    'API_URL'       => 'https://elopaygateway.in/api/payin',
+    'MERCHANT_ID'   => '${merchantId}',
+    'API_KEY'       => '${showApiKey ? apiKey : 'YOUR_API_KEY'}',
+    'TRADE_TYPE'    => '${getTradeTypeForCurrency()}',   // Options: ${getTradeTypeOptions()}
+    'CURRENCY'      => '${currency}',
+
+    // === Callback / Notify URL ===
+    'NOTIFY_URL'    => 'https://yourdomain.com/callback.php',
+    'RETURN_URL'    => 'https://yourdomain.com/payment-success',
+
+    // === Logging ===
+    'LOG_FILE'      => __DIR__ . '/elopay.log',
+];`}
+              </pre>
+              <Button variant="ghost" size="sm" className="absolute right-2 top-2" onClick={() => copyToClipboard(`<?php
+return [
+    'API_URL'       => 'https://elopaygateway.in/api/payin',
+    'MERCHANT_ID'   => '${merchantId}',
+    'API_KEY'       => '${apiKey}',
+    'TRADE_TYPE'    => '${getTradeTypeForCurrency()}',
+    'CURRENCY'      => '${currency}',
+    'NOTIFY_URL'    => 'https://yourdomain.com/callback.php',
+    'RETURN_URL'    => 'https://yourdomain.com/payment-success',
+    'LOG_FILE'      => __DIR__ . '/elopay.log',
+];`, 'php-config')}>
+                {copiedField === 'php-config' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
+            <div className="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+              <p className="text-sm text-yellow-600">
+                ⚠️ <strong>NOTIFY_URL</strong> must be a publicly accessible HTTPS URL where your server receives callbacks.
+                {currency === 'BDT' && <><br/>💡 <strong>TRADE_TYPE:</strong> Use <code className="bg-yellow-200/50 px-1 rounded">bkash</code> for bKash or <code className="bg-yellow-200/50 px-1 rounded">nagad</code> for Nagad.</>}
+                {currency === 'PKR' && <><br/>💡 <strong>TRADE_TYPE:</strong> Use <code className="bg-yellow-200/50 px-1 rounded">PKRPH</code> for JazzCash or <code className="bg-yellow-200/50 px-1 rounded">PKRPH-EASY</code> for Easypaisa.</>}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Step 2: create_order.php */}
+        <Card className="border-blue-500/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Badge className="bg-blue-500">Step 2</Badge>
+              create_order.php — Payment Creation
+            </CardTitle>
+            <CardDescription>
+              This file creates a payment order. Call it with: <code className="bg-muted px-1 rounded">create_order.php?amount=500&order_id=ORDER123</code>
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="relative">
+              <pre className="p-4 bg-muted rounded-lg text-sm overflow-x-auto font-mono whitespace-pre">
+{`<?php
+$config = include __DIR__ . '/config.php';
+
+// === Signature Generation ===
+// Formula: md5(merchant_id + amount + order_no + api_key + callback_url)
+function generateSignature($merchantId, $amount, $orderNo, $apiKey, $callbackUrl) {
+    return md5($merchantId . $amount . $orderNo . $apiKey . $callbackUrl);
+}
+
+// === Get Parameters ===
+$amount  = isset($_GET['amount']) ? number_format((float)$_GET['amount'], 2, '.', '') : '0.00';
+$orderNo = isset($_GET['order_id']) ? $_GET['order_id'] : 'ORD_' . time() . '_' . random_int(1000, 9999);
+
+if ((float)$amount < 1.00) {
+    echo json_encode(['status' => false, 'message' => 'Amount must be >= 1.00']);
+    exit;
+}
+
+// === Generate Signature ===
+$signature = generateSignature(
+    $config['MERCHANT_ID'],
+    $amount,
+    $orderNo,
+    $config['API_KEY'],
+    $config['NOTIFY_URL']
+);
+
+// === Build Request ===
+$payload = [
+    'merchant_id'       => $config['MERCHANT_ID'],
+    'amount'            => $amount,
+    'merchant_order_no' => $orderNo,
+    'callback_url'      => $config['NOTIFY_URL'],
+    'sign'              => $signature,
+    'trade_type'        => $config['TRADE_TYPE'],
+];
+
+// === Send API Request ===
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, $config['API_URL']);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+curl_setopt($ch, CURLOPT_TIMEOUT, 25);
+curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+$response = curl_exec($ch);
+$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$curlErr  = curl_error($ch);
+curl_close($ch);
+
+// === Log Request ===
+@file_put_contents(
+    $config['LOG_FILE'],
+    date('c') . " | CREATE | HTTP={$httpCode} | " . json_encode($payload) . " | {$response}\\n",
+    FILE_APPEND
+);
+
+// === Handle Response ===
+if ($curlErr) { die("Connection error: " . $curlErr); }
+
+$result = json_decode($response, true);
+if (!$result) { die("Invalid gateway response."); }
+
+if (!empty($result['success']) && !empty($result['data']['payment_url'])) {
+    // ✅ Success! Redirect customer to payment page
+    header('Location: ' . $result['data']['payment_url']);
+    exit;
+} else {
+    // ❌ Error
+    echo "Error: " . ($result['message'] ?? 'Failed to create order');
+}`}
+              </pre>
+              <Button variant="ghost" size="sm" className="absolute right-2 top-2" onClick={() => copyToClipboard(`<?php
+$config = include __DIR__ . '/config.php';
+
+function generateSignature($merchantId, $amount, $orderNo, $apiKey, $callbackUrl) {
+    return md5($merchantId . $amount . $orderNo . $apiKey . $callbackUrl);
+}
+
+$amount  = isset($_GET['amount']) ? number_format((float)$_GET['amount'], 2, '.', '') : '0.00';
+$orderNo = isset($_GET['order_id']) ? $_GET['order_id'] : 'ORD_' . time() . '_' . random_int(1000, 9999);
+
+if ((float)$amount < 1.00) {
+    echo json_encode(['status' => false, 'message' => 'Amount must be >= 1.00']);
+    exit;
+}
+
+$signature = generateSignature(
+    $config['MERCHANT_ID'], $amount, $orderNo, $config['API_KEY'], $config['NOTIFY_URL']
+);
+
+$payload = [
+    'merchant_id'       => $config['MERCHANT_ID'],
+    'amount'            => $amount,
+    'merchant_order_no' => $orderNo,
+    'callback_url'      => $config['NOTIFY_URL'],
+    'sign'              => $signature,
+    'trade_type'        => $config['TRADE_TYPE'],
+];
+
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, $config['API_URL']);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+curl_setopt($ch, CURLOPT_TIMEOUT, 25);
+curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+$response = curl_exec($ch);
+$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$curlErr  = curl_error($ch);
+curl_close($ch);
+
+@file_put_contents($config['LOG_FILE'], date('c') . " | CREATE | HTTP={$httpCode} | " . json_encode($payload) . " | {$response}\\n", FILE_APPEND);
+
+if ($curlErr) { die("Connection error: " . $curlErr); }
+
+$result = json_decode($response, true);
+if (!$result) { die("Invalid gateway response."); }
+
+if (!empty($result['success']) && !empty($result['data']['payment_url'])) {
+    header('Location: ' . $result['data']['payment_url']);
+    exit;
+} else {
+    echo "Error: " . ($result['message'] ?? 'Failed to create order');
+}`, 'php-create')}>
+                {copiedField === 'php-create' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
+            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                <p className="text-sm font-medium text-blue-700">📥 Request Format</p>
+                <p className="text-xs text-muted-foreground mt-1">JSON POST to <code>https://elopaygateway.in/api/payin</code></p>
+              </div>
+              <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                <p className="text-sm font-medium text-green-700">📤 Success Response</p>
+                <p className="text-xs text-muted-foreground mt-1"><code>{`{"success":true,"data":{"payment_url":"..."}}`}</code></p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Step 3: callback.php */}
+        <Card className="border-orange-500/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Badge className="bg-orange-500">Step 3</Badge>
+              callback.php — Payment Callback Handler
+            </CardTitle>
+            <CardDescription>
+              This file receives payment status notifications. Set its URL as your NOTIFY_URL in config.php
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="relative">
+              <pre className="p-4 bg-muted rounded-lg text-sm overflow-x-auto font-mono whitespace-pre">
+{`<?php
+$config = include __DIR__ . '/config.php';
+
+// === Receive POST Data ===
+$postData = $_POST;
+
+// Log incoming callback
+@file_put_contents($config['LOG_FILE'], date('c') . " | CALLBACK | " . json_encode($postData) . "\\n", FILE_APPEND);
+
+$status          = $postData['status'] ?? '';
+$orderNo         = $postData['order_no'] ?? '';
+$merchantOrderNo = $postData['merchant_order_no'] ?? '';
+$amount          = $postData['amount'] ?? '';
+$sign            = $postData['sign'] ?? '';
+
+// === Verify Signature ===
+function verifySignature($params, $secretKey) {
+    $receivedSign = $params['sign'] ?? '';
+    
+    // Remove 'sign' and empty values
+    $filtered = array_filter($params, function($v, $k) {
+        return $k !== 'sign' && $v !== '' && $v !== null;
+    }, ARRAY_FILTER_USE_BOTH);
+
+    // Sort by key (ASCII order)
+    ksort($filtered);
+
+    // Build string: key1=value1&key2=value2&key=SECRET
+    $parts = [];
+    foreach ($filtered as $k => $v) {
+        $parts[] = $k . '=' . $v;
+    }
+    $signStr   = implode('&', $parts) . '&key=' . $secretKey;
+    $localSign = strtoupper(md5($signStr));
+
+    return $receivedSign === $localSign;
+}
+
+if (!verifySignature($postData, $config['API_KEY'])) {
+    @file_put_contents($config['LOG_FILE'], date('c') . " | CALLBACK | SIGNATURE_MISMATCH\\n", FILE_APPEND);
+    echo "FAIL";
+    exit;
+}
+
+// === Process Payment Result ===
+if ($status == '1' || $status == 'success') {
+    /**
+     * ✅ Payment Successful!
+     * 
+     * Add your business logic here:
+     *   - Update order status in database
+     *   - Credit user balance
+     *   - Send confirmation email/notification
+     * 
+     * Available data:
+     *   $merchantOrderNo - Your original order ID
+     *   $orderNo         - Gateway order ID
+     *   $amount          - Payment amount (in paisa/cents, divide by 100)
+     */
+    
+    @file_put_contents($config['LOG_FILE'], date('c') . " | SUCCESS | order={$merchantOrderNo}\\n", FILE_APPEND);
+    echo "SUCCESS";
+} else {
+    @file_put_contents($config['LOG_FILE'], date('c') . " | FAILED | status={$status}\\n", FILE_APPEND);
+    echo "FAIL";
+}`}
+              </pre>
+              <Button variant="ghost" size="sm" className="absolute right-2 top-2" onClick={() => copyToClipboard(`<?php
+$config = include __DIR__ . '/config.php';
+
+$postData = $_POST;
+@file_put_contents($config['LOG_FILE'], date('c') . " | CALLBACK | " . json_encode($postData) . "\\n", FILE_APPEND);
+
+$status          = $postData['status'] ?? '';
+$orderNo         = $postData['order_no'] ?? '';
+$merchantOrderNo = $postData['merchant_order_no'] ?? '';
+$amount          = $postData['amount'] ?? '';
+$sign            = $postData['sign'] ?? '';
+
+function verifySignature($params, $secretKey) {
+    $receivedSign = $params['sign'] ?? '';
+    $filtered = array_filter($params, function($v, $k) {
+        return $k !== 'sign' && $v !== '' && $v !== null;
+    }, ARRAY_FILTER_USE_BOTH);
+    ksort($filtered);
+    $parts = [];
+    foreach ($filtered as $k => $v) {
+        $parts[] = $k . '=' . $v;
+    }
+    $signStr   = implode('&', $parts) . '&key=' . $secretKey;
+    $localSign = strtoupper(md5($signStr));
+    return $receivedSign === $localSign;
+}
+
+if (!verifySignature($postData, $config['API_KEY'])) {
+    echo "FAIL";
+    exit;
+}
+
+if ($status == '1' || $status == 'success') {
+    // TODO: Update your database, credit balance, etc.
+    echo "SUCCESS";
+} else {
+    echo "FAIL";
+}`, 'php-callback')}>
+                {copiedField === 'php-callback' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* File Structure Guide */}
+        <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              📁 File Structure
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <pre className="p-4 bg-muted rounded-lg text-sm font-mono">
+{`your-website/
+├── elopay/
+│   ├── config.php          ← Step 1: Your credentials
+│   ├── create_order.php    ← Step 2: Creates payment
+│   └── callback.php        ← Step 3: Receives result
+│
+│   Usage:
+│   https://yourdomain.com/elopay/create_order.php?amount=500&order_id=ORD123`}
+            </pre>
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-center">
+                <p className="font-semibold text-sm">1️⃣ config.php</p>
+                <p className="text-xs text-muted-foreground">Credentials & URLs</p>
+              </div>
+              <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg text-center">
+                <p className="font-semibold text-sm">2️⃣ create_order.php</p>
+                <p className="text-xs text-muted-foreground">Customer → Payment Page</p>
+              </div>
+              <div className="p-3 bg-orange-500/10 border border-orange-500/20 rounded-lg text-center">
+                <p className="font-semibold text-sm">3️⃣ callback.php</p>
+                <p className="text-xs text-muted-foreground">Gateway → Your Server</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+
   // SDK Download Section
   const renderSDKDocs = () => (
     <div className="space-y-6">
@@ -897,34 +1292,6 @@ ok`}
           </CardContent>
         </Card>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Start</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <pre className="p-4 bg-muted rounded-lg text-sm overflow-x-auto font-mono">
-{`// JavaScript Example
-const PayGate = require('./paygate-sdk');
-
-const client = new PayGate({
-  merchantId: '${credentials?.accountNumber || 'YOUR_MERCHANT_ID'}',
-  apiKey: 'YOUR_API_KEY',
-  payoutKey: 'YOUR_PAYOUT_KEY'
-});
-
-// Create Pay-in Order
-const order = await client.createPayin({
-  amount: ${credentials?.currency === 'PKR' ? '5000' : credentials?.currency === 'BDT' ? '2000' : '500'},
-  orderNo: 'ORDER_123',
-  callbackUrl: 'https://your-site.com/callback'${(credentials?.currency === 'PKR' || credentials?.currency === 'BDT') ? `,
-  tradeType: '${credentials?.currency === 'PKR' ? 'easypaisa' : 'nagad'}'` : ''}
-});
-
-console.log(order.payment_url);`}
-          </pre>
-        </CardContent>
-      </Card>
 
       {/* PHP Integration Kits */}
       <Card className="border-primary/20">
@@ -1424,13 +1791,18 @@ console.log(order.payment_url);`}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="api">
-              <TabsList className="grid w-full grid-cols-4">
+            <Tabs defaultValue="php">
+              <TabsList className="grid w-full grid-cols-5">
+                <TabsTrigger value="php">📄 PHP Code</TabsTrigger>
                 <TabsTrigger value="api">API Endpoints</TabsTrigger>
                 <TabsTrigger value="signature">Signature</TabsTrigger>
                 <TabsTrigger value="callback">Callback</TabsTrigger>
                 <TabsTrigger value="sdk">SDK</TabsTrigger>
               </TabsList>
+
+              <TabsContent value="php" className="mt-6">
+                {renderPHPCodeDocs()}
+              </TabsContent>
 
               <TabsContent value="api" className="mt-6">
                 {credentials?.currency === 'PKR' && renderPKRDocs()}
