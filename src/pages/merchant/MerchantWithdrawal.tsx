@@ -199,7 +199,7 @@ const MerchantWithdrawal = () => {
   };
 
   const handleWithdrawal = async () => {
-    if (!user?.merchantId || !merchantData) return;
+    if (!user?.merchantId || !merchantData || isLoading) return;
 
     const amount = parseFloat(form.amount);
     const minAmount = merchantData.min_withdrawal_amount || 1000;
@@ -294,13 +294,33 @@ const MerchantWithdrawal = () => {
 
     try {
       // Re-fetch fresh balance from DB to prevent double withdrawal
-      const { data: freshMerchant, error: fetchErr } = await supabase
-        .from('merchants')
-        .select('balance, frozen_balance')
-        .eq('id', user.merchantId)
-        .single();
+      const [{ data: freshMerchant, error: fetchErr }, { count: pendingCount }] = await Promise.all([
+        supabase
+          .from('merchants')
+          .select('balance, frozen_balance')
+          .eq('id', user.merchantId)
+          .single(),
+        supabase
+          .from('transactions')
+          .select('*', { count: 'exact', head: true })
+          .eq('merchant_id', user.merchantId)
+          .eq('transaction_type', 'payout')
+          .eq('status', 'pending')
+          .gte('created_at', new Date(Date.now() - 5000).toISOString()), // last 5 seconds
+      ]);
 
       if (fetchErr || !freshMerchant) throw new Error('Failed to verify balance');
+
+      // Block if there's already a pending withdrawal in the last 5 seconds (rapid click protection)
+      if (pendingCount && pendingCount > 0) {
+        toast({
+          title: language === 'zh' ? '请稍等' : 'Please Wait',
+          description: language === 'zh' ? '您已有一笔提现正在处理中' : 'You already have a pending withdrawal request. Please wait.',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
 
       const freshBalance = Number(freshMerchant.balance) || 0;
       const freshFrozen = Number(freshMerchant.frozen_balance) || 0;
@@ -312,7 +332,6 @@ const MerchantWithdrawal = () => {
           variant: 'destructive',
         });
         setIsLoading(false);
-        // Update local state with fresh data
         setMerchantData({ ...merchantData, balance: freshBalance, frozen_balance: freshFrozen });
         return;
       }
