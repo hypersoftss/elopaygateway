@@ -293,6 +293,30 @@ const MerchantWithdrawal = () => {
     setIsLoading(true);
 
     try {
+      // Re-fetch fresh balance from DB to prevent double withdrawal
+      const { data: freshMerchant, error: fetchErr } = await supabase
+        .from('merchants')
+        .select('balance, frozen_balance')
+        .eq('id', user.merchantId)
+        .single();
+
+      if (fetchErr || !freshMerchant) throw new Error('Failed to verify balance');
+
+      const freshBalance = Number(freshMerchant.balance) || 0;
+      const freshFrozen = Number(freshMerchant.frozen_balance) || 0;
+
+      if (amount > freshBalance) {
+        toast({
+          title: language === 'zh' ? '错误' : 'Error',
+          description: language === 'zh' ? '余额不足' : 'Insufficient balance',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        // Update local state with fresh data
+        setMerchantData({ ...merchantData, balance: freshBalance, frozen_balance: freshFrozen });
+        return;
+      }
+
       const fee = (amount * merchantData.payout_fee) / 100;
       const netAmount = amount - fee;
       const orderNo = `WD_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -327,12 +351,14 @@ const MerchantWithdrawal = () => {
 
       if (error) throw error;
 
-      // Freeze the amount
+      // Freeze the amount using fresh DB values
+      const newBalance = freshBalance - amount;
+      const newFrozen = freshFrozen + amount;
       await supabase
         .from('merchants')
         .update({
-          balance: merchantData.balance - amount,
-          frozen_balance: merchantData.frozen_balance + amount,
+          balance: newBalance,
+          frozen_balance: newFrozen,
         })
         .eq('id', user.merchantId);
 
@@ -352,11 +378,12 @@ const MerchantWithdrawal = () => {
         withdrawalPassword: '',
       });
 
-      // Update local state
+      // Update local state with fresh values
       setMerchantData({
         ...merchantData,
-        balance: merchantData.balance - amount,
-        frozen_balance: merchantData.frozen_balance + amount,
+        balance: newBalance,
+        frozen_balance: newFrozen,
+        todayWithdrawals: (merchantData.todayWithdrawals || 0) + amount,
       });
     } catch (err: any) {
       toast({
