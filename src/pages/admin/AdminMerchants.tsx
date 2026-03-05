@@ -980,7 +980,7 @@ const AdminMerchants = () => {
               <div className="flex justify-between items-center">
                 <div>
                   <p className="text-sm opacity-80">{t('dashboard.totalBalance')}</p>
-                  <p className="text-3xl font-bold mt-1">₹{totalBalance.toLocaleString()}</p>
+                  <p className="text-3xl font-bold mt-1">{totalBalance.toLocaleString()}</p>
                 </div>
                 <div className="p-3 bg-white/10 rounded-lg">
                   <Wallet className="h-6 w-6" />
