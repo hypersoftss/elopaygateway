@@ -74,6 +74,13 @@ interface Gateway {
 // PKR merchants can use both Easypaisa and JazzCash
 // BDT merchants can use both Nagad and bKash
 
+const CURRENCY_SYMBOLS: Record<string, string> = { INR: '₹', PKR: 'Rs.', BDT: '৳', USDT: '$' };
+const getCurrencySymbol = (currency?: string | null) => CURRENCY_SYMBOLS[currency || 'INR'] || '₹';
+const getCurrencyFlag = (currency?: string | null) => {
+  const flags: Record<string, string> = { INR: '🇮🇳', PKR: '🇵🇰', BDT: '🇧🇩' };
+  return flags[currency || 'INR'] || '🇮🇳';
+};
+
 const AdminMerchants = () => {
   const { t, language } = useTranslation();
   const { toast } = useToast();
