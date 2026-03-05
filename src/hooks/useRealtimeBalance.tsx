@@ -9,7 +9,7 @@ interface RealtimeBalanceOptions {
   currencySymbol?: string;
 }
 
-export const useRealtimeBalance = ({ merchantId, onBalanceChange }: RealtimeBalanceOptions) => {
+export const useRealtimeBalance = ({ merchantId, onBalanceChange, currencySymbol = '₹' }: RealtimeBalanceOptions) => {
   const { toast } = useToast();
   const { t } = useTranslation();
 
