@@ -1154,10 +1154,12 @@ const AdminMerchants = () => {
                       </TableCell>
                       <TableCell className="text-right">
                         <div>
-                          <p className="font-medium text-primary">₹{Number(merchant.balance).toLocaleString()}</p>
+                          <p className="font-medium text-primary">
+                            {getCurrencyFlag(merchant.payment_gateways?.currency)} {getCurrencySymbol(merchant.payment_gateways?.currency)}{Number(merchant.balance).toLocaleString()}
+                          </p>
                           {Number(merchant.frozen_balance) > 0 && (
                             <p className="text-xs text-orange-500">
-                              Frozen: ₹{Number(merchant.frozen_balance).toLocaleString()}
+                              Frozen: {getCurrencySymbol(merchant.payment_gateways?.currency)}{Number(merchant.frozen_balance).toLocaleString()}
                             </p>
                           )}
                         </div>
