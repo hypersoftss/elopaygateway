@@ -6,9 +6,10 @@ import { useTranslation } from '@/lib/i18n';
 interface RealtimeBalanceOptions {
   merchantId: string;
   onBalanceChange: (balance: number, frozenBalance: number) => void;
+  currencySymbol?: string;
 }
 
-export const useRealtimeBalance = ({ merchantId, onBalanceChange }: RealtimeBalanceOptions) => {
+export const useRealtimeBalance = ({ merchantId, onBalanceChange, currencySymbol = '₹' }: RealtimeBalanceOptions) => {
   const { toast } = useToast();
   const { t } = useTranslation();
 
@@ -30,7 +31,7 @@ export const useRealtimeBalance = ({ merchantId, onBalanceChange }: RealtimeBala
           onBalanceChange(newData.balance, newData.frozen_balance);
           toast({
             title: t('common.success'),
-            description: t('dashboard.availableBalance') + ': ₹' + newData.balance.toFixed(2),
+            description: t('dashboard.availableBalance') + ': ' + currencySymbol + newData.balance.toFixed(2),
           });
         }
       )

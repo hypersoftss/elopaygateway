@@ -74,6 +74,13 @@ interface Gateway {
 // PKR merchants can use both Easypaisa and JazzCash
 // BDT merchants can use both Nagad and bKash
 
+const CURRENCY_SYMBOLS: Record<string, string> = { INR: '₹', PKR: 'Rs.', BDT: '৳', USDT: '$' };
+const getCurrencySymbol = (currency?: string | null) => CURRENCY_SYMBOLS[currency || 'INR'] || '₹';
+const getCurrencyFlag = (currency?: string | null) => {
+  const flags: Record<string, string> = { INR: '🇮🇳', PKR: '🇵🇰', BDT: '🇧🇩' };
+  return flags[currency || 'INR'] || '🇮🇳';
+};
+
 const AdminMerchants = () => {
   const { t, language } = useTranslation();
   const { toast } = useToast();
@@ -973,7 +980,7 @@ const AdminMerchants = () => {
               <div className="flex justify-between items-center">
                 <div>
                   <p className="text-sm opacity-80">{t('dashboard.totalBalance')}</p>
-                  <p className="text-3xl font-bold mt-1">₹{totalBalance.toLocaleString()}</p>
+                  <p className="text-3xl font-bold mt-1">{totalBalance.toLocaleString()}</p>
                 </div>
                 <div className="p-3 bg-white/10 rounded-lg">
                   <Wallet className="h-6 w-6" />
@@ -1147,10 +1154,12 @@ const AdminMerchants = () => {
                       </TableCell>
                       <TableCell className="text-right">
                         <div>
-                          <p className="font-medium text-primary">₹{Number(merchant.balance).toLocaleString()}</p>
+                          <p className="font-medium text-primary">
+                            {getCurrencyFlag(merchant.payment_gateways?.currency)} {getCurrencySymbol(merchant.payment_gateways?.currency)}{Number(merchant.balance).toLocaleString()}
+                          </p>
                           {Number(merchant.frozen_balance) > 0 && (
                             <p className="text-xs text-orange-500">
-                              Frozen: ₹{Number(merchant.frozen_balance).toLocaleString()}
+                              Frozen: {getCurrencySymbol(merchant.payment_gateways?.currency)}{Number(merchant.frozen_balance).toLocaleString()}
                             </p>
                           )}
                         </div>

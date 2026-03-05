@@ -5,6 +5,23 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+const CURRENCY_SYMBOLS: Record<string, string> = { INR: '₹', PKR: 'Rs.', BDT: '৳', USDT: '$' }
+const CURRENCY_FLAGS: Record<string, string> = { INR: '🇮🇳', PKR: '🇵🇰', BDT: '🇧🇩' }
+
+function getCurrencySymbol(currency?: string | null): string {
+  return CURRENCY_SYMBOLS[currency || 'INR'] || '₹'
+}
+
+function getCurrencyFlag(currency?: string | null): string {
+  return CURRENCY_FLAGS[currency || 'INR'] || '🇮🇳'
+}
+
+function formatAmount(amount: number | string, currency?: string | null): string {
+  const sym = getCurrencySymbol(currency)
+  const num = typeof amount === 'string' ? parseFloat(amount) : amount
+  return `${sym}${num?.toLocaleString?.() || amount}`
+}
+
 interface TelegramMessage {
   chatId: string
   message: string
@@ -69,22 +86,29 @@ Deno.serve(async (req) => {
 
     const gatewayName = adminSettings?.gateway_name || 'PayGate'
 
-    // Get merchant telegram chat ID if merchantId provided
+    // Get merchant telegram chat ID and gateway currency if merchantId provided
     let merchantChatId: string | null = null
     let merchantName = ''
     let accountNumber = ''
+    let currency: string | null = null
     
     if (merchantId) {
       const { data: merchant } = await supabaseAdmin
         .from('merchants')
-        .select('telegram_chat_id, merchant_name, account_number')
+        .select('telegram_chat_id, merchant_name, account_number, payment_gateways(currency)')
         .eq('id', merchantId)
         .maybeSingle()
 
       merchantChatId = merchant?.telegram_chat_id || null
       merchantName = merchant?.merchant_name || ''
       accountNumber = merchant?.account_number || ''
+      currency = (merchant?.payment_gateways as any)?.currency || null
     }
+
+    // Use data.currency if explicitly passed, otherwise use merchant's gateway currency
+    const cur = data?.currency || currency
+    const flag = getCurrencyFlag(cur)
+    const fmt = (amount: number | string) => formatAmount(amount, cur)
 
     const timestamp = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
     let adminMessage = ''
@@ -93,16 +117,17 @@ Deno.serve(async (req) => {
     // Build messages based on notification type
     switch (type) {
       case 'payin_created':
-        adminMessage = `🟢 <b>New Pay-In Order</b>\n\n` +
+        adminMessage = `🟢 <b>New Pay-In Order</b> ${flag}\n\n` +
           `📦 Gateway: ${gatewayName}\n` +
           `👤 Merchant: ${merchantName} (${accountNumber})\n` +
-          `💰 Amount: ₹${data.amount}\n` +
+          `💰 Amount: ${fmt(data.amount)}\n` +
+          `💱 Currency: ${cur || 'INR'}\n` +
           `📋 Order: ${data.orderNo}\n` +
           `🔖 Merchant Order: ${data.merchantOrderNo || 'N/A'}\n` +
           `⏰ Time: ${timestamp}`
 
-        merchantMessage = `🟢 <b>Pay-In Order Created</b>\n\n` +
-          `💰 Amount: ₹${data.amount}\n` +
+        merchantMessage = `🟢 <b>Pay-In Order Created</b> ${flag}\n\n` +
+          `💰 Amount: ${fmt(data.amount)}\n` +
           `📋 Order: ${data.orderNo}\n` +
           `🔖 Your Order: ${data.merchantOrderNo || 'N/A'}\n` +
           `📊 Status: Pending\n` +
@@ -110,51 +135,53 @@ Deno.serve(async (req) => {
         break
 
       case 'payin_success':
-        adminMessage = `✅ <b>Pay-In Success</b>\n\n` +
+        adminMessage = `✅ <b>Pay-In Success</b> ${flag}\n\n` +
           `📦 Gateway: ${gatewayName}\n` +
           `👤 Merchant: ${merchantName} (${accountNumber})\n` +
-          `💰 Amount: ₹${data.amount}\n` +
-          `💸 Fee: ₹${data.fee || 0}\n` +
-          `💵 Net: ₹${data.netAmount || data.amount}\n` +
+          `💰 Amount: ${fmt(data.amount)}\n` +
+          `💸 Fee: ${fmt(data.fee || 0)}\n` +
+          `💵 Net: ${fmt(data.netAmount || data.amount)}\n` +
+          `💱 Currency: ${cur || 'INR'}\n` +
           `📋 Order: ${data.orderNo}\n` +
           `⏰ Time: ${timestamp}`
 
-        merchantMessage = `✅ <b>Pay-In Successful!</b>\n\n` +
-          `💰 Amount: ₹${data.amount}\n` +
-          `💸 Fee: ₹${data.fee || 0}\n` +
-          `💵 Net Credited: ₹${data.netAmount || data.amount}\n` +
+        merchantMessage = `✅ <b>Pay-In Successful!</b> ${flag}\n\n` +
+          `💰 Amount: ${fmt(data.amount)}\n` +
+          `💸 Fee: ${fmt(data.fee || 0)}\n` +
+          `💵 Net Credited: ${fmt(data.netAmount || data.amount)}\n` +
           `📋 Order: ${data.orderNo}\n` +
           `⏰ Time: ${timestamp}`
         break
 
       case 'payin_failed':
-        adminMessage = `❌ <b>Pay-In Failed</b>\n\n` +
+        adminMessage = `❌ <b>Pay-In Failed</b> ${flag}\n\n` +
           `📦 Gateway: ${gatewayName}\n` +
           `👤 Merchant: ${merchantName} (${accountNumber})\n` +
-          `💰 Amount: ₹${data.amount}\n` +
+          `💰 Amount: ${fmt(data.amount)}\n` +
           `📋 Order: ${data.orderNo}\n` +
           `⏰ Time: ${timestamp}`
 
-        merchantMessage = `❌ <b>Pay-In Failed</b>\n\n` +
-          `💰 Amount: ₹${data.amount}\n` +
+        merchantMessage = `❌ <b>Pay-In Failed</b> ${flag}\n\n` +
+          `💰 Amount: ${fmt(data.amount)}\n` +
           `📋 Order: ${data.orderNo}\n` +
           `📊 Status: Failed\n` +
           `⏰ Time: ${timestamp}`
         break
 
       case 'payout_created':
-        adminMessage = `🔵 <b>New Payout Request</b>\n\n` +
+        adminMessage = `🔵 <b>New Payout Request</b> ${flag}\n\n` +
           `📦 Gateway: ${gatewayName}\n` +
           `👤 Merchant: ${merchantName} (${accountNumber})\n` +
-          `💰 Amount: ₹${data.amount}\n` +
+          `💰 Amount: ${fmt(data.amount)}\n` +
+          `💱 Currency: ${cur || 'INR'}\n` +
           `🏦 Bank: ${data.bankName || 'N/A'}\n` +
           `💳 Account: ${data.accountNumber || 'N/A'}\n` +
           `📋 Order: ${data.orderNo}\n` +
           `📊 Status: Pending Approval\n` +
           `⏰ Time: ${timestamp}`
 
-        merchantMessage = `🔵 <b>Payout Request Created</b>\n\n` +
-          `💰 Amount: ₹${data.amount}\n` +
+        merchantMessage = `🔵 <b>Payout Request Created</b> ${flag}\n\n` +
+          `💰 Amount: ${fmt(data.amount)}\n` +
           `🏦 Bank: ${data.bankName || 'N/A'}\n` +
           `💳 Account: ${data.accountNumber || 'N/A'}\n` +
           `📋 Order: ${data.orderNo}\n` +
@@ -163,31 +190,31 @@ Deno.serve(async (req) => {
         break
 
       case 'payout_approved':
-        adminMessage = `⚡ <b>Payout Approved</b>\n\n` +
+        adminMessage = `⚡ <b>Payout Approved</b> ${flag}\n\n` +
           `📦 Gateway: ${gatewayName}\n` +
           `👤 Merchant: ${merchantName} (${accountNumber})\n` +
-          `💰 Amount: ₹${data.amount}\n` +
+          `💰 Amount: ${fmt(data.amount)}\n` +
           `📋 Order: ${data.orderNo}\n` +
           `⏰ Time: ${timestamp}`
 
-        merchantMessage = `⚡ <b>Payout Approved!</b>\n\n` +
-          `💰 Amount: ₹${data.amount}\n` +
+        merchantMessage = `⚡ <b>Payout Approved!</b> ${flag}\n\n` +
+          `💰 Amount: ${fmt(data.amount)}\n` +
           `📋 Order: ${data.orderNo}\n` +
           `📊 Status: Processing\n` +
           `⏰ Time: ${timestamp}`
         break
 
       case 'payout_success':
-        adminMessage = `✅ <b>Payout Success</b>\n\n` +
+        adminMessage = `✅ <b>Payout Success</b> ${flag}\n\n` +
           `📦 Gateway: ${gatewayName}\n` +
           `👤 Merchant: ${merchantName} (${accountNumber})\n` +
-          `💰 Amount: ₹${data.amount}\n` +
+          `💰 Amount: ${fmt(data.amount)}\n` +
           `🏦 Bank: ${data.bankName || 'N/A'}\n` +
           `📋 Order: ${data.orderNo}\n` +
           `⏰ Time: ${timestamp}`
 
-        merchantMessage = `✅ <b>Payout Successful!</b>\n\n` +
-          `💰 Amount: ₹${data.amount}\n` +
+        merchantMessage = `✅ <b>Payout Successful!</b> ${flag}\n\n` +
+          `💰 Amount: ${fmt(data.amount)}\n` +
           `🏦 Bank: ${data.bankName || 'N/A'}\n` +
           `📋 Order: ${data.orderNo}\n` +
           `📊 Status: Completed\n` +
@@ -195,63 +222,65 @@ Deno.serve(async (req) => {
         break
 
       case 'payout_failed':
-        adminMessage = `❌ <b>Payout Failed</b>\n\n` +
+        adminMessage = `❌ <b>Payout Failed</b> ${flag}\n\n` +
           `📦 Gateway: ${gatewayName}\n` +
           `👤 Merchant: ${merchantName} (${accountNumber})\n` +
-          `💰 Amount: ₹${data.amount}\n` +
+          `💰 Amount: ${fmt(data.amount)}\n` +
           `📋 Order: ${data.orderNo}\n` +
           `💬 Reason: ${data.reason || 'Unknown'}\n` +
           `⏰ Time: ${timestamp}`
 
-        merchantMessage = `❌ <b>Payout Failed</b>\n\n` +
-          `💰 Amount: ₹${data.amount}\n` +
+        merchantMessage = `❌ <b>Payout Failed</b> ${flag}\n\n` +
+          `💰 Amount: ${fmt(data.amount)}\n` +
           `📋 Order: ${data.orderNo}\n` +
           `💬 Reason: ${data.reason || 'Contact support'}\n` +
           `⏰ Time: ${timestamp}`
         break
 
       case 'withdrawal_request':
-        adminMessage = `💸 <b>New Withdrawal Request</b>\n\n` +
+        adminMessage = `💸 <b>New Withdrawal Request</b> ${flag}\n\n` +
           `📦 Gateway: ${gatewayName}\n` +
           `👤 Merchant: ${merchantName} (${accountNumber})\n` +
-          `💰 Amount: ₹${data.amount}\n` +
+          `💰 Amount: ${fmt(data.amount)}\n` +
+          `💱 Currency: ${cur || 'INR'}\n` +
           `🏦 Bank: ${data.bankName || 'N/A'}\n` +
           `💳 Account: ${data.accountNumber || 'N/A'}\n` +
           `📊 Status: Pending Approval\n` +
           `⏰ Time: ${timestamp}`
 
-        merchantMessage = `💸 <b>Withdrawal Request Submitted</b>\n\n` +
-          `💰 Amount: ₹${data.amount}\n` +
+        merchantMessage = `💸 <b>Withdrawal Request Submitted</b> ${flag}\n\n` +
+          `💰 Amount: ${fmt(data.amount)}\n` +
           `🏦 Bank: ${data.bankName || 'N/A'}\n` +
           `📊 Status: Pending Approval\n` +
           `⏰ Time: ${timestamp}`
         break
 
       case 'withdrawal_approved':
-        merchantMessage = `✅ <b>Withdrawal Approved!</b>\n\n` +
-          `💰 Amount: ₹${data.amount}\n` +
+        merchantMessage = `✅ <b>Withdrawal Approved!</b> ${flag}\n\n` +
+          `💰 Amount: ${fmt(data.amount)}\n` +
           `📊 Status: Processing\n` +
           `⏰ Time: ${timestamp}`
         break
 
       case 'withdrawal_rejected':
-        merchantMessage = `❌ <b>Withdrawal Rejected</b>\n\n` +
-          `💰 Amount: ₹${data.amount}\n` +
+        merchantMessage = `❌ <b>Withdrawal Rejected</b> ${flag}\n\n` +
+          `💰 Amount: ${fmt(data.amount)}\n` +
           `💵 Balance Restored\n` +
           `⏰ Time: ${timestamp}`
         break
 
       case 'balance_update':
-        merchantMessage = `💰 <b>Balance Updated</b>\n\n` +
-          `💵 New Balance: ₹${data.newBalance}\n` +
-          `🔄 Change: ${data.change > 0 ? '+' : ''}₹${data.change}\n` +
+        merchantMessage = `💰 <b>Balance Updated</b> ${flag}\n\n` +
+          `💵 New Balance: ${fmt(data.newBalance)}\n` +
+          `🔄 Change: ${data.change > 0 ? '+' : ''}${fmt(data.change)}\n` +
           `📋 Reason: ${data.reason || 'N/A'}\n` +
           `⏰ Time: ${timestamp}`
         break
 
       case 'large_payin_alert':
-        adminMessage = `🚨 <b>LARGE PAY-IN ALERT</b> 🚨\n\n` +
-          `💎 Amount: ₹${data.amount?.toLocaleString?.() || data.amount}\n` +
+        adminMessage = `🚨 <b>LARGE PAY-IN ALERT</b> ${flag} 🚨\n\n` +
+          `💎 Amount: ${fmt(data.amount)}\n` +
+          `💱 Currency: ${cur || 'INR'}\n` +
           `👤 Merchant: ${merchantName} (${accountNumber})\n` +
           `📋 Order: ${data.orderNo}\n` +
           `🔖 Merchant Order: ${data.merchantOrderNo || 'N/A'}\n` +
@@ -261,8 +290,9 @@ Deno.serve(async (req) => {
         break
 
       case 'large_payout_alert':
-        adminMessage = `🚨 <b>LARGE PAYOUT ALERT</b> 🚨\n\n` +
-          `💎 Amount: ₹${data.amount?.toLocaleString?.() || data.amount}\n` +
+        adminMessage = `🚨 <b>LARGE PAYOUT ALERT</b> ${flag} 🚨\n\n` +
+          `💎 Amount: ${fmt(data.amount)}\n` +
+          `💱 Currency: ${cur || 'INR'}\n` +
           `👤 Merchant: ${merchantName} (${accountNumber})\n` +
           `🏦 Bank: ${data.bankName || 'N/A'}\n` +
           `💳 Account: ${data.accountNumber || 'N/A'}\n` +
@@ -273,32 +303,32 @@ Deno.serve(async (req) => {
         break
 
       case 'large_payin_success':
-        adminMessage = `✅🚨 <b>LARGE PAY-IN SUCCESS</b>\n\n` +
-          `💎 Amount: ₹${data.amount?.toLocaleString?.() || data.amount}\n` +
-          `💸 Fee: ₹${data.fee || 0}\n` +
-          `💵 Net: ₹${data.netAmount || data.amount}\n` +
+        adminMessage = `✅🚨 <b>LARGE PAY-IN SUCCESS</b> ${flag}\n\n` +
+          `💎 Amount: ${fmt(data.amount)}\n` +
+          `💸 Fee: ${fmt(data.fee || 0)}\n` +
+          `💵 Net: ${fmt(data.netAmount || data.amount)}\n` +
           `👤 Merchant: ${merchantName} (${accountNumber})\n` +
           `📋 Order: ${data.orderNo}\n` +
           `⏰ Time: ${timestamp}`
         
-        merchantMessage = `✅🎉 <b>Large Pay-In Successful!</b>\n\n` +
-          `💎 Amount: ₹${data.amount?.toLocaleString?.() || data.amount}\n` +
-          `💸 Fee: ₹${data.fee || 0}\n` +
-          `💵 Net Credited: ₹${data.netAmount || data.amount}\n` +
+        merchantMessage = `✅🎉 <b>Large Pay-In Successful!</b> ${flag}\n\n` +
+          `💎 Amount: ${fmt(data.amount)}\n` +
+          `💸 Fee: ${fmt(data.fee || 0)}\n` +
+          `💵 Net Credited: ${fmt(data.netAmount || data.amount)}\n` +
           `📋 Order: ${data.orderNo}\n` +
           `⏰ Time: ${timestamp}`
         break
 
       case 'large_payout_success':
-        adminMessage = `✅🚨 <b>LARGE PAYOUT SUCCESS</b>\n\n` +
-          `💎 Amount: ₹${data.amount?.toLocaleString?.() || data.amount}\n` +
+        adminMessage = `✅🚨 <b>LARGE PAYOUT SUCCESS</b> ${flag}\n\n` +
+          `💎 Amount: ${fmt(data.amount)}\n` +
           `👤 Merchant: ${merchantName} (${accountNumber})\n` +
           `🏦 Bank: ${data.bankName || 'N/A'}\n` +
           `📋 Order: ${data.orderNo}\n` +
           `⏰ Time: ${timestamp}`
         
-        merchantMessage = `✅🎉 <b>Large Payout Successful!</b>\n\n` +
-          `💎 Amount: ₹${data.amount?.toLocaleString?.() || data.amount}\n` +
+        merchantMessage = `✅🎉 <b>Large Payout Successful!</b> ${flag}\n\n` +
+          `💎 Amount: ${fmt(data.amount)}\n` +
           `🏦 Bank: ${data.bankName || 'N/A'}\n` +
           `📋 Order: ${data.orderNo}\n` +
           `⏰ Time: ${timestamp}`
