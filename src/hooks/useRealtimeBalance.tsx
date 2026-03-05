@@ -31,7 +31,7 @@ export const useRealtimeBalance = ({ merchantId, onBalanceChange, currencySymbol
           onBalanceChange(newData.balance, newData.frozen_balance);
           toast({
             title: t('common.success'),
-            description: t('dashboard.availableBalance') + ': ₹' + newData.balance.toFixed(2),
+            description: t('dashboard.availableBalance') + ': ' + currencySymbol + newData.balance.toFixed(2),
           });
         }
       )
