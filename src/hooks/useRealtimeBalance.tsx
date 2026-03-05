@@ -6,6 +6,7 @@ import { useTranslation } from '@/lib/i18n';
 interface RealtimeBalanceOptions {
   merchantId: string;
   onBalanceChange: (balance: number, frozenBalance: number) => void;
+  currencySymbol?: string;
 }
 
 export const useRealtimeBalance = ({ merchantId, onBalanceChange }: RealtimeBalanceOptions) => {
