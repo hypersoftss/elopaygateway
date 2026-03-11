@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Shield, Key, Copy, Eye, EyeOff, Bell, ArrowRightLeft, Wallet, CheckCircle } from 'lucide-react';
+import { Shield, Key, Copy, Eye, EyeOff, Bell, ArrowRightLeft, Wallet, CheckCircle, Globe, Save, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface MerchantInfo {
@@ -35,6 +35,8 @@ const MerchantAccountInfo = () => {
   const [showApiKey, setShowApiKey] = useState(false);
   const [showPayoutKey, setShowPayoutKey] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [callbackUrl, setCallbackUrl] = useState('');
+  const [isSavingCallback, setIsSavingCallback] = useState(false);
 
   useEffect(() => {
     const fetchInfo = async () => {
@@ -49,6 +51,7 @@ const MerchantAccountInfo = () => {
 
         if (error) throw error;
         setInfo(data);
+        setCallbackUrl(data.callback_url || '');
       } catch (error) {
         console.error('Error fetching merchant info:', error);
         toast({
@@ -172,10 +175,47 @@ const MerchantAccountInfo = () => {
 
                 <div className="space-y-2">
                   <Label className="text-muted-foreground text-xs flex items-center gap-1">
-                    🔗 Callback URL
+                    <Globe className="h-3 w-3" /> Callback URL (Payin)
                   </Label>
-                  <div className="bg-muted/50 rounded-lg p-3">
-                    <p className="font-mono text-sm">{info.callback_url || 'Not configured'}</p>
+                  <p className="text-xs text-muted-foreground">
+                    We will send payment status (success/failed) to this URL via POST when a payin is completed.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={callbackUrl}
+                      onChange={(e) => setCallbackUrl(e.target.value)}
+                      placeholder="https://yourdomain.com/callback.php"
+                      className="flex-1 font-mono text-sm"
+                    />
+                    <Button
+                      size="sm"
+                      disabled={isSavingCallback || callbackUrl === (info.callback_url || '')}
+                      onClick={async () => {
+                        if (!info) return;
+                        // Basic URL validation
+                        if (callbackUrl && !callbackUrl.startsWith('https://') && !callbackUrl.startsWith('http://')) {
+                          toast({ title: 'Invalid URL', description: 'Callback URL must start with http:// or https://', variant: 'destructive' });
+                          return;
+                        }
+                        setIsSavingCallback(true);
+                        try {
+                          const { error } = await supabase
+                            .from('merchants')
+                            .update({ callback_url: callbackUrl || null })
+                            .eq('id', info.id);
+                          if (error) throw error;
+                          setInfo({ ...info, callback_url: callbackUrl || null });
+                          toast({ title: '✅ Saved', description: 'Callback URL updated successfully' });
+                        } catch (err) {
+                          toast({ title: 'Error', description: 'Failed to save callback URL', variant: 'destructive' });
+                        } finally {
+                          setIsSavingCallback(false);
+                        }
+                      }}
+                    >
+                      {isSavingCallback ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
+                      Save
+                    </Button>
                   </div>
                 </div>
               </>
