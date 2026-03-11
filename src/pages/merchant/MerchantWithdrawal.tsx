@@ -726,21 +726,26 @@ const MerchantWithdrawal = () => {
               </Label>
               {(() => {
                 const enteredAmount = parseFloat(form.amount) || 0;
-                const minAmount = merchantData.min_withdrawal_amount || 1000;
+                const minAmount = merchantData.min_withdrawal_amount || 200;
                 const maxAmount = merchantData.max_withdrawal_amount || 50000;
                 const dailyLimit = merchantData.daily_withdrawal_limit || 200000;
                 const todayWithdrawals = merchantData.todayWithdrawals || 0;
                 const remainingDaily = Math.max(0, dailyLimit - todayWithdrawals);
                 const availableBalance = merchantData.balance;
+                const feeRate = merchantData.payout_fee || 0;
+                const enteredFee = (enteredAmount * feeRate) / 100;
+                const enteredTotalDeduction = enteredAmount + enteredFee;
                 
                 const isBelowMinimum = form.amount && enteredAmount > 0 && enteredAmount < minAmount;
                 const isAboveMaximum = form.amount && enteredAmount > 0 && enteredAmount > maxAmount;
                 const isAboveDailyLimit = form.amount && enteredAmount > 0 && enteredAmount > remainingDaily;
-                const isAboveBalance = form.amount && enteredAmount > 0 && enteredAmount > availableBalance;
+                const isAboveBalance = form.amount && enteredAmount > 0 && enteredTotalDeduction > availableBalance;
                 const hasError = isBelowMinimum || isAboveMaximum || isAboveDailyLimit || isAboveBalance;
                 
-                // Calculate the effective max for "Withdraw All" button
-                const effectiveMax = Math.min(availableBalance, maxAmount, remainingDaily);
+                // Calculate the effective max for "Withdraw All" button (account for fee)
+                // amount + (amount * feeRate/100) <= balance => amount <= balance / (1 + feeRate/100)
+                const maxAfterFee = Math.floor(availableBalance / (1 + feeRate / 100));
+                const effectiveMax = Math.min(maxAfterFee, maxAmount, remainingDaily);
                 
                 return (
                   <>
