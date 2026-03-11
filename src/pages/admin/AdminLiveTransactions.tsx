@@ -32,14 +32,26 @@ interface Transaction {
   merchants?: { merchant_name: string; account_number: string } | null;
 }
 
-// Helper to detect if transaction is USDT
-function isUsdtTransaction(tx: Transaction): boolean {
-  if (!tx.extra) return false;
+function getPayinDisplayInfo(tx: Transaction) {
+  if (!tx.extra) {
+    return { amount: tx.amount, symbol: '₹', isUsdt: false, settlementAmount: null as number | null };
+  }
+
   try {
     const extraData = typeof tx.extra === 'string' ? JSON.parse(tx.extra) : tx.extra;
-    return extraData?.currency === 'USDT' || extraData?.trade_type === 'usdt';
-  } catch {}
-  return false;
+    const isUsdt = extraData?.display_currency === 'USDT' || extraData?.currency === 'USDT' || extraData?.trade_type === 'usdt';
+
+    if (!isUsdt) {
+      return { amount: tx.amount, symbol: '₹', isUsdt: false, settlementAmount: null as number | null };
+    }
+
+    const rate = Number(extraData?.conversion_rate) || 90;
+    const amount = Number(extraData?.display_amount ?? extraData?.original_amount ?? (rate > 0 ? tx.amount / rate : tx.amount));
+    const settlementAmount = Number(extraData?.settlement_amount ?? tx.amount);
+    return { amount, symbol: '$', isUsdt: true, settlementAmount };
+  } catch {
+    return { amount: tx.amount, symbol: '₹', isUsdt: false, settlementAmount: null as number | null };
+  }
 }
 
 // Notification sound URL (simple beep)
@@ -87,9 +99,9 @@ export default function AdminLiveTransactions() {
     }
 
     const isPayin = tx.transaction_type === 'payin';
-    const isUsdt = isUsdtTransaction(tx);
+    const display = getPayinDisplayInfo(tx);
     const title = isPayin ? '🔔 New Pay-in Order' : '🔔 New Payout Request';
-    const body = `${tx.order_no} - ₹${tx.amount.toLocaleString()}${isUsdt ? ' (USDT)' : ''}`;
+    const body = `${tx.order_no} - ${display.symbol}${display.amount.toLocaleString()}${display.isUsdt ? ' USDT' : ''}`;
 
     new Notification(title, {
       body,
@@ -170,10 +182,10 @@ export default function AdminLiveTransactions() {
           playNotificationSound();
           showDesktopNotification(txWithMerchant);
           
-          const isUsdt = isUsdtTransaction(txWithMerchant);
+          const display = getPayinDisplayInfo(txWithMerchant);
           toast({
             title: newTx.transaction_type === 'payin' ? '🔔 New Pay-in' : '🔔 New Payout',
-            description: `${newTx.order_no} - ₹${newTx.amount.toLocaleString()}${isUsdt ? ' (USDT)' : ''}`,
+            description: `${newTx.order_no} - ${display.symbol}${display.amount.toLocaleString()}${display.isUsdt ? ' USDT' : ''}`,
           });
         }
       )
@@ -418,13 +430,16 @@ export default function AdminLiveTransactions() {
 
                     <div className="text-right">
                       {(() => {
-                        const isUsdt = isUsdtTransaction(tx);
+                        const display = getPayinDisplayInfo(tx);
                         return (
                           <>
                             <p className="font-semibold">
-                              ₹{tx.amount.toLocaleString()}
-                              {isUsdt && <Badge variant="outline" className="ml-2 text-xs border-primary/30 text-primary">USDT</Badge>}
+                              {display.symbol}{display.amount.toLocaleString()}
+                              {display.isUsdt && <Badge variant="outline" className="ml-2 text-xs border-primary/30 text-primary">USDT</Badge>}
                             </p>
+                            {display.settlementAmount !== null && (
+                              <p className="text-xs text-muted-foreground">Settles ₹{display.settlementAmount.toLocaleString()}</p>
+                            )}
                             {tx.fee != null && tx.fee > 0 && (
                               <p className="text-xs text-muted-foreground">
                                 Fee: ₹{tx.fee.toLocaleString()}

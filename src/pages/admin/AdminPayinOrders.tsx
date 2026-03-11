@@ -28,6 +28,44 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 const CURRENCY_SYMBOLS: Record<string, string> = { INR: '₹', PKR: 'Rs.', BDT: '৳', USDT: '$' };
 const getCurrencySymbol = (currency?: string | null) => CURRENCY_SYMBOLS[currency || 'INR'] || '₹';
+const DEFAULT_USDT_RATE = 90;
+
+const parseTransactionExtra = (extra: string | null) => {
+  if (!extra) return null;
+  try {
+    return typeof extra === 'string' ? JSON.parse(extra) : extra;
+  } catch {
+    return null;
+  }
+};
+
+const getDisplayAmountInfo = (tx: Transaction, merchantGatewayCurrencies: Record<string, string>) => {
+  const extraData = parseTransactionExtra(tx.extra);
+  const isUsdt = extraData?.display_currency === 'USDT' || extraData?.currency === 'USDT' || extraData?.trade_type === 'usdt';
+
+  if (!isUsdt) {
+    const currency = tx.payment_gateways?.currency || (tx.merchants?.gateway_id ? merchantGatewayCurrencies[tx.merchants.gateway_id] : null) || 'INR';
+    return {
+      amount: tx.amount,
+      symbol: getCurrencySymbol(currency),
+      label: currency === 'USDT' ? 'USDT' : null,
+      settlementAmount: null as number | null,
+      feeSymbol: getCurrencySymbol(currency),
+    };
+  }
+
+  const rate = Number(extraData?.conversion_rate) || DEFAULT_USDT_RATE;
+  const displayAmount = Number(extraData?.display_amount ?? extraData?.original_amount ?? (rate > 0 ? tx.amount / rate : tx.amount));
+  const settlementAmount = Number(extraData?.settlement_amount ?? tx.amount);
+
+  return {
+    amount: displayAmount,
+    symbol: '$',
+    label: 'USDT',
+    settlementAmount,
+    feeSymbol: '₹',
+  };
+};
 
 interface Transaction {
   id: string;
@@ -163,19 +201,6 @@ const AdminPayinOrders = () => {
     tx.merchants?.merchant_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     tx.merchants?.account_number.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  const getTxCurrency = (tx: Transaction) => {
-    // Check extra field for USDT currency
-    if (tx.extra) {
-      try {
-        const extraData = typeof tx.extra === 'string' ? JSON.parse(tx.extra) : tx.extra;
-        if (extraData?.currency === 'USDT' || extraData?.trade_type === 'usdt') return 'USDT';
-      } catch {}
-    }
-    if (tx.payment_gateways?.currency) return tx.payment_gateways.currency;
-    if (tx.merchants?.gateway_id && merchantGatewayCurrencies[tx.merchants.gateway_id]) return merchantGatewayCurrencies[tx.merchants.gateway_id];
-    return 'INR';
-  };
 
   const handleSearch = () => fetchTransactions();
 
@@ -410,7 +435,7 @@ const AdminPayinOrders = () => {
                     </TableRow>
                   ) : (
                     filteredTransactions.map((tx) => {
-                      const sym = getCurrencySymbol(getTxCurrency(tx));
+                      const amountInfo = getDisplayAmountInfo(tx, merchantGatewayCurrencies);
                       return (
                       <TableRow key={tx.id} className="hover:bg-muted/50 transition-colors">
                         <TableCell className="font-mono text-sm">{tx.order_no}</TableCell>
@@ -421,10 +446,13 @@ const AdminPayinOrders = () => {
                           </div>
                         </TableCell>
                         <TableCell className="text-right font-semibold">
-                          {sym}{tx.amount.toLocaleString()}
-                          {getTxCurrency(tx) === 'USDT' && <span className="text-xs text-muted-foreground ml-1">USDT</span>}
+                          {amountInfo.symbol}{amountInfo.amount.toLocaleString()}
+                          {amountInfo.label && <span className="text-xs text-muted-foreground ml-1">{amountInfo.label}</span>}
+                          {amountInfo.settlementAmount !== null && (
+                            <p className="text-xs text-muted-foreground">Settles ₹{amountInfo.settlementAmount.toLocaleString()}</p>
+                          )}
                         </TableCell>
-                        <TableCell className="text-right text-muted-foreground">{sym}{(tx.fee || 0).toLocaleString()}</TableCell>
+                        <TableCell className="text-right text-muted-foreground">{amountInfo.feeSymbol}{(tx.fee || 0).toLocaleString()}</TableCell>
                         <TableCell><StatusBadge status={tx.status} /></TableCell>
                         <TableCell>{tx.bank_name || '-'}</TableCell>
                         <TableCell className="text-muted-foreground">
@@ -474,7 +502,7 @@ const AdminPayinOrders = () => {
                                       <AlertDialogHeader>
                                         <AlertDialogTitle>Confirm Manual Success?</AlertDialogTitle>
                                         <AlertDialogDescription className="space-y-2">
-                                          <p>This will mark order <strong>{tx.order_no}</strong> as SUCCESS and credit <strong>{sym}{tx.net_amount?.toLocaleString()}</strong> to the merchant's balance.</p>
+                                          <p>This will mark order <strong>{tx.order_no}</strong> as SUCCESS and credit <strong>₹{tx.net_amount?.toLocaleString()}</strong> to the merchant's balance.</p>
                                           <p className="font-semibold text-destructive">This action cannot be undone!</p>
                                         </AlertDialogDescription>
                                       </AlertDialogHeader>
