@@ -43,6 +43,7 @@ interface AdminSettings {
   balance_threshold_pkr: number;
   balance_threshold_bdt: number;
   no_auto_delete_commands: string | null;
+  usdt_conversion_rate: number;
 }
 
 
@@ -648,6 +649,7 @@ echo ""
           balance_threshold_pkr: settings.balance_threshold_pkr,
           balance_threshold_bdt: settings.balance_threshold_bdt,
           no_auto_delete_commands: settings.no_auto_delete_commands?.trim() || null,
+          usdt_conversion_rate: settings.usdt_conversion_rate || 90,
         } as any)
         .eq('id', settings.id);
 
@@ -973,6 +975,35 @@ echo ""
                     </CardContent>
                   </Card>
                 </div>
+
+                <Card className="border-2 border-blue-500/20 mt-6">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center text-white text-xs font-bold">$</div>
+                      <div>
+                        <CardTitle className="text-base">{language === 'zh' ? 'USDT兑换率' : 'USDT Conversion Rate'}</CardTitle>
+                        <CardDescription className="text-xs">
+                          {language === 'zh' ? '1 USDT = ? INR（用于结算和显示）' : '1 USDT = ? INR (used for settlement & display)'}
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <Label>{language === 'zh' ? 'USDT转换率 (INR)' : 'USDT Rate (INR)'}</Label>
+                    <Input
+                      type="number"
+                      step="0.5"
+                      value={settings?.usdt_conversion_rate || 90}
+                      onChange={(e) => setSettings(s => s ? { ...s, usdt_conversion_rate: parseFloat(e.target.value) } : null)}
+                      className="mt-2"
+                    />
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {language === 'zh'
+                        ? '此汇率用于USDT交易的结算计算和管理面板显示'
+                        : 'This rate is used for USDT transaction settlement calculation and admin panel display'}
+                    </p>
+                  </CardContent>
+                </Card>
 
                 <Alert className="mt-6">
                   <AlertDescription className="text-muted-foreground">

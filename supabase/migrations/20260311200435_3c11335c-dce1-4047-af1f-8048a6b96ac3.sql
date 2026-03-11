@@ -1,0 +1,1 @@
+ALTER TABLE public.admin_settings ADD COLUMN IF NOT EXISTS usdt_conversion_rate numeric DEFAULT 90;

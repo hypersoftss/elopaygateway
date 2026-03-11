@@ -115,6 +115,7 @@ export type Database = {
           telegram_bot_token: string | null
           telegram_webhook_url: string | null
           updated_at: string | null
+          usdt_conversion_rate: number | null
         }
         Insert: {
           admin_telegram_chat_id?: string | null
@@ -141,6 +142,7 @@ export type Database = {
           telegram_bot_token?: string | null
           telegram_webhook_url?: string | null
           updated_at?: string | null
+          usdt_conversion_rate?: number | null
         }
         Update: {
           admin_telegram_chat_id?: string | null
@@ -167,6 +169,7 @@ export type Database = {
           telegram_bot_token?: string | null
           telegram_webhook_url?: string | null
           updated_at?: string | null
+          usdt_conversion_rate?: number | null
         }
         Relationships: []
       }
