@@ -112,13 +112,21 @@ const MerchantWithdrawal = () => {
       today.setHours(0, 0, 0, 0);
       const todayISO = today.toISOString();
 
-      const { data: todayTransactions } = await supabase
-        .from('transactions')
-        .select('amount')
-        .eq('merchant_id', user.merchantId)
-        .eq('transaction_type', 'payout')
-        .in('status', ['pending', 'success'])
-        .gte('created_at', todayISO);
+      const [{ data: todayTransactions }, { count: pendingWithdrawalCount }] = await Promise.all([
+        supabase
+          .from('transactions')
+          .select('amount')
+          .eq('merchant_id', user.merchantId)
+          .eq('transaction_type', 'payout')
+          .in('status', ['pending', 'success'])
+          .gte('created_at', todayISO),
+        supabase
+          .from('transactions')
+          .select('*', { count: 'exact', head: true })
+          .eq('merchant_id', user.merchantId)
+          .eq('transaction_type', 'payout')
+          .eq('status', 'pending'),
+      ]);
 
       const todayWithdrawals = todayTransactions?.reduce((sum, tx) => sum + Number(tx.amount), 0) || 0;
 
