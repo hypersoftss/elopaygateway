@@ -313,7 +313,7 @@ const MerchantWithdrawal = () => {
     setIsLoading(true);
 
     try {
-      // Re-fetch fresh balance from DB to prevent double withdrawal
+      // Re-fetch fresh balance and check for any pending withdrawal
       const [{ data: freshMerchant, error: fetchErr }, { count: pendingCount }] = await Promise.all([
         supabase
           .from('merchants')
@@ -325,30 +325,33 @@ const MerchantWithdrawal = () => {
           .select('*', { count: 'exact', head: true })
           .eq('merchant_id', user.merchantId)
           .eq('transaction_type', 'payout')
-          .eq('status', 'pending')
-          .gte('created_at', new Date(Date.now() - 5000).toISOString()), // last 5 seconds
+          .eq('status', 'pending'),
       ]);
 
       if (fetchErr || !freshMerchant) throw new Error('Failed to verify balance');
 
-      // Block if there's already a pending withdrawal in the last 5 seconds (rapid click protection)
+      // Block if there's already ANY pending withdrawal
       if (pendingCount && pendingCount > 0) {
         toast({
           title: language === 'zh' ? '请稍等' : 'Please Wait',
-          description: language === 'zh' ? '您已有一笔提现正在处理中' : 'You already have a pending withdrawal request. Please wait.',
+          description: language === 'zh' ? '您已有一笔提现正在处理中，请等待审核完成' : 'You already have a pending withdrawal. Please wait for it to be processed first.',
           variant: 'destructive',
         });
         setIsLoading(false);
+        setMerchantData({ ...merchantData, hasPendingWithdrawal: true });
         return;
       }
 
       const freshBalance = Number(freshMerchant.balance) || 0;
       const freshFrozen = Number(freshMerchant.frozen_balance) || 0;
 
-      if (amount > freshBalance) {
+      // Total deduction = amount (goes to bank) + fee (platform charge)
+      const totalDeduction = amount + fee;
+
+      if (totalDeduction > freshBalance) {
         toast({
           title: language === 'zh' ? '错误' : 'Error',
-          description: language === 'zh' ? '余额不足' : 'Insufficient balance',
+          description: language === 'zh' ? `余额不足。需要 ${currencySymbol}${totalDeduction.toLocaleString()}（含手续费）` : `Insufficient balance. Need ${currencySymbol}${totalDeduction.toLocaleString()} (including fee)`,
           variant: 'destructive',
         });
         setIsLoading(false);
@@ -356,18 +359,19 @@ const MerchantWithdrawal = () => {
         return;
       }
 
-      const fee = (amount * merchantData.payout_fee) / 100;
-      const netAmount = amount - fee;
       const orderNo = `WD_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-      // Build transaction data based on method
+      // Build transaction data
+      // amount = what bank receives (full withdrawal amount)
+      // fee = platform charge (deducted separately from merchant balance)
+      // net_amount = amount (full amount sent to bank/wallet)
       const transactionData: any = {
         merchant_id: user.merchantId,
         order_no: orderNo,
         transaction_type: 'payout',
         amount: amount,
         fee: fee,
-        net_amount: netAmount,
+        net_amount: amount, // Full amount goes to bank
         status: 'pending',
         extra: JSON.stringify({ withdrawal: true, method: selectedMethod, currency }),
       };
@@ -380,7 +384,6 @@ const MerchantWithdrawal = () => {
         transactionData.ifsc_code = form.ifscCode;
         transactionData.account_holder_name = form.accountName;
       } else {
-        // Mobile wallets - store method in bank_name field
         transactionData.bank_name = selectedMethod.toUpperCase();
         transactionData.account_number = form.accountNumber;
         transactionData.account_holder_name = form.accountName;
@@ -390,9 +393,9 @@ const MerchantWithdrawal = () => {
 
       if (error) throw error;
 
-      // Freeze the amount using fresh DB values
-      const newBalance = freshBalance - amount;
-      const newFrozen = freshFrozen + amount;
+      // Freeze amount + fee from merchant balance
+      const newBalance = freshBalance - totalDeduction;
+      const newFrozen = freshFrozen + totalDeduction;
       await supabase
         .from('merchants')
         .update({
@@ -406,7 +409,6 @@ const MerchantWithdrawal = () => {
         description: language === 'zh' ? '提现申请已提交，等待管理员审核' : 'Withdrawal request submitted, awaiting admin approval',
       });
 
-      // Reset form
       setForm({
         amount: '',
         accountName: '',
@@ -417,12 +419,12 @@ const MerchantWithdrawal = () => {
         withdrawalPassword: '',
       });
 
-      // Update local state with fresh values
       setMerchantData({
         ...merchantData,
         balance: newBalance,
         frozen_balance: newFrozen,
         todayWithdrawals: (merchantData.todayWithdrawals || 0) + amount,
+        hasPendingWithdrawal: true,
       });
     } catch (err: any) {
       toast({
