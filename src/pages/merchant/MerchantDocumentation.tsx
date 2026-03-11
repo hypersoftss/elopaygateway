@@ -851,6 +851,265 @@ ok`}
     </Card>
   );
 
+  // USDT PHP Integration Code Section
+  const renderUSDTPHPDocs = () => {
+    const merchantId = credentials?.accountNumber || 'YOUR_MERCHANT_ID';
+    const apiKey = credentials?.apiKey || 'YOUR_API_KEY';
+
+    const usdtConfigCode = `<?php
+/**
+ * ELOPAY USDT Configuration
+ * Amount is in USDT (dollars), NOT INR
+ * Fee: 4% platform fee
+ */
+return [
+    'API_URL'       => '${apiBaseUrl}/payin',
+    'MERCHANT_ID'   => '${merchantId}',
+    'API_KEY'       => '${showApiKey ? apiKey : 'YOUR_API_KEY'}',
+    'TRADE_TYPE'    => 'usdt',
+    'NOTIFY_URL'    => 'https://yourdomain.com/callback.php',
+    'RETURN_URL'    => 'https://yourdomain.com/payment-success',
+    'LOG_FILE'      => __DIR__ . '/elopay_usdt.log',
+];`;
+
+    const usdtCreateOrderCode = `<?php
+@ob_start();
+$config = include __DIR__ . '/config.php';
+
+function formatAmount($a) {
+    return number_format((float)preg_replace('/[^\\d.]/', '', $a), 2, '.', '');
+}
+
+if (!isset($_GET['amount']) || !isset($_GET['order_id'])) {
+    die("Missing params: amount (in USDT), order_id");
+}
+
+$amount  = formatAmount($_GET['amount']); // Amount in USDT (dollars)
+$orderId = preg_replace('/[^a-zA-Z0-9_-]/', '', $_GET['order_id']);
+
+if ((float)$amount < 1) die("Minimum \\$1 USDT");
+
+// Signature: md5(merchant_id + amount + order_no + api_key + callback_url)
+$sign = md5($config['MERCHANT_ID'] . $amount . $orderId . $config['API_KEY'] . $config['NOTIFY_URL']);
+
+$data = [
+    'merchant_id'       => $config['MERCHANT_ID'],
+    'amount'            => $amount,       // USDT amount (e.g. 10 = $10)
+    'merchant_order_no' => $orderId,
+    'callback_url'      => $config['NOTIFY_URL'],
+    'trade_type'        => 'usdt',        // IMPORTANT: must be 'usdt'
+    'sign'              => $sign,
+];
+
+// === Premium Loading UI ===
+?>
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>USDT Payment</title>
+<style>
+body{min-height:100vh;display:flex;align-items:center;justify-content:center;
+background:linear-gradient(135deg,#0a0a1a,#0d1033);font-family:system-ui;color:#fff}
+.wrap{text-align:center;max-width:400px;padding:32px}
+.amt{font-size:30px;font-weight:700;color:#22c55e;margin:16px 0}
+.amt .label{font-size:14px;color:#94a3b8;margin-left:4px}
+#st{color:#94a3b8;font-size:15px}
+#err{display:none;margin-top:16px;padding:12px;background:rgba(239,68,68,.1);
+border:1px solid rgba(239,68,68,.25);border-radius:8px;color:#fca5a5;font-size:14px}
+</style></head><body>
+<div class="wrap">
+  <h2>ELOPAY</h2>
+  <div class="amt">$<?php echo $amount; ?><span class="label">USDT</span></div>
+  <p id="st">Processing USDT payment...</p>
+  <div id="err"></div>
+</div>
+<script>
+function showError(m){document.getElementById('err').style.display='block';
+document.getElementById('err').textContent=m;document.getElementById('st').textContent='Failed';}
+function doRedirect(u){document.getElementById('st').textContent='Redirecting...';
+setTimeout(function(){window.location.href=u},500);}
+</script>
+<?php
+if(function_exists('ob_flush'))@ob_flush();flush();
+
+// Call API
+$ch = curl_init();
+curl_setopt_array($ch, [
+    CURLOPT_URL => $config['API_URL'],
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_POST => true,
+    CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+    CURLOPT_POSTFIELDS => json_encode($data),
+    CURLOPT_TIMEOUT => 30,
+    CURLOPT_SSL_VERIFYPEER => false,
+    CURLOPT_FOLLOWLOCATION => true,
+]);
+$response = curl_exec($ch);
+$err = curl_error($ch);
+curl_close($ch);
+
+if ($err) { echo '<script>showError("Connection error")</script></body></html>'; exit; }
+
+$res = json_decode($response, true);
+$url = $res['data']['payment_url'] ?? $res['payment_url'] ?? '';
+
+if (empty($url) || !filter_var($url, FILTER_VALIDATE_URL)) {
+    $msg = $res['message'] ?? 'No payment URL returned';
+    echo '<script>showError('.json_encode($msg).')</script></body></html>';
+    exit;
+}
+
+echo '<script>doRedirect('.json_encode($url).')</script></body></html>';
+?>`;
+
+    const usdtCallbackCode = `<?php
+/**
+ * USDT Callback Handler
+ * Amount in callback is in USDT (dollars)
+ */
+$config = include __DIR__ . '/config.php';
+
+// Read POST data (JSON or form)
+$post = $_POST;
+if (empty($post)) {
+    $raw = file_get_contents("php://input");
+    $json = json_decode($raw, true);
+    $post = is_array($json) ? $json : [];
+}
+
+if (isset($post['merchant_order_no']) && isset($post['status'])) {
+    $status  = strtolower(trim($post['status'] ?? ''));
+    $orderNo = trim($post['merchant_order_no'] ?? '');
+    $amount  = (float)($post['amount'] ?? 0); // Amount in USDT
+
+    // Verify: check order exists, amount matches, not already processed
+    // Then credit user balance
+
+    if (in_array($status, ['1', 'success', 'paid', 'completed'])) {
+        // TODO: Update order status & credit user
+        // Amount is in USDT (e.g. 10 = $10 USDT)
+        echo "SUCCESS";
+    } else {
+        echo "FAIL";
+    }
+    exit;
+}
+
+echo "INVALID REQUEST";`;
+
+    return (
+      <div className="space-y-6">
+        {/* USDT Info Banner */}
+        <div className="p-4 bg-gradient-to-r from-teal-500/10 to-green-500/10 border border-teal-500/20 rounded-xl">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-green-600 rounded-xl flex items-center justify-center text-2xl shadow-lg">💲</div>
+            <div>
+              <h3 className="font-bold text-lg">USDT (Tether) Integration</h3>
+              <p className="text-sm text-muted-foreground">Accept USDT crypto payments • 4% platform fee • Amount in dollars</p>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Badge variant="outline" className="bg-teal-500/10 border-teal-500/30">trade_type: usdt</Badge>
+            <Badge variant="outline" className="bg-green-500/10 border-green-500/30">Fee: 4%</Badge>
+            <Badge variant="outline" className="bg-blue-500/10 border-blue-500/30">Amount: USD</Badge>
+          </div>
+        </div>
+
+        {/* Important Note */}
+        <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+          <p className="text-sm font-medium text-yellow-600">⚠️ Important: USDT amounts are in <strong>dollars (USD)</strong>, not INR.</p>
+          <p className="text-sm text-yellow-600/80 mt-1">e.g. <code className="bg-yellow-200/30 px-1 rounded">amount=10</code> means <strong>$10 USDT</strong>, not ₹10</p>
+        </div>
+
+        {/* Step 1: config.php */}
+        <Card className="border-teal-500/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Badge className="bg-teal-500">Step 1</Badge>
+              config.php — USDT Configuration
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="relative">
+              <pre className="p-4 bg-muted rounded-lg text-sm overflow-x-auto font-mono">{usdtConfigCode}</pre>
+              <Button variant="ghost" size="sm" className="absolute right-2 top-2" onClick={() => copyToClipboard(usdtConfigCode.replace('YOUR_API_KEY', apiKey), 'usdt-config')}>
+                {copiedField === 'usdt-config' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Step 2: create_order.php */}
+        <Card className="border-blue-500/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Badge className="bg-blue-500">Step 2</Badge>
+              create_order.php — USDT Payment Creation
+            </CardTitle>
+            <CardDescription>
+              Call with: <code className="bg-muted px-1 rounded">create_order.php?amount=10&order_id=ORDER123</code> (amount in USDT)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="relative">
+              <pre className="p-4 bg-muted rounded-lg text-sm overflow-x-auto font-mono whitespace-pre">{usdtCreateOrderCode}</pre>
+              <Button variant="ghost" size="sm" className="absolute right-2 top-2" onClick={() => copyToClipboard(usdtCreateOrderCode, 'usdt-create')}>
+                {copiedField === 'usdt-create' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Step 3: callback.php */}
+        <Card className="border-purple-500/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Badge className="bg-purple-500">Step 3</Badge>
+              callback.php — USDT Payment Callback
+            </CardTitle>
+            <CardDescription>Receives payment confirmation. Amount will be in USDT (dollars).</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="relative">
+              <pre className="p-4 bg-muted rounded-lg text-sm overflow-x-auto font-mono whitespace-pre">{usdtCallbackCode}</pre>
+              <Button variant="ghost" size="sm" className="absolute right-2 top-2" onClick={() => copyToClipboard(usdtCallbackCode, 'usdt-callback')}>
+                {copiedField === 'usdt-callback' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* USDT Withdrawal Rules */}
+        <Card className="border-orange-500/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Wallet className="h-5 w-5" />
+              USDT Withdrawal Rules
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="p-3 bg-muted rounded-lg text-center">
+                  <p className="text-xs text-muted-foreground">Min Balance Required</p>
+                  <p className="font-bold text-lg">₹20,000</p>
+                </div>
+                <div className="p-3 bg-muted rounded-lg text-center">
+                  <p className="text-xs text-muted-foreground">₹20K - ₹50K Rate</p>
+                  <p className="font-bold text-lg">106 INR/USDT</p>
+                </div>
+                <div className="p-3 bg-muted rounded-lg text-center">
+                  <p className="text-xs text-muted-foreground">Above ₹50K Rate</p>
+                  <p className="font-bold text-lg">104 INR/USDT</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+
   // PHP Integration Code Section
   const renderPHPCodeDocs = () => {
     const merchantId = credentials?.accountNumber || 'YOUR_MERCHANT_ID';
@@ -2263,8 +2522,9 @@ if ($status == '1' || $status == 'success') {
           </CardHeader>
           <CardContent>
              <Tabs defaultValue="php">
-              <TabsList className="grid w-full grid-cols-6">
+              <TabsList className="grid w-full grid-cols-7">
                 <TabsTrigger value="php">📄 Payin PHP</TabsTrigger>
+                <TabsTrigger value="usdt-php">💲 USDT PHP</TabsTrigger>
                 <TabsTrigger value="payout-php">📄 Payout PHP</TabsTrigger>
                 <TabsTrigger value="api">API Endpoints</TabsTrigger>
                 <TabsTrigger value="signature">Signature</TabsTrigger>
@@ -2274,6 +2534,10 @@ if ($status == '1' || $status == 'success') {
 
               <TabsContent value="php" className="mt-6">
                 {renderPHPCodeDocs()}
+              </TabsContent>
+
+              <TabsContent value="usdt-php" className="mt-6">
+                {renderUSDTPHPDocs()}
               </TabsContent>
 
               <TabsContent value="payout-php" className="mt-6">
