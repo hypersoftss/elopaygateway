@@ -252,6 +252,7 @@ const AdminMerchants = () => {
     setEditPayinFee(merchant.payin_fee?.toString() || '9');
     setEditPayoutFee(merchant.payout_fee?.toString() || '4');
     setEditGatewayId(merchant.gateway_id || '');
+    setEditCallbackUrl(merchant.callback_url || '');
     setBalanceAdjustAmount('');
     setBalanceAdjustType('add');
     setBalanceAdjustReason('');
