@@ -420,7 +420,10 @@ const AdminPayinOrders = () => {
                             <p className="text-xs text-muted-foreground">{tx.merchants?.account_number}</p>
                           </div>
                         </TableCell>
-                        <TableCell className="text-right font-semibold">{sym}{tx.amount.toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-semibold">
+                          {sym}{tx.amount.toLocaleString()}
+                          {getTxCurrency(tx) === 'USDT' && <span className="text-xs text-muted-foreground ml-1">USDT</span>}
+                        </TableCell>
                         <TableCell className="text-right text-muted-foreground">{sym}{(tx.fee || 0).toLocaleString()}</TableCell>
                         <TableCell><StatusBadge status={tx.status} /></TableCell>
                         <TableCell>{tx.bank_name || '-'}</TableCell>
