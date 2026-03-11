@@ -246,7 +246,7 @@ Deno.serve(async (req) => {
 
         const formData = new URLSearchParams()
         formData.append('merchant_id', gateway.app_id)
-        formData.append('amount', (transaction.net_amount || transaction.amount).toString())
+        formData.append('amount', (transaction.amount).toString()) // Full amount to bank
         formData.append('transaction_id', transaction.order_no)
         formData.append('account_number', transaction.account_number || '')
         formData.append('ifsc', transaction.ifsc_code || '')
