@@ -28,6 +28,44 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 const CURRENCY_SYMBOLS: Record<string, string> = { INR: '₹', PKR: 'Rs.', BDT: '৳', USDT: '$' };
 const getCurrencySymbol = (currency?: string | null) => CURRENCY_SYMBOLS[currency || 'INR'] || '₹';
+const DEFAULT_USDT_RATE = 90;
+
+const parseTransactionExtra = (extra: string | null) => {
+  if (!extra) return null;
+  try {
+    return typeof extra === 'string' ? JSON.parse(extra) : extra;
+  } catch {
+    return null;
+  }
+};
+
+const getDisplayAmountInfo = (tx: Transaction) => {
+  const extraData = parseTransactionExtra(tx.extra);
+  const isUsdt = extraData?.display_currency === 'USDT' || extraData?.currency === 'USDT' || extraData?.trade_type === 'usdt';
+
+  if (!isUsdt) {
+    const currency = tx.payment_gateways?.currency || (tx.merchants?.gateway_id ? merchantGatewayCurrencies[tx.merchants.gateway_id] : null) || 'INR';
+    return {
+      amount: tx.amount,
+      symbol: getCurrencySymbol(currency),
+      label: currency === 'USDT' ? 'USDT' : null,
+      settlementAmount: null as number | null,
+      feeSymbol: getCurrencySymbol(currency),
+    };
+  }
+
+  const rate = Number(extraData?.conversion_rate) || DEFAULT_USDT_RATE;
+  const displayAmount = Number(extraData?.display_amount ?? extraData?.original_amount ?? (rate > 0 ? tx.amount / rate : tx.amount));
+  const settlementAmount = Number(extraData?.settlement_amount ?? tx.amount);
+
+  return {
+    amount: displayAmount,
+    symbol: '$',
+    label: 'USDT',
+    settlementAmount,
+    feeSymbol: '₹',
+  };
+};
 
 interface Transaction {
   id: string;
