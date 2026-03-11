@@ -486,7 +486,7 @@ Deno.serve(async (req) => {
           amount: amountNum,
           fee,
           net_amount: netAmount,
-          payment_url: paymentUrl || `https://pay.example.com/${orderNo}`,
+          payment_url: paymentUrl || null,
           status: 'pending'
         }
       }),
