@@ -520,6 +520,29 @@ const MerchantWithdrawal = () => {
           </Card>
         </div>
 
+        {/* Pending Withdrawal Warning */}
+        {merchantData.hasPendingWithdrawal && (
+          <Card className="premium-card border-[hsl(var(--warning))]/50 bg-[hsl(var(--warning))]/10">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-full bg-[hsl(var(--warning))]/20">
+                  <Shield className="h-5 w-5 text-[hsl(var(--warning))]" />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm text-[hsl(var(--warning))]">
+                    {language === 'zh' ? '已有待处理的提现' : 'Pending Withdrawal Exists'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {language === 'zh'
+                      ? '您已有一笔提现正在审核中，请等待处理完成后再提交新的申请'
+                      : 'You have a withdrawal request under review. Please wait for it to be processed before submitting a new one.'}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* No Password Warning */}
         {!merchantData.hasWithdrawalPassword && (
           <Card className="premium-card border-destructive/30 bg-destructive/5">
