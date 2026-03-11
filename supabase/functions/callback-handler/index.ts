@@ -542,24 +542,29 @@ Deno.serve(async (req) => {
       }
 
       const extraData = transaction.extra ? JSON.parse(transaction.extra) : {}
+      const merchantCallbackUrl = extraData.merchant_callback || transaction.merchants?.callback_url
       
-      if (extraData.merchant_callback) {
+      if (merchantCallbackUrl) {
         const webhookPayload = {
-          orderNo: transaction.order_no,
-          merchantOrder: transaction.merchant_order_no,
           status: newStatus,
+          order_no: transaction.order_no,
+          merchant_order_no: transaction.merchant_order_no,
           amount: transaction.amount,
           fee: transaction.fee,
           net_amount: transaction.net_amount,
+          transaction_type: transaction.transaction_type,
           timestamp: new Date().toISOString()
         }
         
-        const result = await sendWebhookWithRetry(extraData.merchant_callback, webhookPayload, 3)
+        console.log(`Forwarding GATEWAY callback to merchant: ${merchantCallbackUrl}`, webhookPayload)
+        const result = await sendWebhookWithRetry(merchantCallbackUrl, webhookPayload, 3)
         if (result.success) {
           console.log(`Forwarded callback to merchant on attempt ${result.attempt}`)
         } else {
           console.error(`Failed to forward callback after ${result.attempt} attempts: ${result.error}`)
         }
+      } else {
+        console.warn('No merchant callback URL found for GATEWAY callback')
       }
 
       if (newStatus === 'success' && extraData.success_url) {
