@@ -430,13 +430,16 @@ export default function AdminLiveTransactions() {
 
                     <div className="text-right">
                       {(() => {
-                        const isUsdt = isUsdtTransaction(tx);
+                        const display = getPayinDisplayInfo(tx);
                         return (
                           <>
                             <p className="font-semibold">
-                              ₹{tx.amount.toLocaleString()}
-                              {isUsdt && <Badge variant="outline" className="ml-2 text-xs border-primary/30 text-primary">USDT</Badge>}
+                              {display.symbol}{display.amount.toLocaleString()}
+                              {display.isUsdt && <Badge variant="outline" className="ml-2 text-xs border-primary/30 text-primary">USDT</Badge>}
                             </p>
+                            {display.settlementAmount !== null && (
+                              <p className="text-xs text-muted-foreground">Settles ₹{display.settlementAmount.toLocaleString()}</p>
+                            )}
                             {tx.fee != null && tx.fee > 0 && (
                               <p className="text-xs text-muted-foreground">
                                 Fee: ₹{tx.fee.toLocaleString()}

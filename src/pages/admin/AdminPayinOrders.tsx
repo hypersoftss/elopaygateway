@@ -435,7 +435,7 @@ const AdminPayinOrders = () => {
                     </TableRow>
                   ) : (
                     filteredTransactions.map((tx) => {
-                      const amountInfo = getDisplayAmountInfo(tx);
+                      const amountInfo = getDisplayAmountInfo(tx, merchantGatewayCurrencies);
                       return (
                       <TableRow key={tx.id} className="hover:bg-muted/50 transition-colors">
                         <TableCell className="font-mono text-sm">{tx.order_no}</TableCell>
