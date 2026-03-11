@@ -165,6 +165,13 @@ const AdminPayinOrders = () => {
   );
 
   const getTxCurrency = (tx: Transaction) => {
+    // Check extra field for USDT currency
+    if (tx.extra) {
+      try {
+        const extraData = typeof tx.extra === 'string' ? JSON.parse(tx.extra) : tx.extra;
+        if (extraData?.currency === 'USDT' || extraData?.trade_type === 'usdt') return 'USDT';
+      } catch {}
+    }
     if (tx.payment_gateways?.currency) return tx.payment_gateways.currency;
     if (tx.merchants?.gateway_id && merchantGatewayCurrencies[tx.merchants.gateway_id]) return merchantGatewayCurrencies[tx.merchants.gateway_id];
     return 'INR';
