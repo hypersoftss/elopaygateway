@@ -99,9 +99,9 @@ export default function AdminLiveTransactions() {
     }
 
     const isPayin = tx.transaction_type === 'payin';
-    const isUsdt = isUsdtTransaction(tx);
+    const display = getPayinDisplayInfo(tx);
     const title = isPayin ? '🔔 New Pay-in Order' : '🔔 New Payout Request';
-    const body = `${tx.order_no} - ₹${tx.amount.toLocaleString()}${isUsdt ? ' (USDT)' : ''}`;
+    const body = `${tx.order_no} - ${display.symbol}${display.amount.toLocaleString()}${display.isUsdt ? ' USDT' : ''}`;
 
     new Notification(title, {
       body,
