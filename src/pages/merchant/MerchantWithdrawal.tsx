@@ -437,7 +437,9 @@ const MerchantWithdrawal = () => {
     }
   };
 
-  const fee = form.amount ? (parseFloat(form.amount) * (merchantData?.payout_fee || 0)) / 100 : 0;
+  const FIXED_PAYOUT_FEE = 10; // Fixed charge per payout in merchant's currency
+  const percentFee = form.amount ? (parseFloat(form.amount) * (merchantData?.payout_fee || 0)) / 100 : 0;
+  const fee = form.amount ? percentFee + FIXED_PAYOUT_FEE : 0;
   const totalDeduction = form.amount ? parseFloat(form.amount) + fee : 0;
 
   const getMethodLabel = (method: string) => {
