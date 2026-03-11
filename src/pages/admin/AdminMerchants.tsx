@@ -1289,6 +1289,55 @@ const AdminMerchants = () => {
                 </Button>
               </div>
 
+              {/* Callback URL Section */}
+              <div className="space-y-3 p-4 rounded-lg bg-muted/50 border border-primary/20">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-primary" />
+                  <Label className="font-medium">{language === 'zh' ? '回调地址' : 'Callback URL (Payin)'}</Label>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Payment status will be sent to this URL via POST
+                </p>
+                <Input
+                  value={editCallbackUrl}
+                  onChange={(e) => setEditCallbackUrl(e.target.value)}
+                  placeholder="https://example.com/callback.php"
+                  className="font-mono text-sm"
+                />
+                <Button 
+                  size="sm" 
+                  className="w-full"
+                  disabled={isUpdating || editCallbackUrl === (editingMerchant?.callback_url || '')}
+                  onClick={async () => {
+                    if (!editingMerchant) return;
+                    if (editCallbackUrl && !editCallbackUrl.startsWith('http://') && !editCallbackUrl.startsWith('https://')) {
+                      toast({ title: 'Invalid URL', description: 'Must start with http:// or https://', variant: 'destructive' });
+                      return;
+                    }
+                    setIsUpdating(true);
+                    try {
+                      const oldVal = editingMerchant.callback_url;
+                      const newVal = editCallbackUrl || null;
+                      const { error } = await supabase
+                        .from('merchants')
+                        .update({ callback_url: newVal })
+                        .eq('id', editingMerchant.id);
+                      if (error) throw error;
+                      await logMerchantActivity(editingMerchant.id, 'callback_url_update', {}, { callback_url: oldVal }, { callback_url: newVal });
+                      setEditingMerchant({ ...editingMerchant, callback_url: newVal });
+                      toast({ title: '✅ Saved', description: 'Callback URL updated' });
+                      fetchMerchants();
+                    } catch (err: any) {
+                      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+                    } finally {
+                      setIsUpdating(false);
+                    }
+                  }}
+                >
+                  {language === 'zh' ? '更新回调地址' : 'Update Callback URL'}
+                </Button>
+              </div>
+
               {/* Balance Adjustment */}
               <div className="space-y-3 p-4 rounded-lg bg-muted/50 border border-primary/20">
                 <div className="flex items-center justify-between">
