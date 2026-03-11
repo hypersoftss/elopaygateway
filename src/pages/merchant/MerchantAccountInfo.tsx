@@ -51,6 +51,7 @@ const MerchantAccountInfo = () => {
 
         if (error) throw error;
         setInfo(data);
+        setCallbackUrl(data.callback_url || '');
       } catch (error) {
         console.error('Error fetching merchant info:', error);
         toast({
