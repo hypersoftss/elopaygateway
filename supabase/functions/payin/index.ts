@@ -451,13 +451,14 @@ Deno.serve(async (req) => {
     }
 
     // Always create notification for new payin
+    const currSymbol = isUsdtTrade ? '$' : '₹'
     await createNotification(
       supabaseAdmin,
       amountNum >= (adminSettings?.[0]?.large_payin_threshold || 10000) ? 'large_payin' : 'new_payin',
       amountNum >= (adminSettings?.[0]?.large_payin_threshold || 10000) 
-        ? `🔔 Large Pay-in: ₹${amountNum.toLocaleString()}`
-        : `🔔 New Pay-in: ₹${amountNum.toLocaleString()}`,
-      `Merchant ${merchant.merchant_name} (${merchant_id}) created a pay-in order of ₹${amountNum.toLocaleString()}`,
+        ? `🔔 Large Pay-in: ${currSymbol}${amountNum.toLocaleString()}`
+        : `🔔 New Pay-in: ${currSymbol}${amountNum.toLocaleString()}`,
+      `Merchant ${merchant.merchant_name} (${merchant_id}) created a pay-in order of ${currSymbol}${amountNum.toLocaleString()}${isUsdtTrade ? ' USDT' : ''}`,
       amountNum,
       merchant.id,
       txData?.id
