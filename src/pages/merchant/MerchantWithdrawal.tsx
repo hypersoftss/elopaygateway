@@ -57,6 +57,32 @@ const WITHDRAWAL_METHODS: Record<string, { value: string; label: string; icon: s
   ],
 };
 
+// USDT conversion rates (INR to USDT)
+const USDT_RATES = {
+  below20k: { rate: 111, flatFeeUsdt: 7 },  // Below ₹20,000: 111 INR = 1 USDT + 7 USDT fee
+  below50k: { rate: 106, flatFeeUsdt: 0 },  // ₹20,000 - ₹50,000: 106 INR = 1 USDT
+  above50k: { rate: 104, flatFeeUsdt: 0 },  // Above ₹50,000: 104 INR = 1 USDT
+};
+
+const USDT_MIN_BALANCE = 20000; // Minimum ₹20,000 balance required for USDT withdrawal
+const USDT_MIN_APPLICATION = 20000; // Minimum ₹20,000 per USDT withdrawal
+
+function getUsdtConversion(amountInr: number): { rate: number; usdtAmount: number; flatFeeUsdt: number; totalUsdt: number } {
+  let tier = USDT_RATES.below50k;
+  if (amountInr < 20000) {
+    tier = USDT_RATES.below20k;
+  } else if (amountInr >= 50000) {
+    tier = USDT_RATES.above50k;
+  }
+  const usdtAmount = amountInr / tier.rate;
+  return {
+    rate: tier.rate,
+    usdtAmount: parseFloat(usdtAmount.toFixed(2)),
+    flatFeeUsdt: tier.flatFeeUsdt,
+    totalUsdt: parseFloat((usdtAmount - tier.flatFeeUsdt).toFixed(2)),
+  };
+}
+
 const MerchantWithdrawal = () => {
   const { language } = useTranslation();
   const { user } = useAuthStore();
