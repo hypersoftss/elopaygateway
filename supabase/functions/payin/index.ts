@@ -269,8 +269,13 @@ Deno.serve(async (req) => {
       .limit(1)
 
     // amountNum already validated above
-    const fee = amountNum * (merchant.payin_fee / 100)
+    // USDT trade type gets a fixed 4% fee override
+    const effectiveTradeType = (requestTradeType || merchant.trade_type || '').toLowerCase()
+    const isUsdtTrade = effectiveTradeType === 'usdt'
+    const feeRate = isUsdtTrade ? 4 : merchant.payin_fee
+    const fee = amountNum * (feeRate / 100)
     const netAmount = amountNum - fee
+    console.log('Fee calculation:', { isUsdtTrade, feeRate, fee, netAmount })
     const orderNo = generateOrderNo()
 
     // Create internal callback URL

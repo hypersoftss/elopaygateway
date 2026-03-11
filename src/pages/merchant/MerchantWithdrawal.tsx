@@ -57,6 +57,32 @@ const WITHDRAWAL_METHODS: Record<string, { value: string; label: string; icon: s
   ],
 };
 
+// USDT conversion rates (INR to USDT)
+const USDT_RATES = {
+  below20k: { rate: 111, flatFeeUsdt: 7 },  // Below ₹20,000: 111 INR = 1 USDT + 7 USDT fee
+  below50k: { rate: 106, flatFeeUsdt: 0 },  // ₹20,000 - ₹50,000: 106 INR = 1 USDT
+  above50k: { rate: 104, flatFeeUsdt: 0 },  // Above ₹50,000: 104 INR = 1 USDT
+};
+
+const USDT_MIN_BALANCE = 20000; // Minimum ₹20,000 balance required for USDT withdrawal
+const USDT_MIN_APPLICATION = 20000; // Minimum ₹20,000 per USDT withdrawal
+
+function getUsdtConversion(amountInr: number): { rate: number; usdtAmount: number; flatFeeUsdt: number; totalUsdt: number } {
+  let tier = USDT_RATES.below50k;
+  if (amountInr < 20000) {
+    tier = USDT_RATES.below20k;
+  } else if (amountInr >= 50000) {
+    tier = USDT_RATES.above50k;
+  }
+  const usdtAmount = amountInr / tier.rate;
+  return {
+    rate: tier.rate,
+    usdtAmount: parseFloat(usdtAmount.toFixed(2)),
+    flatFeeUsdt: tier.flatFeeUsdt,
+    totalUsdt: parseFloat((usdtAmount - tier.flatFeeUsdt).toFixed(2)),
+  };
+}
+
 const MerchantWithdrawal = () => {
   const { language } = useTranslation();
   const { user } = useAuthStore();
@@ -237,6 +263,26 @@ const MerchantWithdrawal = () => {
       return;
     }
 
+    // USDT-specific validations
+    if (selectedMethod === 'usdt') {
+      if (merchantData.balance < USDT_MIN_BALANCE) {
+        toast({
+          title: language === 'zh' ? '错误' : 'Error',
+          description: `USDT withdrawal requires minimum ₹${USDT_MIN_BALANCE.toLocaleString()} balance. Your balance: ₹${merchantData.balance.toLocaleString()}`,
+          variant: 'destructive',
+        });
+        return;
+      }
+      if (amount < USDT_MIN_APPLICATION) {
+        toast({
+          title: language === 'zh' ? '错误' : 'Error',
+          description: `Minimum USDT withdrawal amount is ₹${USDT_MIN_APPLICATION.toLocaleString()}`,
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
     if (amount < minAmount) {
       toast({
         title: language === 'zh' ? '错误' : 'Error',
@@ -378,6 +424,17 @@ const MerchantWithdrawal = () => {
 
       if (selectedMethod === 'usdt') {
         transactionData.usdt_address = form.usdtAddress;
+        // Add USDT conversion info
+        const conversion = getUsdtConversion(amount);
+        transactionData.extra = JSON.stringify({ 
+          withdrawal: true, method: selectedMethod, currency,
+          usdt_conversion: {
+            rate: conversion.rate,
+            usdt_amount: conversion.usdtAmount,
+            flat_fee_usdt: conversion.flatFeeUsdt,
+            total_usdt: conversion.totalUsdt,
+          }
+        });
       } else if (selectedMethod === 'bank') {
         transactionData.bank_name = form.bankName;
         transactionData.account_number = form.accountNumber;
@@ -707,6 +764,67 @@ const MerchantWithdrawal = () => {
                       {language === 'zh' ? '仅支持TRC20网络' : 'Only TRC20 network supported'}
                     </p>
                   </div>
+
+                  {/* USDT Balance Requirement */}
+                  {merchantData.balance < USDT_MIN_BALANCE && (
+                    <div className="p-3 bg-destructive/10 rounded-xl border border-destructive/30">
+                      <p className="text-sm text-destructive font-medium">
+                        ⚠️ Minimum balance ₹{USDT_MIN_BALANCE.toLocaleString()} required for USDT withdrawal
+                      </p>
+                      <p className="text-xs text-destructive/70 mt-1">
+                        Your balance: ₹{merchantData.balance.toLocaleString()}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* USDT Conversion Rates Table */}
+                  <div className="p-4 bg-muted/30 rounded-xl border border-border/50 space-y-2">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">💱 Conversion Rates</p>
+                    <div className="grid gap-2 text-sm">
+                      <div className="flex justify-between items-center p-2 rounded-lg bg-background/50">
+                        <span className="text-muted-foreground">₹20,000 - ₹49,999</span>
+                        <span className="font-medium">106 INR = 1 USDT</span>
+                      </div>
+                      <div className="flex justify-between items-center p-2 rounded-lg bg-background/50">
+                        <span className="text-muted-foreground">₹50,000+</span>
+                        <span className="font-medium text-[hsl(var(--success))]">104 INR = 1 USDT</span>
+                      </div>
+                      <div className="flex justify-between items-center p-2 rounded-lg bg-background/50">
+                        <span className="text-muted-foreground">Below ₹20,000</span>
+                        <span className="font-medium text-[hsl(var(--warning))]">111 INR = 1 USDT + 7 USDT fee</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Min. application: ₹{USDT_MIN_APPLICATION.toLocaleString()}</p>
+                  </div>
+
+                  {/* Live USDT Conversion Preview */}
+                  {form.amount && parseFloat(form.amount) > 0 && selectedMethod === 'usdt' && (() => {
+                    const conv = getUsdtConversion(parseFloat(form.amount));
+                    return (
+                      <div className="p-4 bg-primary/5 rounded-xl border border-primary/20 space-y-2">
+                        <p className="text-xs font-semibold text-primary uppercase tracking-wider">🔄 You Will Receive</p>
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground text-sm">Rate</span>
+                          <span className="font-medium">{conv.rate} INR = 1 USDT</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground text-sm">USDT Amount</span>
+                          <span className="font-medium">{conv.usdtAmount.toFixed(2)} USDT</span>
+                        </div>
+                        {conv.flatFeeUsdt > 0 && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-muted-foreground text-sm">USDT Fee</span>
+                            <span className="font-medium text-destructive">-{conv.flatFeeUsdt} USDT</span>
+                          </div>
+                        )}
+                        <div className="border-t border-border pt-2 flex justify-between items-center">
+                          <span className="font-semibold">Total USDT</span>
+                          <span className="font-bold text-lg text-[hsl(var(--success))]">{conv.totalUsdt.toFixed(2)} USDT</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   <div className="space-y-2">
                     <Label className="text-muted-foreground text-xs font-medium">
                       {language === 'zh' ? 'USDT地址 (TRC20)' : 'USDT Address (TRC20)'}
