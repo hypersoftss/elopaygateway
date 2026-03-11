@@ -342,7 +342,7 @@ const AdminGatewaysPage = () => {
       payout_key: gateway.payout_key || '',
       currency: gateway.currency,
       trade_type: gateway.trade_type || '',
-      min_withdrawal_amount: gateway.min_withdrawal_amount || 1000,
+      min_withdrawal_amount: gateway.min_withdrawal_amount || 200,
       max_withdrawal_amount: gateway.max_withdrawal_amount || 50000,
       daily_withdrawal_limit: gateway.daily_withdrawal_limit || 200000,
     });
