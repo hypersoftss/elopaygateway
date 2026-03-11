@@ -96,7 +96,7 @@ const MerchantWithdrawal = () => {
       const { data: gatewayData } = await supabase.rpc('get_my_gateway');
       
       let currency = 'INR';
-      let minWithdrawalAmount = 1000;
+      let minWithdrawalAmount = 200;
       let maxWithdrawalAmount = 50000;
       let dailyWithdrawalLimit = 200000;
       if (gatewayData && gatewayData.length > 0) {
