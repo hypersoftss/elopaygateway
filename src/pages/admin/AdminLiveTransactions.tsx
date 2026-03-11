@@ -32,14 +32,14 @@ interface Transaction {
   merchants?: { merchant_name: string; account_number: string } | null;
 }
 
-// Helper to detect USDT from extra field
-function getTransactionCurrency(tx: Transaction): string {
-  if (!tx.extra) return '₹';
+// Helper to detect if transaction is USDT
+function isUsdtTransaction(tx: Transaction): boolean {
+  if (!tx.extra) return false;
   try {
     const extraData = typeof tx.extra === 'string' ? JSON.parse(tx.extra) : tx.extra;
-    if (extraData?.currency === 'USDT' || extraData?.trade_type === 'usdt') return '$';
+    return extraData?.currency === 'USDT' || extraData?.trade_type === 'usdt';
   } catch {}
-  return '₹';
+  return false;
 }
 
 // Notification sound URL (simple beep)
