@@ -225,7 +225,7 @@ const MerchantWithdrawal = () => {
     const dailyLimit = merchantData.daily_withdrawal_limit || 200000;
     const todayWithdrawals = merchantData.todayWithdrawals || 0;
     const remainingDaily = dailyLimit - todayWithdrawals;
-    const fee = (amount * merchantData.payout_fee) / 100;
+    const fee = (amount * merchantData.payout_fee) / 100 + FIXED_PAYOUT_FEE;
     const totalDeduction = amount + fee;
     
     if (amount <= 0) {
@@ -437,7 +437,9 @@ const MerchantWithdrawal = () => {
     }
   };
 
-  const fee = form.amount ? (parseFloat(form.amount) * (merchantData?.payout_fee || 0)) / 100 : 0;
+  const FIXED_PAYOUT_FEE = 10; // Fixed charge per payout in merchant's currency
+  const percentFee = form.amount ? (parseFloat(form.amount) * (merchantData?.payout_fee || 0)) / 100 : 0;
+  const fee = form.amount ? percentFee + FIXED_PAYOUT_FEE : 0;
   const totalDeduction = form.amount ? parseFloat(form.amount) + fee : 0;
 
   const getMethodLabel = (method: string) => {
@@ -511,6 +513,7 @@ const MerchantWithdrawal = () => {
                 <div>
                   <p className="text-sm text-muted-foreground">{language === 'zh' ? '提现费率' : 'Withdrawal Fee'}</p>
                   <p className="text-2xl font-bold text-primary">{merchantData.payout_fee}%</p>
+                  <p className="text-xs text-muted-foreground mt-1">+ {currencySymbol}{FIXED_PAYOUT_FEE} {language === 'zh' ? '每笔' : 'per payout'}</p>
                 </div>
                 <div className="p-3 rounded-full bg-primary/10">
                   <Sparkles className="h-5 w-5 text-primary" />
@@ -733,7 +736,7 @@ const MerchantWithdrawal = () => {
                 const remainingDaily = Math.max(0, dailyLimit - todayWithdrawals);
                 const availableBalance = merchantData.balance;
                 const feeRate = merchantData.payout_fee || 0;
-                const enteredFee = (enteredAmount * feeRate) / 100;
+                const enteredFee = (enteredAmount * feeRate) / 100 + FIXED_PAYOUT_FEE;
                 const enteredTotalDeduction = enteredAmount + enteredFee;
                 
                 const isBelowMinimum = form.amount && enteredAmount > 0 && enteredAmount < minAmount;
@@ -744,7 +747,8 @@ const MerchantWithdrawal = () => {
                 
                 // Calculate the effective max for "Withdraw All" button (account for fee)
                 // amount + (amount * feeRate/100) <= balance => amount <= balance / (1 + feeRate/100)
-                const maxAfterFee = Math.floor(availableBalance / (1 + feeRate / 100));
+                // amount + (amount * feeRate/100) + FIXED_PAYOUT_FEE <= balance => amount <= (balance - FIXED_PAYOUT_FEE) / (1 + feeRate/100)
+                const maxAfterFee = Math.floor(Math.max(0, availableBalance - FIXED_PAYOUT_FEE) / (1 + feeRate / 100));
                 const effectiveMax = Math.min(maxAfterFee, maxAmount, remainingDaily);
                 
                 return (
@@ -851,7 +855,17 @@ const MerchantWithdrawal = () => {
                   <span className="text-muted-foreground">
                     {language === 'zh' ? '手续费' : 'Platform Fee'} ({merchantData.payout_fee}%)
                   </span>
-                  <span className="font-medium text-destructive">{currencySymbol}{fee.toLocaleString()}</span>
+                  <span className="font-medium text-destructive">{currencySymbol}{percentFee.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    {language === 'zh' ? '固定费用' : 'Fixed Charge'} ({language === 'zh' ? '每笔' : 'per payout'})
+                  </span>
+                  <span className="font-medium text-destructive">{currencySymbol}{FIXED_PAYOUT_FEE}</span>
+                </div>
+                <div className="border-t border-border pt-2 flex justify-between">
+                  <span className="font-semibold">{language === 'zh' ? '总手续费' : 'Total Fee'}</span>
+                  <span className="font-bold text-destructive">{currencySymbol}{fee.toLocaleString()}</span>
                 </div>
                 <div className="border-t border-border pt-2 flex justify-between">
                   <span className="font-semibold">{language === 'zh' ? '总扣款' : 'Total Deducted from Balance'}</span>
