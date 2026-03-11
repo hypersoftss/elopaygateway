@@ -764,6 +764,67 @@ const MerchantWithdrawal = () => {
                       {language === 'zh' ? '仅支持TRC20网络' : 'Only TRC20 network supported'}
                     </p>
                   </div>
+
+                  {/* USDT Balance Requirement */}
+                  {merchantData.balance < USDT_MIN_BALANCE && (
+                    <div className="p-3 bg-destructive/10 rounded-xl border border-destructive/30">
+                      <p className="text-sm text-destructive font-medium">
+                        ⚠️ Minimum balance ₹{USDT_MIN_BALANCE.toLocaleString()} required for USDT withdrawal
+                      </p>
+                      <p className="text-xs text-destructive/70 mt-1">
+                        Your balance: ₹{merchantData.balance.toLocaleString()}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* USDT Conversion Rates Table */}
+                  <div className="p-4 bg-muted/30 rounded-xl border border-border/50 space-y-2">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">💱 Conversion Rates</p>
+                    <div className="grid gap-2 text-sm">
+                      <div className="flex justify-between items-center p-2 rounded-lg bg-background/50">
+                        <span className="text-muted-foreground">₹20,000 - ₹49,999</span>
+                        <span className="font-medium">106 INR = 1 USDT</span>
+                      </div>
+                      <div className="flex justify-between items-center p-2 rounded-lg bg-background/50">
+                        <span className="text-muted-foreground">₹50,000+</span>
+                        <span className="font-medium text-[hsl(var(--success))]">104 INR = 1 USDT</span>
+                      </div>
+                      <div className="flex justify-between items-center p-2 rounded-lg bg-background/50">
+                        <span className="text-muted-foreground">Below ₹20,000</span>
+                        <span className="font-medium text-[hsl(var(--warning))]">111 INR = 1 USDT + 7 USDT fee</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Min. application: ₹{USDT_MIN_APPLICATION.toLocaleString()}</p>
+                  </div>
+
+                  {/* Live USDT Conversion Preview */}
+                  {form.amount && parseFloat(form.amount) > 0 && selectedMethod === 'usdt' && (() => {
+                    const conv = getUsdtConversion(parseFloat(form.amount));
+                    return (
+                      <div className="p-4 bg-primary/5 rounded-xl border border-primary/20 space-y-2">
+                        <p className="text-xs font-semibold text-primary uppercase tracking-wider">🔄 You Will Receive</p>
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground text-sm">Rate</span>
+                          <span className="font-medium">{conv.rate} INR = 1 USDT</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground text-sm">USDT Amount</span>
+                          <span className="font-medium">{conv.usdtAmount.toFixed(2)} USDT</span>
+                        </div>
+                        {conv.flatFeeUsdt > 0 && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-muted-foreground text-sm">USDT Fee</span>
+                            <span className="font-medium text-destructive">-{conv.flatFeeUsdt} USDT</span>
+                          </div>
+                        )}
+                        <div className="border-t border-border pt-2 flex justify-between items-center">
+                          <span className="font-semibold">Total USDT</span>
+                          <span className="font-bold text-lg text-[hsl(var(--success))]">{conv.totalUsdt.toFixed(2)} USDT</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   <div className="space-y-2">
                     <Label className="text-muted-foreground text-xs font-medium">
                       {language === 'zh' ? 'USDT地址 (TRC20)' : 'USDT Address (TRC20)'}
