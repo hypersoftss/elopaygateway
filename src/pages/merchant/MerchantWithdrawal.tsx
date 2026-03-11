@@ -136,15 +136,14 @@ const MerchantWithdrawal = () => {
           frozen_balance: Number(data.frozen_balance) || 0,
           payout_fee: Number(data.payout_fee) || 0,
           currency,
-          // Check if either hashed or legacy password exists
           hasWithdrawalPassword: !!(data.withdrawal_password_hash || data.withdrawal_password),
           min_withdrawal_amount: minWithdrawalAmount,
           max_withdrawal_amount: maxWithdrawalAmount,
           daily_withdrawal_limit: dailyWithdrawalLimit,
           todayWithdrawals,
+          hasPendingWithdrawal: (pendingWithdrawalCount || 0) > 0,
         });
 
-        // Set default method based on currency
         const methods = WITHDRAWAL_METHODS[currency] || WITHDRAWAL_METHODS.INR;
         if (methods.length > 0) {
           setSelectedMethod(methods[0].value);
