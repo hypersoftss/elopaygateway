@@ -242,7 +242,7 @@ const AdminGatewaysPage = () => {
             payout_key: payoutKey,
             currency: newGateway.currency,
             trade_type: newGateway.trade_type || null,
-            min_withdrawal_amount: newGateway.min_withdrawal_amount || 1000,
+            min_withdrawal_amount: newGateway.min_withdrawal_amount || 200,
             max_withdrawal_amount: newGateway.max_withdrawal_amount || 50000,
             daily_withdrawal_limit: newGateway.daily_withdrawal_limit || 200000,
           });
