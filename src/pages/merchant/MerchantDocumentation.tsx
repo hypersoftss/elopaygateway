@@ -1881,6 +1881,121 @@ if ($status == '1' || $status == 'success') {
           </div>
         </CardContent>
       </Card>
+
+      {/* Payout PHP Integration Kits */}
+      <Card className="border-blue-500/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Download className="h-5 w-5" />
+            Payout PHP Integration Kits
+          </CardTitle>
+          <CardDescription>
+            Ready-to-use PHP files for payout/withdrawal. Each kit includes config, create_payout, and callback files.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* INR Payout */}
+            {(credentials?.currency === 'INR' || !credentials?.currency) && (
+              <Card className="hover:border-blue-500/50 transition-colors border-blue-500/20">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center text-white text-lg">🇮🇳</div>
+                    <div>
+                      <h4 className="font-semibold">INR Payout</h4>
+                      <p className="text-xs text-muted-foreground">Bank Transfer • IMPS/NEFT</p>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5 mb-3">
+                    <button onClick={() => downloadFile('payout-inr/config.php')} className="text-xs text-primary hover:underline block">📄 config.php</button>
+                    <button onClick={() => downloadFile('payout-inr/create_payout.php')} className="text-xs text-primary hover:underline block">📄 create_payout.php</button>
+                    <button onClick={() => downloadFile('payout-inr/callback.php')} className="text-xs text-primary hover:underline block">📄 callback.php</button>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => downloadFile('payout-inr/config.php')}>
+                      <Download className="h-3 w-3 mr-1" /> Config
+                    </Button>
+                    <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => downloadFile('payout-inr/create_payout.php')}>
+                      <Download className="h-3 w-3 mr-1" /> Payout
+                    </Button>
+                    <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => downloadFile('payout-inr/callback.php')}>
+                      <Download className="h-3 w-3 mr-1" /> Callback
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* PKR Payout */}
+            {(credentials?.currency === 'PKR' || !credentials?.currency) && (
+              <Card className="hover:border-green-500/50 transition-colors border-green-500/20">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center text-white text-lg">🇵🇰</div>
+                    <div>
+                      <h4 className="font-semibold">PKR Payout</h4>
+                      <p className="text-xs text-muted-foreground">Easypaisa / JazzCash</p>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5 mb-3">
+                    <button onClick={() => downloadFile('payout-pkr/config.php')} className="text-xs text-primary hover:underline block">📄 config.php</button>
+                    <button onClick={() => downloadFile('payout-pkr/create_payout.php')} className="text-xs text-primary hover:underline block">📄 create_payout.php</button>
+                    <button onClick={() => downloadFile('payout-pkr/callback.php')} className="text-xs text-primary hover:underline block">📄 callback.php</button>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => downloadFile('payout-pkr/config.php')}>
+                      <Download className="h-3 w-3 mr-1" /> Config
+                    </Button>
+                    <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => downloadFile('payout-pkr/create_payout.php')}>
+                      <Download className="h-3 w-3 mr-1" /> Payout
+                    </Button>
+                    <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => downloadFile('payout-pkr/callback.php')}>
+                      <Download className="h-3 w-3 mr-1" /> Callback
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* BDT Payout */}
+            {(credentials?.currency === 'BDT' || !credentials?.currency) && (
+              <Card className="hover:border-orange-500/50 transition-colors border-orange-500/20">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center text-white text-lg">🇧🇩</div>
+                    <div>
+                      <h4 className="font-semibold">BDT Payout</h4>
+                      <p className="text-xs text-muted-foreground">Nagad / bKash</p>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5 mb-3">
+                    <button onClick={() => downloadFile('payout-bdt/config.php')} className="text-xs text-primary hover:underline block">📄 config.php</button>
+                    <button onClick={() => downloadFile('payout-bdt/create_payout.php')} className="text-xs text-primary hover:underline block">📄 create_payout.php</button>
+                    <button onClick={() => downloadFile('payout-bdt/callback.php')} className="text-xs text-primary hover:underline block">📄 callback.php</button>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => downloadFile('payout-bdt/config.php')}>
+                      <Download className="h-3 w-3 mr-1" /> Config
+                    </Button>
+                    <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => downloadFile('payout-bdt/create_payout.php')}>
+                      <Download className="h-3 w-3 mr-1" /> Payout
+                    </Button>
+                    <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => downloadFile('payout-bdt/callback.php')}>
+                      <Download className="h-3 w-3 mr-1" /> Callback
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          <div className="mt-4 p-4 bg-muted rounded-lg">
+            <p className="text-sm text-muted-foreground">
+              <strong>📌 Payout Setup:</strong> Download all 3 files → Edit <code className="bg-background px-1 rounded">config.php</code> with your <strong>Payout Key</strong> → Integrate into your backend → Done!
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 
