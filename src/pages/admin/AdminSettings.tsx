@@ -649,6 +649,7 @@ echo ""
           balance_threshold_pkr: settings.balance_threshold_pkr,
           balance_threshold_bdt: settings.balance_threshold_bdt,
           no_auto_delete_commands: settings.no_auto_delete_commands?.trim() || null,
+          usdt_conversion_rate: settings.usdt_conversion_rate || 90,
         } as any)
         .eq('id', settings.id);
 
