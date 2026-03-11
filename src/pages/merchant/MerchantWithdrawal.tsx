@@ -844,18 +844,18 @@ const MerchantWithdrawal = () => {
             {form.amount && parseFloat(form.amount) > 0 && (
               <div className="p-4 bg-muted/30 rounded-xl space-y-2 border border-border/50">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">{language === 'zh' ? '提现金额' : 'Withdrawal Amount'}</span>
-                  <span className="font-medium">{currencySymbol}{parseFloat(form.amount).toLocaleString()}</span>
+                  <span className="text-muted-foreground">{language === 'zh' ? '银行/वॉलेट को मिलेगा' : 'Recipient Receives'}</span>
+                  <span className="font-bold text-[hsl(var(--success))]">{currencySymbol}{parseFloat(form.amount).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">
-                    {language === 'zh' ? '手续费' : 'Fee'} ({merchantData.payout_fee}%)
+                    {language === 'zh' ? '手续费' : 'Platform Fee'} ({merchantData.payout_fee}%)
                   </span>
-                  <span className="font-medium text-destructive">-{currencySymbol}{fee.toLocaleString()}</span>
+                  <span className="font-medium text-destructive">{currencySymbol}{fee.toLocaleString()}</span>
                 </div>
                 <div className="border-t border-border pt-2 flex justify-between">
-                  <span className="font-semibold">{language === 'zh' ? '实际到账' : 'Net Amount'}</span>
-                  <span className="font-bold text-[hsl(var(--success))]">{currencySymbol}{netAmount.toLocaleString()}</span>
+                  <span className="font-semibold">{language === 'zh' ? '总扣款' : 'Total Deducted from Balance'}</span>
+                  <span className="font-bold text-primary">{currencySymbol}{totalDeduction.toLocaleString()}</span>
                 </div>
               </div>
             )}
