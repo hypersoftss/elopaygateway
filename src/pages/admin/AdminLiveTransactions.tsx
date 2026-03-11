@@ -45,6 +45,7 @@ function getPayinDisplayInfo(tx: Transaction) {
       return { amount: tx.amount, symbol: '₹', isUsdt: false, settlementAmount: null as number | null };
     }
 
+    // Fetch from admin_settings cache or fallback
     const rate = Number(extraData?.conversion_rate) || 90;
     const amount = Number(extraData?.display_amount ?? extraData?.original_amount ?? (rate > 0 ? tx.amount / rate : tx.amount));
     const settlementAmount = Number(extraData?.settlement_amount ?? tx.amount);

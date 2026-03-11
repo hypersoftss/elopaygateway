@@ -67,7 +67,7 @@ const getDisplayAmountInfo = (tx: Transaction, merchantGatewayCurrencies: Record
     };
   }
 
-  const rate = Number(extraData?.conversion_rate) || DEFAULT_USDT_RATE;
+  const rate = Number(extraData?.conversion_rate) || CACHED_USDT_RATE;
   const displayAmount = Number(extraData?.display_amount ?? extraData?.original_amount ?? (rate > 0 ? tx.amount / rate : tx.amount));
   const settlementAmount = Number(extraData?.settlement_amount ?? tx.amount);
 
