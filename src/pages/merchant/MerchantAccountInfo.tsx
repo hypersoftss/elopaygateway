@@ -35,6 +35,8 @@ const MerchantAccountInfo = () => {
   const [showApiKey, setShowApiKey] = useState(false);
   const [showPayoutKey, setShowPayoutKey] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [callbackUrl, setCallbackUrl] = useState('');
+  const [isSavingCallback, setIsSavingCallback] = useState(false);
 
   useEffect(() => {
     const fetchInfo = async () => {
