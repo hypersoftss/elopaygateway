@@ -209,12 +209,24 @@ const MerchantWithdrawal = () => {
   const handleWithdrawal = async () => {
     if (!user?.merchantId || !merchantData || isLoading) return;
 
+    // Block if there's already a pending withdrawal
+    if (merchantData.hasPendingWithdrawal) {
+      toast({
+        title: language === 'zh' ? '请稍等' : 'Please Wait',
+        description: language === 'zh' ? '您已有一笔提现正在处理中，请等待审核完成后再提交新的提现申请' : 'You already have a pending withdrawal request. Please wait for it to be processed before submitting a new one.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const amount = parseFloat(form.amount);
     const minAmount = merchantData.min_withdrawal_amount || 200;
     const maxAmount = merchantData.max_withdrawal_amount || 50000;
     const dailyLimit = merchantData.daily_withdrawal_limit || 200000;
     const todayWithdrawals = merchantData.todayWithdrawals || 0;
     const remainingDaily = dailyLimit - todayWithdrawals;
+    const fee = (amount * merchantData.payout_fee) / 100;
+    const totalDeduction = amount + fee;
     
     if (amount <= 0) {
       toast({
@@ -254,10 +266,10 @@ const MerchantWithdrawal = () => {
       return;
     }
 
-    if (amount > merchantData.balance) {
+    if (totalDeduction > merchantData.balance) {
       toast({
         title: language === 'zh' ? '错误' : 'Error',
-        description: language === 'zh' ? '余额不足' : 'Insufficient balance',
+        description: language === 'zh' ? `余额不足。需要 ${currencySymbol}${totalDeduction.toLocaleString()}（含手续费）` : `Insufficient balance. Need ${currencySymbol}${totalDeduction.toLocaleString()} (including fee)`,
         variant: 'destructive',
       });
       return;
