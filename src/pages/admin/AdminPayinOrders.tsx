@@ -41,6 +41,7 @@ interface Transaction {
   created_at: string;
   merchant_id: string;
   gateway_id: string | null;
+  extra: string | null;
   merchants: { merchant_name: string; account_number: string; balance: number; gateway_id: string | null } | null;
   payment_gateways: { currency: string } | null;
 }
