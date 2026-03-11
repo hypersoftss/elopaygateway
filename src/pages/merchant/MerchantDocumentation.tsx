@@ -1246,6 +1246,362 @@ if ($status == '1' || $status == 'success') {
     );
   };
 
+  // Payout PHP Integration Code Section
+  const renderPayoutPHPCodeDocs = () => {
+    const merchantId = credentials?.accountNumber || 'YOUR_MERCHANT_ID';
+    const payoutKey = credentials?.payoutKey || 'YOUR_PAYOUT_KEY';
+    const currency = credentials?.currency || 'INR';
+
+    const isINR = currency === 'INR';
+    const isPKR = currency === 'PKR';
+    const isBDT = currency === 'BDT';
+
+    const getBankNameExample = () => {
+      if (isPKR) return 'easypaisa';
+      if (isBDT) return 'nagad';
+      return 'HDFC Bank';
+    };
+
+    const getAccountExample = () => {
+      if (isPKR) return '03001234567';
+      if (isBDT) return '01712345678';
+      return '1234567890123';
+    };
+
+    const getNameExample = () => {
+      if (isPKR) return 'Muhammad Ali';
+      if (isBDT) return 'Rahim Ahmed';
+      return 'Rahul Sharma';
+    };
+
+    return (
+      <div className="space-y-6">
+        {/* Step 1: config.php */}
+        <Card className="border-green-500/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Badge className="bg-green-500">Step 1</Badge>
+              config.php — Payout Configuration
+            </CardTitle>
+            <CardDescription>Create this file and fill in your Payout Key (different from API Key).</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="relative">
+              <pre className="p-4 bg-muted rounded-lg text-sm overflow-x-auto font-mono">
+{`<?php
+return [
+    // === API Settings ===
+    'API_URL'       => '${apiBaseUrl}/payout',
+    'MERCHANT_ID'   => '${merchantId}',
+    'PAYOUT_KEY'    => '${showPayoutKey ? payoutKey : 'YOUR_PAYOUT_KEY'}',
+    'CURRENCY'      => '${currency}',
+
+    // === Callback / Notify URL ===
+    'NOTIFY_URL'    => 'https://yourdomain.com/payout-callback.php',
+
+    // === Logging ===
+    'LOG_FILE'      => __DIR__ . '/elopay_payout.log',
+];`}
+              </pre>
+              <Button variant="ghost" size="sm" className="absolute right-2 top-2" onClick={() => copyToClipboard(`<?php
+return [
+    'API_URL'       => '${apiBaseUrl}/payout',
+    'MERCHANT_ID'   => '${merchantId}',
+    'PAYOUT_KEY'    => '${payoutKey}',
+    'CURRENCY'      => '${currency}',
+    'NOTIFY_URL'    => 'https://yourdomain.com/payout-callback.php',
+    'LOG_FILE'      => __DIR__ . '/elopay_payout.log',
+];`, 'payout-php-config')}>
+                {copiedField === 'payout-php-config' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
+            <div className="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+              <p className="text-sm text-yellow-600">
+                ⚠️ Use <strong>PAYOUT_KEY</strong> (not API_KEY) for payout signature generation.
+                {isPKR && <><br/>💡 <strong>bank_name:</strong> Use <code className="bg-yellow-200/50 px-1 rounded">easypaisa</code> or <code className="bg-yellow-200/50 px-1 rounded">jazzcash</code></>}
+                {isBDT && <><br/>💡 <strong>bank_name:</strong> Use <code className="bg-yellow-200/50 px-1 rounded">nagad</code> or <code className="bg-yellow-200/50 px-1 rounded">bkash</code></>}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Step 2: create_payout.php */}
+        <Card className="border-blue-500/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Badge className="bg-blue-500">Step 2</Badge>
+              create_payout.php — Payout Creation
+            </CardTitle>
+            <CardDescription>
+              This file creates a payout/withdrawal order. Call it with parameters via GET or integrate into your backend.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="relative">
+              <pre className="p-4 bg-muted rounded-lg text-sm overflow-x-auto font-mono whitespace-pre">
+{`<?php
+$config = include __DIR__ . '/config.php';
+
+// === Payout Signature Generation ===
+// Formula: md5(account_number + amount + bank_name + callback_url + ifsc + merchant_id + name + transaction_id + payout_key)
+function generatePayoutSignature($accountNumber, $amount, $bankName, $callbackUrl, $ifsc, $merchantId, $name, $transactionId, $payoutKey) {
+    $signStr = $accountNumber . $amount . $bankName . $callbackUrl . $ifsc . $merchantId . $name . $transactionId . $payoutKey;
+    return md5($signStr);
+}
+
+// === Get Parameters ===
+$amount        = isset($_GET['amount']) ? (float)$_GET['amount'] : 0;
+$transactionId = isset($_GET['transaction_id']) ? $_GET['transaction_id'] : 'WD_' . time() . '_' . random_int(1000, 9999);
+$accountNumber = isset($_GET['account_number']) ? $_GET['account_number'] : '';
+$name          = isset($_GET['name']) ? $_GET['name'] : '';
+$bankName      = isset($_GET['bank_name']) ? $_GET['bank_name'] : '${getBankNameExample()}';${isINR ? `
+$ifsc          = isset($_GET['ifsc']) ? $_GET['ifsc'] : '';` : `
+$ifsc          = '';  // Not required for ${currency}`}
+
+header('Content-Type: application/json; charset=utf-8');
+
+if ($amount < 100) {
+    echo json_encode(['status' => false, 'message' => 'Amount must be >= 100']);
+    exit;
+}
+if (empty($accountNumber) || empty($name)${isINR ? ' || empty($ifsc) || empty($bankName)' : ''}) {
+    echo json_encode(['status' => false, 'message' => 'Missing required fields']);
+    exit;
+}
+
+// === Generate Signature ===
+$signature = generatePayoutSignature(
+    $accountNumber, $amount, $bankName,
+    $config['NOTIFY_URL'], $ifsc,
+    $config['MERCHANT_ID'], $name,
+    $transactionId, $config['PAYOUT_KEY']
+);
+
+// === Build Request ===
+$payload = [
+    'merchant_id'    => $config['MERCHANT_ID'],
+    'amount'         => $amount,
+    'transaction_id' => $transactionId,
+    'account_number' => $accountNumber,${isINR ? `
+    'ifsc'           => $ifsc,` : ''}
+    'name'           => $name,
+    'bank_name'      => $bankName,
+    'callback_url'   => $config['NOTIFY_URL'],
+    'sign'           => $signature,
+];
+
+// === Send API Request ===
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, $config['API_URL']);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+$response = curl_exec($ch);
+$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$curlErr  = curl_error($ch);
+curl_close($ch);
+
+// === Log ===
+@file_put_contents($config['LOG_FILE'], date('c') . " | PAYOUT | HTTP={$httpCode} | " . json_encode($payload) . " | {$response}\\n", FILE_APPEND);
+
+if ($curlErr) { die(json_encode(['status' => false, 'message' => 'Connection error'])); }
+
+$result = json_decode($response, true);
+echo json_encode($result ?: ['status' => false, 'message' => 'Invalid response']);`}
+              </pre>
+              <Button variant="ghost" size="sm" className="absolute right-2 top-2" onClick={() => copyToClipboard(`<?php
+$config = include __DIR__ . '/config.php';
+
+function generatePayoutSignature($accountNumber, $amount, $bankName, $callbackUrl, $ifsc, $merchantId, $name, $transactionId, $payoutKey) {
+    $signStr = $accountNumber . $amount . $bankName . $callbackUrl . $ifsc . $merchantId . $name . $transactionId . $payoutKey;
+    return md5($signStr);
+}
+
+$amount        = isset($_GET['amount']) ? (float)$_GET['amount'] : 0;
+$transactionId = isset($_GET['transaction_id']) ? $_GET['transaction_id'] : 'WD_' . time() . '_' . random_int(1000, 9999);
+$accountNumber = isset($_GET['account_number']) ? $_GET['account_number'] : '';
+$name          = isset($_GET['name']) ? $_GET['name'] : '';
+$bankName      = isset($_GET['bank_name']) ? $_GET['bank_name'] : '${getBankNameExample()}';
+$ifsc          = ${isINR ? "isset($_GET['ifsc']) ? $_GET['ifsc'] : ''" : "''"};
+
+header('Content-Type: application/json; charset=utf-8');
+
+if ($amount < 100) { echo json_encode(['status' => false, 'message' => 'Amount must be >= 100']); exit; }
+if (empty($accountNumber) || empty($name)${isINR ? " || empty($ifsc) || empty($bankName)" : ""}) { echo json_encode(['status' => false, 'message' => 'Missing required fields']); exit; }
+
+$signature = generatePayoutSignature($accountNumber, $amount, $bankName, $config['NOTIFY_URL'], $ifsc, $config['MERCHANT_ID'], $name, $transactionId, $config['PAYOUT_KEY']);
+
+$payload = [
+    'merchant_id' => $config['MERCHANT_ID'], 'amount' => $amount, 'transaction_id' => $transactionId,
+    'account_number' => $accountNumber, ${isINR ? "'ifsc' => $ifsc, " : ""}'name' => $name, 'bank_name' => $bankName,
+    'callback_url' => $config['NOTIFY_URL'], 'sign' => $signature,
+];
+
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, $config['API_URL']);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+$response = curl_exec($ch);
+curl_close($ch);
+
+@file_put_contents($config['LOG_FILE'], date('c') . " | PAYOUT | " . json_encode($payload) . " | {$response}\\n", FILE_APPEND);
+
+$result = json_decode($response, true);
+echo json_encode($result ?: ['status' => false, 'message' => 'Invalid response']);`, 'payout-php-create')}>
+                {copiedField === 'payout-php-create' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
+            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                <p className="text-sm font-medium text-blue-700">📥 Request Format</p>
+                <p className="text-xs text-muted-foreground mt-1">JSON POST to <code>{apiBaseUrl}/payout</code></p>
+              </div>
+              <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                <p className="text-sm font-medium text-green-700">📤 Success Response</p>
+                <p className="text-xs text-muted-foreground mt-1"><code>{`{"code":200,"status":"success","data":{"order_no":"..."}}`}</code></p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Step 3: callback.php */}
+        <Card className="border-orange-500/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Badge className="bg-orange-500">Step 3</Badge>
+              callback.php — Payout Callback Handler
+            </CardTitle>
+            <CardDescription>
+              This file receives payout status notifications. Set its URL as your NOTIFY_URL in config.php
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="relative">
+              <pre className="p-4 bg-muted rounded-lg text-sm overflow-x-auto font-mono whitespace-pre">
+{`<?php
+$config = include __DIR__ . '/config.php';
+
+// === Receive POST Data ===
+$postData = $_POST;
+
+// Log incoming callback
+@file_put_contents($config['LOG_FILE'], date('c') . " | PAYOUT_CALLBACK | " . json_encode($postData) . "\\n", FILE_APPEND);
+
+$status          = $postData['status'] ?? '';
+$orderNo         = $postData['order_no'] ?? '';
+$merchantOrderNo = $postData['merchant_order_no'] ?? '';
+$amount          = $postData['amount'] ?? '';
+
+// === Process Payout Result ===
+if ($status == '1' || $status == 'success') {
+    /**
+     * ✅ Payout Successful!
+     * Money has been sent to the beneficiary.
+     * 
+     * Add your business logic here:
+     *   - Update withdrawal status in database
+     *   - Send confirmation to user
+     */
+    @file_put_contents($config['LOG_FILE'], date('c') . " | PAYOUT_SUCCESS | order={$merchantOrderNo}\\n", FILE_APPEND);
+    echo "SUCCESS";
+} else {
+    /**
+     * ❌ Payout Failed
+     * Refund the amount in your system
+     */
+    @file_put_contents($config['LOG_FILE'], date('c') . " | PAYOUT_FAILED | status={$status}\\n", FILE_APPEND);
+    echo "FAIL";
+}`}
+              </pre>
+              <Button variant="ghost" size="sm" className="absolute right-2 top-2" onClick={() => copyToClipboard(`<?php
+$config = include __DIR__ . '/config.php';
+
+$postData = $_POST;
+@file_put_contents($config['LOG_FILE'], date('c') . " | PAYOUT_CALLBACK | " . json_encode($postData) . "\\n", FILE_APPEND);
+
+$status          = $postData['status'] ?? '';
+$orderNo         = $postData['order_no'] ?? '';
+$merchantOrderNo = $postData['merchant_order_no'] ?? '';
+$amount          = $postData['amount'] ?? '';
+
+if ($status == '1' || $status == 'success') {
+    // TODO: Update withdrawal status, notify user
+    echo "SUCCESS";
+} else {
+    // TODO: Refund amount in your system
+    echo "FAIL";
+}`, 'payout-php-callback')}>
+                {copiedField === 'payout-php-callback' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Payout Signature Info */}
+        <Card className="border-primary/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              Payout Signature Formula
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+              <code className="text-sm font-mono">md5(account_number + amount + bank_name + callback_url + ifsc + merchant_id + name + transaction_id + payout_key)</code>
+            </div>
+            <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+              <p className="text-sm text-yellow-600">
+                ⚠️ <strong>Important:</strong> Parameters must be concatenated in exactly this order. For {isPKR ? 'PKR' : isBDT ? 'BDT' : 'non-INR'} payouts where IFSC is not needed, use an empty string.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* File Structure Guide */}
+        <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              📁 Payout File Structure
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <pre className="p-4 bg-muted rounded-lg text-sm font-mono">
+{`your-website/
+├── elopay-payout/
+│   ├── config.php          ← Step 1: Payout credentials
+│   ├── create_payout.php   ← Step 2: Creates payout order
+│   └── callback.php        ← Step 3: Receives payout result
+│
+│   Usage (API call from your backend):
+│   POST ${apiBaseUrl}/payout with JSON body`}
+            </pre>
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-center">
+                <p className="font-semibold text-sm">1️⃣ config.php</p>
+                <p className="text-xs text-muted-foreground">Payout Key & URLs</p>
+              </div>
+              <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg text-center">
+                <p className="font-semibold text-sm">2️⃣ create_payout.php</p>
+                <p className="text-xs text-muted-foreground">Send Money → Bank/Wallet</p>
+              </div>
+              <div className="p-3 bg-orange-500/10 border border-orange-500/20 rounded-lg text-center">
+                <p className="font-semibold text-sm">3️⃣ callback.php</p>
+                <p className="text-xs text-muted-foreground">Gateway → Status Update</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+
   // SDK Download Section
   const renderSDKDocs = () => (
     <div className="space-y-6">
