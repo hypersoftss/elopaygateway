@@ -91,18 +91,20 @@ Deno.serve(async (req) => {
     const merchant = transaction.merchants
 
     if (action === 'reject') {
-      // Reject - update status and unfreeze balance
+      // Reject - update status and unfreeze balance (amount + fee back to merchant)
       await supabaseAdmin
         .from('transactions')
         .update({ status: 'failed' })
         .eq('id', transaction_id)
 
       if (merchant) {
+        // Return full frozen amount (amount + fee) to available balance
+        const frozenTotal = transaction.amount + (transaction.fee || 0)
         await supabaseAdmin
           .from('merchants')
           .update({
-            balance: merchant.balance + transaction.amount + (transaction.fee || 0),
-            frozen_balance: Math.max(0, (merchant.frozen_balance || 0) - transaction.amount - (transaction.fee || 0)),
+            balance: merchant.balance + frozenTotal,
+            frozen_balance: Math.max(0, (merchant.frozen_balance || 0) - frozenTotal),
           })
           .eq('id', merchant.id)
       }
