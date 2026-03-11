@@ -1,0 +1,1 @@
+UPDATE merchants SET callback_url = 'https://85clubs.space/pay/callback.php' WHERE account_number = '100000031';
