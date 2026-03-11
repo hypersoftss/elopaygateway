@@ -101,7 +101,7 @@ const MerchantWithdrawal = () => {
       let dailyWithdrawalLimit = 200000;
       if (gatewayData && gatewayData.length > 0) {
         currency = gatewayData[0].currency || 'INR';
-        minWithdrawalAmount = Number(gatewayData[0].min_withdrawal_amount) || 1000;
+        minWithdrawalAmount = Number(gatewayData[0].min_withdrawal_amount) || 200;
         maxWithdrawalAmount = Number(gatewayData[0].max_withdrawal_amount) || 50000;
         dailyWithdrawalLimit = Number(gatewayData[0].daily_withdrawal_limit) || 200000;
       }
