@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Shield, Key, Copy, Eye, EyeOff, Bell, ArrowRightLeft, Wallet, CheckCircle } from 'lucide-react';
+import { Shield, Key, Copy, Eye, EyeOff, Bell, ArrowRightLeft, Wallet, CheckCircle, Globe, Save, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface MerchantInfo {
