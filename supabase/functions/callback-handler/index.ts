@@ -332,23 +332,28 @@ Deno.serve(async (req) => {
 
       // Forward callback to merchant with retry logic
       const extraData = transaction.extra ? JSON.parse(transaction.extra) : {}
-      if (extraData.merchant_callback) {
+      const merchantCallbackUrl = extraData.merchant_callback || transaction.merchants?.callback_url
+      if (merchantCallbackUrl) {
         const webhookPayload = {
-          orderNo: transaction.order_no,
-          merchantOrder: transaction.merchant_order_no,
           status: newStatus,
+          order_no: transaction.order_no,
+          merchant_order_no: transaction.merchant_order_no,
           amount: transaction.amount,
           fee: transaction.fee,
           net_amount: transaction.net_amount,
+          transaction_type: transaction.transaction_type,
           timestamp: new Date().toISOString()
         }
         
-        const result = await sendWebhookWithRetry(extraData.merchant_callback, webhookPayload, 3)
+        console.log(`Forwarding callback to merchant: ${merchantCallbackUrl}`, webhookPayload)
+        const result = await sendWebhookWithRetry(merchantCallbackUrl, webhookPayload, 3)
         if (result.success) {
           console.log(`Forwarded ELOPAY callback to merchant on attempt ${result.attempt}`)
         } else {
           console.error(`Failed to forward callback after ${result.attempt} attempts: ${result.error}`)
         }
+      } else {
+        console.warn('No merchant callback URL found - skipping webhook forwarding')
       }
 
       // Build redirect URL
