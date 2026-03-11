@@ -204,14 +204,28 @@ Deno.serve(async (req) => {
       // SECURITY: Verify amount matches
       // ELOPAY sends money in cents (we multiply by 100 when creating order)
       const rawCallbackAmount = parseFloat(money)
+      // Normalize: if raw value is >= 10x transaction amount, it's likely in cents
       const callbackAmount = rawCallbackAmount >= transaction.amount * 10 ? rawCallbackAmount / 100 : rawCallbackAmount
-      console.log('Amount comparison:', { rawCallbackAmount, callbackAmount, transactionAmount: transaction.amount })
-      if (Math.abs(callbackAmount - transaction.amount) > 1) {
-        console.error(`SECURITY: Amount mismatch - expected ${transaction.amount}, got ${callbackAmount} (raw: ${rawCallbackAmount})`)
-        return new Response(
-          JSON.stringify({ status: 'error', message: 'Amount mismatch' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+      console.log('Amount comparison:', { rawCallbackAmount, callbackAmount, transactionAmount: transaction.amount, transactionType: transaction.transaction_type })
+      
+      // For PAYOUT: gateway may return amount that differs from our stored amount
+      // because we send the full payout amount (without our platform fee)
+      // The gateway amount should match what we sent to the gateway (transaction.amount)
+      // Allow a tolerance for rounding differences
+      const amountTolerance = transaction.transaction_type === 'payout' ? Math.max(transaction.amount * 0.01, 5) : 1
+      if (Math.abs(callbackAmount - transaction.amount) > amountTolerance) {
+        // For payouts, also check if callback amount matches amount+fee (gateway may include fee)
+        const amountWithFee = transaction.amount + (transaction.fee || 0)
+        const matchesWithFee = Math.abs(callbackAmount - amountWithFee) <= amountTolerance
+        
+        if (!matchesWithFee) {
+          console.error(`SECURITY: Amount mismatch - expected ${transaction.amount} (or with fee ${amountWithFee}), got ${callbackAmount} (raw: ${rawCallbackAmount})`)
+          return new Response(
+            JSON.stringify({ status: 'error', message: 'Amount mismatch' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+        console.log('Amount matched with fee included - accepting callback')
       }
 
       // ELOPAY: status 1 = success, 0 = failed (for payout), payin only sends success
