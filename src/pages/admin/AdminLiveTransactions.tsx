@@ -32,14 +32,14 @@ interface Transaction {
   merchants?: { merchant_name: string; account_number: string } | null;
 }
 
-// Helper to detect USDT from extra field
-function getTransactionCurrency(tx: Transaction): string {
-  if (!tx.extra) return '₹';
+// Helper to detect if transaction is USDT
+function isUsdtTransaction(tx: Transaction): boolean {
+  if (!tx.extra) return false;
   try {
     const extraData = typeof tx.extra === 'string' ? JSON.parse(tx.extra) : tx.extra;
-    if (extraData?.currency === 'USDT' || extraData?.trade_type === 'usdt') return '$';
+    return extraData?.currency === 'USDT' || extraData?.trade_type === 'usdt';
   } catch {}
-  return '₹';
+  return false;
 }
 
 // Notification sound URL (simple beep)
@@ -87,9 +87,9 @@ export default function AdminLiveTransactions() {
     }
 
     const isPayin = tx.transaction_type === 'payin';
+    const isUsdt = isUsdtTransaction(tx);
     const title = isPayin ? '🔔 New Pay-in Order' : '🔔 New Payout Request';
-    const sym = getTransactionCurrency(tx);
-    const body = `${tx.order_no} - ${sym}${tx.amount.toLocaleString()}`;
+    const body = `${tx.order_no} - ₹${tx.amount.toLocaleString()}${isUsdt ? ' (USDT)' : ''}`;
 
     new Notification(title, {
       body,
@@ -170,10 +170,10 @@ export default function AdminLiveTransactions() {
           playNotificationSound();
           showDesktopNotification(txWithMerchant);
           
-          const sym = getTransactionCurrency(txWithMerchant);
+          const isUsdt = isUsdtTransaction(txWithMerchant);
           toast({
             title: newTx.transaction_type === 'payin' ? '🔔 New Pay-in' : '🔔 New Payout',
-            description: `${newTx.order_no} - ${sym}${newTx.amount.toLocaleString()}`,
+            description: `${newTx.order_no} - ₹${newTx.amount.toLocaleString()}${isUsdt ? ' (USDT)' : ''}`,
           });
         }
       )
@@ -418,17 +418,16 @@ export default function AdminLiveTransactions() {
 
                     <div className="text-right">
                       {(() => {
-                        const sym = getTransactionCurrency(tx);
-                        const isUsdt = sym === '$';
+                        const isUsdt = isUsdtTransaction(tx);
                         return (
                           <>
                             <p className="font-semibold">
-                              {sym}{tx.amount.toLocaleString()}
-                              {isUsdt && <span className="text-xs text-muted-foreground ml-1">USDT</span>}
+                              ₹{tx.amount.toLocaleString()}
+                              {isUsdt && <Badge variant="outline" className="ml-2 text-xs border-primary/30 text-primary">USDT</Badge>}
                             </p>
-                            {tx.fee && (
+                            {tx.fee != null && tx.fee > 0 && (
                               <p className="text-xs text-muted-foreground">
-                                Fee: {sym}{tx.fee.toLocaleString()}
+                                Fee: ₹{tx.fee.toLocaleString()}
                               </p>
                             )}
                           </>
