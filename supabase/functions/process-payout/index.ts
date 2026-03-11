@@ -232,7 +232,7 @@ Deno.serve(async (req) => {
         // ELOPAYGATEWAY payout (default)
         const eloPayGatewaySignature = generateHyperPayPayoutSignature(
           transaction.account_number || '',
-          (transaction.net_amount || transaction.amount).toString(),
+          (transaction.amount).toString(), // Send full amount to bank
           transaction.bank_name || '',
           internalCallbackUrl,
           transaction.ifsc_code || '',
