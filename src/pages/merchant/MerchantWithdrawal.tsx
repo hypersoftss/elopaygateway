@@ -202,7 +202,7 @@ const MerchantWithdrawal = () => {
     if (!user?.merchantId || !merchantData || isLoading) return;
 
     const amount = parseFloat(form.amount);
-    const minAmount = merchantData.min_withdrawal_amount || 1000;
+    const minAmount = merchantData.min_withdrawal_amount || 200;
     const maxAmount = merchantData.max_withdrawal_amount || 50000;
     const dailyLimit = merchantData.daily_withdrawal_limit || 200000;
     const todayWithdrawals = merchantData.todayWithdrawals || 0;

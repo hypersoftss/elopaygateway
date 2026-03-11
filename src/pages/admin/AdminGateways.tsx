@@ -674,8 +674,8 @@ const AdminGatewaysPage = () => {
                 <Input
                   type="number"
                   value={newGateway.min_withdrawal_amount}
-                  onChange={(e) => setNewGateway(g => ({ ...g, min_withdrawal_amount: parseFloat(e.target.value) || 1000 }))}
-                  placeholder="1000"
+                  onChange={(e) => setNewGateway(g => ({ ...g, min_withdrawal_amount: parseFloat(e.target.value) || 200 }))}
+                  placeholder="200"
                 />
               </div>
               <div className="space-y-2">
