@@ -1791,9 +1791,10 @@ if ($status == '1' || $status == 'success') {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="php">
-              <TabsList className="grid w-full grid-cols-5">
-                <TabsTrigger value="php">📄 PHP Code</TabsTrigger>
+             <Tabs defaultValue="php">
+              <TabsList className="grid w-full grid-cols-6">
+                <TabsTrigger value="php">📄 Payin PHP</TabsTrigger>
+                <TabsTrigger value="payout-php">📄 Payout PHP</TabsTrigger>
                 <TabsTrigger value="api">API Endpoints</TabsTrigger>
                 <TabsTrigger value="signature">Signature</TabsTrigger>
                 <TabsTrigger value="callback">Callback</TabsTrigger>
@@ -1802,6 +1803,10 @@ if ($status == '1' || $status == 'success') {
 
               <TabsContent value="php" className="mt-6">
                 {renderPHPCodeDocs()}
+              </TabsContent>
+
+              <TabsContent value="payout-php" className="mt-6">
+                {renderPayoutPHPCodeDocs()}
               </TabsContent>
 
               <TabsContent value="api" className="mt-6">
