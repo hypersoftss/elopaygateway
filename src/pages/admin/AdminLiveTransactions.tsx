@@ -32,14 +32,26 @@ interface Transaction {
   merchants?: { merchant_name: string; account_number: string } | null;
 }
 
-// Helper to detect if transaction is USDT
-function isUsdtTransaction(tx: Transaction): boolean {
-  if (!tx.extra) return false;
+function getPayinDisplayInfo(tx: Transaction) {
+  if (!tx.extra) {
+    return { amount: tx.amount, symbol: '₹', isUsdt: false, settlementAmount: null as number | null };
+  }
+
   try {
     const extraData = typeof tx.extra === 'string' ? JSON.parse(tx.extra) : tx.extra;
-    return extraData?.currency === 'USDT' || extraData?.trade_type === 'usdt';
-  } catch {}
-  return false;
+    const isUsdt = extraData?.display_currency === 'USDT' || extraData?.currency === 'USDT' || extraData?.trade_type === 'usdt';
+
+    if (!isUsdt) {
+      return { amount: tx.amount, symbol: '₹', isUsdt: false, settlementAmount: null as number | null };
+    }
+
+    const rate = Number(extraData?.conversion_rate) || 90;
+    const amount = Number(extraData?.display_amount ?? extraData?.original_amount ?? (rate > 0 ? tx.amount / rate : tx.amount));
+    const settlementAmount = Number(extraData?.settlement_amount ?? tx.amount);
+    return { amount, symbol: '$', isUsdt: true, settlementAmount };
+  } catch {
+    return { amount: tx.amount, symbol: '₹', isUsdt: false, settlementAmount: null as number | null };
+  }
 }
 
 // Notification sound URL (simple beep)

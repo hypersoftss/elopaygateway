@@ -39,7 +39,7 @@ const parseTransactionExtra = (extra: string | null) => {
   }
 };
 
-const getDisplayAmountInfo = (tx: Transaction) => {
+const getDisplayAmountInfo = (tx: Transaction, merchantGatewayCurrencies: Record<string, string>) => {
   const extraData = parseTransactionExtra(tx.extra);
   const isUsdt = extraData?.display_currency === 'USDT' || extraData?.currency === 'USDT' || extraData?.trade_type === 'usdt';
 
