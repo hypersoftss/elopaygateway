@@ -418,17 +418,16 @@ export default function AdminLiveTransactions() {
 
                     <div className="text-right">
                       {(() => {
-                        const sym = getTransactionCurrency(tx);
-                        const isUsdt = sym === '$';
+                        const isUsdt = isUsdtTransaction(tx);
                         return (
                           <>
                             <p className="font-semibold">
-                              {sym}{tx.amount.toLocaleString()}
-                              {isUsdt && <span className="text-xs text-muted-foreground ml-1">USDT</span>}
+                              ₹{tx.amount.toLocaleString()}
+                              {isUsdt && <Badge variant="outline" className="ml-2 text-xs border-primary/30 text-primary">USDT</Badge>}
                             </p>
-                            {tx.fee && (
+                            {tx.fee != null && tx.fee > 0 && (
                               <p className="text-xs text-muted-foreground">
-                                Fee: {sym}{tx.fee.toLocaleString()}
+                                Fee: ₹{tx.fee.toLocaleString()}
                               </p>
                             )}
                           </>
