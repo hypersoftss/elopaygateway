@@ -434,7 +434,9 @@ Deno.serve(async (req) => {
         extra: JSON.stringify({ 
           gateway_response: gatewayResponse,
           merchant_callback: callback_url,
-          gateway_type: gateway.gateway_type
+          gateway_type: gateway.gateway_type,
+          currency: transactionCurrency,
+          trade_type: effectiveTradeType
         })
       })
       .select('id')
