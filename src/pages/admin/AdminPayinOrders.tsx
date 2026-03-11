@@ -28,7 +28,20 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 const CURRENCY_SYMBOLS: Record<string, string> = { INR: '₹', PKR: 'Rs.', BDT: '৳', USDT: '$' };
 const getCurrencySymbol = (currency?: string | null) => CURRENCY_SYMBOLS[currency || 'INR'] || '₹';
-const DEFAULT_USDT_RATE = 90;
+let CACHED_USDT_RATE = 90;
+
+// Fetch USDT rate from admin settings
+const fetchUsdtRate = async () => {
+  try {
+    const { data } = await (await import('@/integrations/supabase/client')).supabase
+      .from('admin_settings')
+      .select('usdt_conversion_rate')
+      .limit(1)
+      .single();
+    if (data?.usdt_conversion_rate) CACHED_USDT_RATE = Number(data.usdt_conversion_rate);
+  } catch {}
+};
+fetchUsdtRate();
 
 const parseTransactionExtra = (extra: string | null) => {
   if (!extra) return null;
