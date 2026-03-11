@@ -502,7 +502,7 @@ const AdminPayinOrders = () => {
                                       <AlertDialogHeader>
                                         <AlertDialogTitle>Confirm Manual Success?</AlertDialogTitle>
                                         <AlertDialogDescription className="space-y-2">
-                                          <p>This will mark order <strong>{tx.order_no}</strong> as SUCCESS and credit <strong>{sym}{tx.net_amount?.toLocaleString()}</strong> to the merchant's balance.</p>
+                                          <p>This will mark order <strong>{tx.order_no}</strong> as SUCCESS and credit <strong>₹{tx.net_amount?.toLocaleString()}</strong> to the merchant's balance.</p>
                                           <p className="font-semibold text-destructive">This action cannot be undone!</p>
                                         </AlertDialogDescription>
                                       </AlertDialogHeader>
