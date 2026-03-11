@@ -424,6 +424,17 @@ const MerchantWithdrawal = () => {
 
       if (selectedMethod === 'usdt') {
         transactionData.usdt_address = form.usdtAddress;
+        // Add USDT conversion info
+        const conversion = getUsdtConversion(amount);
+        transactionData.extra = JSON.stringify({ 
+          withdrawal: true, method: selectedMethod, currency,
+          usdt_conversion: {
+            rate: conversion.rate,
+            usdt_amount: conversion.usdtAmount,
+            flat_fee_usdt: conversion.flatFeeUsdt,
+            total_usdt: conversion.totalUsdt,
+          }
+        });
       } else if (selectedMethod === 'bank') {
         transactionData.bank_name = form.bankName;
         transactionData.account_number = form.accountNumber;
