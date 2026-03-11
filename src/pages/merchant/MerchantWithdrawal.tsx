@@ -22,6 +22,7 @@ interface MerchantData {
   max_withdrawal_amount: number;
   daily_withdrawal_limit: number;
   todayWithdrawals: number;
+  hasPendingWithdrawal: boolean;
 }
 
 // Currency symbols
@@ -111,13 +112,21 @@ const MerchantWithdrawal = () => {
       today.setHours(0, 0, 0, 0);
       const todayISO = today.toISOString();
 
-      const { data: todayTransactions } = await supabase
-        .from('transactions')
-        .select('amount')
-        .eq('merchant_id', user.merchantId)
-        .eq('transaction_type', 'payout')
-        .in('status', ['pending', 'success'])
-        .gte('created_at', todayISO);
+      const [{ data: todayTransactions }, { count: pendingWithdrawalCount }] = await Promise.all([
+        supabase
+          .from('transactions')
+          .select('amount')
+          .eq('merchant_id', user.merchantId)
+          .eq('transaction_type', 'payout')
+          .in('status', ['pending', 'success'])
+          .gte('created_at', todayISO),
+        supabase
+          .from('transactions')
+          .select('*', { count: 'exact', head: true })
+          .eq('merchant_id', user.merchantId)
+          .eq('transaction_type', 'payout')
+          .eq('status', 'pending'),
+      ]);
 
       const todayWithdrawals = todayTransactions?.reduce((sum, tx) => sum + Number(tx.amount), 0) || 0;
 
@@ -127,15 +136,14 @@ const MerchantWithdrawal = () => {
           frozen_balance: Number(data.frozen_balance) || 0,
           payout_fee: Number(data.payout_fee) || 0,
           currency,
-          // Check if either hashed or legacy password exists
           hasWithdrawalPassword: !!(data.withdrawal_password_hash || data.withdrawal_password),
           min_withdrawal_amount: minWithdrawalAmount,
           max_withdrawal_amount: maxWithdrawalAmount,
           daily_withdrawal_limit: dailyWithdrawalLimit,
           todayWithdrawals,
+          hasPendingWithdrawal: (pendingWithdrawalCount || 0) > 0,
         });
 
-        // Set default method based on currency
         const methods = WITHDRAWAL_METHODS[currency] || WITHDRAWAL_METHODS.INR;
         if (methods.length > 0) {
           setSelectedMethod(methods[0].value);
@@ -201,12 +209,24 @@ const MerchantWithdrawal = () => {
   const handleWithdrawal = async () => {
     if (!user?.merchantId || !merchantData || isLoading) return;
 
+    // Block if there's already a pending withdrawal
+    if (merchantData.hasPendingWithdrawal) {
+      toast({
+        title: language === 'zh' ? '请稍等' : 'Please Wait',
+        description: language === 'zh' ? '您已有一笔提现正在处理中，请等待审核完成后再提交新的提现申请' : 'You already have a pending withdrawal request. Please wait for it to be processed before submitting a new one.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const amount = parseFloat(form.amount);
     const minAmount = merchantData.min_withdrawal_amount || 200;
     const maxAmount = merchantData.max_withdrawal_amount || 50000;
     const dailyLimit = merchantData.daily_withdrawal_limit || 200000;
     const todayWithdrawals = merchantData.todayWithdrawals || 0;
     const remainingDaily = dailyLimit - todayWithdrawals;
+    const fee = (amount * merchantData.payout_fee) / 100;
+    const totalDeduction = amount + fee;
     
     if (amount <= 0) {
       toast({
@@ -246,10 +266,10 @@ const MerchantWithdrawal = () => {
       return;
     }
 
-    if (amount > merchantData.balance) {
+    if (totalDeduction > merchantData.balance) {
       toast({
         title: language === 'zh' ? '错误' : 'Error',
-        description: language === 'zh' ? '余额不足' : 'Insufficient balance',
+        description: language === 'zh' ? `余额不足。需要 ${currencySymbol}${totalDeduction.toLocaleString()}（含手续费）` : `Insufficient balance. Need ${currencySymbol}${totalDeduction.toLocaleString()} (including fee)`,
         variant: 'destructive',
       });
       return;
@@ -293,7 +313,7 @@ const MerchantWithdrawal = () => {
     setIsLoading(true);
 
     try {
-      // Re-fetch fresh balance from DB to prevent double withdrawal
+      // Re-fetch fresh balance and check for any pending withdrawal
       const [{ data: freshMerchant, error: fetchErr }, { count: pendingCount }] = await Promise.all([
         supabase
           .from('merchants')
@@ -305,30 +325,33 @@ const MerchantWithdrawal = () => {
           .select('*', { count: 'exact', head: true })
           .eq('merchant_id', user.merchantId)
           .eq('transaction_type', 'payout')
-          .eq('status', 'pending')
-          .gte('created_at', new Date(Date.now() - 5000).toISOString()), // last 5 seconds
+          .eq('status', 'pending'),
       ]);
 
       if (fetchErr || !freshMerchant) throw new Error('Failed to verify balance');
 
-      // Block if there's already a pending withdrawal in the last 5 seconds (rapid click protection)
+      // Block if there's already ANY pending withdrawal
       if (pendingCount && pendingCount > 0) {
         toast({
           title: language === 'zh' ? '请稍等' : 'Please Wait',
-          description: language === 'zh' ? '您已有一笔提现正在处理中' : 'You already have a pending withdrawal request. Please wait.',
+          description: language === 'zh' ? '您已有一笔提现正在处理中，请等待审核完成' : 'You already have a pending withdrawal. Please wait for it to be processed first.',
           variant: 'destructive',
         });
         setIsLoading(false);
+        setMerchantData({ ...merchantData, hasPendingWithdrawal: true });
         return;
       }
 
       const freshBalance = Number(freshMerchant.balance) || 0;
       const freshFrozen = Number(freshMerchant.frozen_balance) || 0;
 
-      if (amount > freshBalance) {
+      // Total deduction = amount (goes to bank) + fee (platform charge)
+      const totalDeduction = amount + fee;
+
+      if (totalDeduction > freshBalance) {
         toast({
           title: language === 'zh' ? '错误' : 'Error',
-          description: language === 'zh' ? '余额不足' : 'Insufficient balance',
+          description: language === 'zh' ? `余额不足。需要 ${currencySymbol}${totalDeduction.toLocaleString()}（含手续费）` : `Insufficient balance. Need ${currencySymbol}${totalDeduction.toLocaleString()} (including fee)`,
           variant: 'destructive',
         });
         setIsLoading(false);
@@ -336,18 +359,19 @@ const MerchantWithdrawal = () => {
         return;
       }
 
-      const fee = (amount * merchantData.payout_fee) / 100;
-      const netAmount = amount - fee;
       const orderNo = `WD_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-      // Build transaction data based on method
+      // Build transaction data
+      // amount = what bank receives (full withdrawal amount)
+      // fee = platform charge (deducted separately from merchant balance)
+      // net_amount = amount (full amount sent to bank/wallet)
       const transactionData: any = {
         merchant_id: user.merchantId,
         order_no: orderNo,
         transaction_type: 'payout',
         amount: amount,
         fee: fee,
-        net_amount: netAmount,
+        net_amount: amount, // Full amount goes to bank
         status: 'pending',
         extra: JSON.stringify({ withdrawal: true, method: selectedMethod, currency }),
       };
@@ -360,7 +384,6 @@ const MerchantWithdrawal = () => {
         transactionData.ifsc_code = form.ifscCode;
         transactionData.account_holder_name = form.accountName;
       } else {
-        // Mobile wallets - store method in bank_name field
         transactionData.bank_name = selectedMethod.toUpperCase();
         transactionData.account_number = form.accountNumber;
         transactionData.account_holder_name = form.accountName;
@@ -370,9 +393,9 @@ const MerchantWithdrawal = () => {
 
       if (error) throw error;
 
-      // Freeze the amount using fresh DB values
-      const newBalance = freshBalance - amount;
-      const newFrozen = freshFrozen + amount;
+      // Freeze amount + fee from merchant balance
+      const newBalance = freshBalance - totalDeduction;
+      const newFrozen = freshFrozen + totalDeduction;
       await supabase
         .from('merchants')
         .update({
@@ -386,7 +409,6 @@ const MerchantWithdrawal = () => {
         description: language === 'zh' ? '提现申请已提交，等待管理员审核' : 'Withdrawal request submitted, awaiting admin approval',
       });
 
-      // Reset form
       setForm({
         amount: '',
         accountName: '',
@@ -397,12 +419,12 @@ const MerchantWithdrawal = () => {
         withdrawalPassword: '',
       });
 
-      // Update local state with fresh values
       setMerchantData({
         ...merchantData,
         balance: newBalance,
         frozen_balance: newFrozen,
         todayWithdrawals: (merchantData.todayWithdrawals || 0) + amount,
+        hasPendingWithdrawal: true,
       });
     } catch (err: any) {
       toast({
@@ -416,7 +438,7 @@ const MerchantWithdrawal = () => {
   };
 
   const fee = form.amount ? (parseFloat(form.amount) * (merchantData?.payout_fee || 0)) / 100 : 0;
-  const netAmount = form.amount ? parseFloat(form.amount) - fee : 0;
+  const totalDeduction = form.amount ? parseFloat(form.amount) + fee : 0;
 
   const getMethodLabel = (method: string) => {
     const found = availableMethods.find(m => m.value === method);
@@ -497,6 +519,29 @@ const MerchantWithdrawal = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Pending Withdrawal Warning */}
+        {merchantData.hasPendingWithdrawal && (
+          <Card className="premium-card border-[hsl(var(--warning))]/50 bg-[hsl(var(--warning))]/10">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-full bg-[hsl(var(--warning))]/20">
+                  <Shield className="h-5 w-5 text-[hsl(var(--warning))]" />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm text-[hsl(var(--warning))]">
+                    {language === 'zh' ? '已有待处理的提现' : 'Pending Withdrawal Exists'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {language === 'zh'
+                      ? '您已有一笔提现正在审核中，请等待处理完成后再提交新的申请'
+                      : 'You have a withdrawal request under review. Please wait for it to be processed before submitting a new one.'}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* No Password Warning */}
         {!merchantData.hasWithdrawalPassword && (
@@ -681,21 +726,26 @@ const MerchantWithdrawal = () => {
               </Label>
               {(() => {
                 const enteredAmount = parseFloat(form.amount) || 0;
-                const minAmount = merchantData.min_withdrawal_amount || 1000;
+                const minAmount = merchantData.min_withdrawal_amount || 200;
                 const maxAmount = merchantData.max_withdrawal_amount || 50000;
                 const dailyLimit = merchantData.daily_withdrawal_limit || 200000;
                 const todayWithdrawals = merchantData.todayWithdrawals || 0;
                 const remainingDaily = Math.max(0, dailyLimit - todayWithdrawals);
                 const availableBalance = merchantData.balance;
+                const feeRate = merchantData.payout_fee || 0;
+                const enteredFee = (enteredAmount * feeRate) / 100;
+                const enteredTotalDeduction = enteredAmount + enteredFee;
                 
                 const isBelowMinimum = form.amount && enteredAmount > 0 && enteredAmount < minAmount;
                 const isAboveMaximum = form.amount && enteredAmount > 0 && enteredAmount > maxAmount;
                 const isAboveDailyLimit = form.amount && enteredAmount > 0 && enteredAmount > remainingDaily;
-                const isAboveBalance = form.amount && enteredAmount > 0 && enteredAmount > availableBalance;
+                const isAboveBalance = form.amount && enteredAmount > 0 && enteredTotalDeduction > availableBalance;
                 const hasError = isBelowMinimum || isAboveMaximum || isAboveDailyLimit || isAboveBalance;
                 
-                // Calculate the effective max for "Withdraw All" button
-                const effectiveMax = Math.min(availableBalance, maxAmount, remainingDaily);
+                // Calculate the effective max for "Withdraw All" button (account for fee)
+                // amount + (amount * feeRate/100) <= balance => amount <= balance / (1 + feeRate/100)
+                const maxAfterFee = Math.floor(availableBalance / (1 + feeRate / 100));
+                const effectiveMax = Math.min(maxAfterFee, maxAmount, remainingDaily);
                 
                 return (
                   <>
@@ -758,8 +808,8 @@ const MerchantWithdrawal = () => {
                         </svg>
                         <span>
                           {language === 'zh' 
-                            ? `余额不足，可用余额为 ${currencySymbol}${availableBalance.toLocaleString()}` 
-                            : `Insufficient balance. Available: ${currencySymbol}${availableBalance.toLocaleString()}`}
+                            ? `余额不足。需要 ${currencySymbol}${enteredTotalDeduction.toLocaleString()}（含手续费），可用: ${currencySymbol}${availableBalance.toLocaleString()}` 
+                            : `Insufficient balance. Need ${currencySymbol}${enteredTotalDeduction.toLocaleString()} (incl. fee). Available: ${currencySymbol}${availableBalance.toLocaleString()}`}
                         </span>
                       </div>
                     )}
@@ -794,18 +844,18 @@ const MerchantWithdrawal = () => {
             {form.amount && parseFloat(form.amount) > 0 && (
               <div className="p-4 bg-muted/30 rounded-xl space-y-2 border border-border/50">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">{language === 'zh' ? '提现金额' : 'Withdrawal Amount'}</span>
-                  <span className="font-medium">{currencySymbol}{parseFloat(form.amount).toLocaleString()}</span>
+                  <span className="text-muted-foreground">{language === 'zh' ? '银行/वॉलेट को मिलेगा' : 'Recipient Receives'}</span>
+                  <span className="font-bold text-[hsl(var(--success))]">{currencySymbol}{parseFloat(form.amount).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">
-                    {language === 'zh' ? '手续费' : 'Fee'} ({merchantData.payout_fee}%)
+                    {language === 'zh' ? '手续费' : 'Platform Fee'} ({merchantData.payout_fee}%)
                   </span>
-                  <span className="font-medium text-destructive">-{currencySymbol}{fee.toLocaleString()}</span>
+                  <span className="font-medium text-destructive">{currencySymbol}{fee.toLocaleString()}</span>
                 </div>
                 <div className="border-t border-border pt-2 flex justify-between">
-                  <span className="font-semibold">{language === 'zh' ? '实际到账' : 'Net Amount'}</span>
-                  <span className="font-bold text-[hsl(var(--success))]">{currencySymbol}{netAmount.toLocaleString()}</span>
+                  <span className="font-semibold">{language === 'zh' ? '总扣款' : 'Total Deducted from Balance'}</span>
+                  <span className="font-bold text-primary">{currencySymbol}{totalDeduction.toLocaleString()}</span>
                 </div>
               </div>
             )}
@@ -838,7 +888,7 @@ const MerchantWithdrawal = () => {
             <Button
               className="w-full h-12 bg-[hsl(var(--success))] hover:bg-[hsl(var(--success))]/90 text-white font-semibold gap-2"
               onClick={handleWithdrawal}
-              disabled={isLoading || !form.amount || !form.withdrawalPassword || !merchantData.hasWithdrawalPassword}
+              disabled={isLoading || !form.amount || !form.withdrawalPassword || !merchantData.hasWithdrawalPassword || merchantData.hasPendingWithdrawal}
             >
               {isLoading ? (
                 <>{language === 'zh' ? '处理中...' : 'Processing...'}</>

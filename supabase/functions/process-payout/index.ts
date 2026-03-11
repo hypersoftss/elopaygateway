@@ -91,18 +91,20 @@ Deno.serve(async (req) => {
     const merchant = transaction.merchants
 
     if (action === 'reject') {
-      // Reject - update status and unfreeze balance
+      // Reject - update status and unfreeze balance (amount + fee back to merchant)
       await supabaseAdmin
         .from('transactions')
         .update({ status: 'failed' })
         .eq('id', transaction_id)
 
       if (merchant) {
+        // Return full frozen amount (amount + fee) to available balance
+        const frozenTotal = transaction.amount + (transaction.fee || 0)
         await supabaseAdmin
           .from('merchants')
           .update({
-            balance: merchant.balance + transaction.amount + (transaction.fee || 0),
-            frozen_balance: Math.max(0, (merchant.frozen_balance || 0) - transaction.amount - (transaction.fee || 0)),
+            balance: merchant.balance + frozenTotal,
+            frozen_balance: Math.max(0, (merchant.frozen_balance || 0) - frozenTotal),
           })
           .eq('id', merchant.id)
       }
@@ -180,7 +182,7 @@ Deno.serve(async (req) => {
           app_id: gateway.app_id,
           order_sn: transaction.order_no,
           currency: withdrawalCode,
-          money: Math.round((transaction.net_amount || transaction.amount) * 100), // Send net_amount (after fee) to gateway
+          money: Math.round((transaction.amount) * 100), // Send full amount to bank (fee charged separately)
           notify_url: internalCallbackUrl,
           name: (transaction.account_holder_name || merchant?.merchant_name || '').trim(),
           card_number: (transaction.account_number || '').trim(),
@@ -230,7 +232,7 @@ Deno.serve(async (req) => {
         // ELOPAYGATEWAY payout (default)
         const eloPayGatewaySignature = generateHyperPayPayoutSignature(
           transaction.account_number || '',
-          (transaction.net_amount || transaction.amount).toString(),
+          (transaction.amount).toString(), // Send full amount to bank
           transaction.bank_name || '',
           internalCallbackUrl,
           transaction.ifsc_code || '',
@@ -244,7 +246,7 @@ Deno.serve(async (req) => {
 
         const formData = new URLSearchParams()
         formData.append('merchant_id', gateway.app_id)
-        formData.append('amount', (transaction.net_amount || transaction.amount).toString())
+        formData.append('amount', (transaction.amount).toString()) // Full amount to bank
         formData.append('transaction_id', transaction.order_no)
         formData.append('account_number', transaction.account_number || '')
         formData.append('ifsc', transaction.ifsc_code || '')
