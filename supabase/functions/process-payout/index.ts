@@ -182,7 +182,7 @@ Deno.serve(async (req) => {
           app_id: gateway.app_id,
           order_sn: transaction.order_no,
           currency: withdrawalCode,
-          money: Math.round((transaction.net_amount || transaction.amount) * 100), // Send net_amount (after fee) to gateway
+          money: Math.round((transaction.amount) * 100), // Send full amount to bank (fee charged separately)
           notify_url: internalCallbackUrl,
           name: (transaction.account_holder_name || merchant?.merchant_name || '').trim(),
           card_number: (transaction.account_number || '').trim(),

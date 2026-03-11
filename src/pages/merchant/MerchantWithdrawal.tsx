@@ -888,7 +888,7 @@ const MerchantWithdrawal = () => {
             <Button
               className="w-full h-12 bg-[hsl(var(--success))] hover:bg-[hsl(var(--success))]/90 text-white font-semibold gap-2"
               onClick={handleWithdrawal}
-              disabled={isLoading || !form.amount || !form.withdrawalPassword || !merchantData.hasWithdrawalPassword}
+              disabled={isLoading || !form.amount || !form.withdrawalPassword || !merchantData.hasWithdrawalPassword || merchantData.hasPendingWithdrawal}
             >
               {isLoading ? (
                 <>{language === 'zh' ? '处理中...' : 'Processing...'}</>
