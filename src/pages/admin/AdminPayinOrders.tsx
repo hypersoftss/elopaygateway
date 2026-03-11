@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-const CURRENCY_SYMBOLS: Record<string, string> = { INR: '₹', PKR: 'Rs.', BDT: '৳' };
+const CURRENCY_SYMBOLS: Record<string, string> = { INR: '₹', PKR: 'Rs.', BDT: '৳', USDT: '$' };
 const getCurrencySymbol = (currency?: string | null) => CURRENCY_SYMBOLS[currency || 'INR'] || '₹';
 
 interface Transaction {
