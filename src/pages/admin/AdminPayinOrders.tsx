@@ -435,7 +435,7 @@ const AdminPayinOrders = () => {
                     </TableRow>
                   ) : (
                     filteredTransactions.map((tx) => {
-                      const sym = getCurrencySymbol(getTxCurrency(tx));
+                      const amountInfo = getDisplayAmountInfo(tx);
                       return (
                       <TableRow key={tx.id} className="hover:bg-muted/50 transition-colors">
                         <TableCell className="font-mono text-sm">{tx.order_no}</TableCell>
@@ -446,10 +446,13 @@ const AdminPayinOrders = () => {
                           </div>
                         </TableCell>
                         <TableCell className="text-right font-semibold">
-                          {sym}{tx.amount.toLocaleString()}
-                          {getTxCurrency(tx) === 'USDT' && <span className="text-xs text-muted-foreground ml-1">USDT</span>}
+                          {amountInfo.symbol}{amountInfo.amount.toLocaleString()}
+                          {amountInfo.label && <span className="text-xs text-muted-foreground ml-1">{amountInfo.label}</span>}
+                          {amountInfo.settlementAmount !== null && (
+                            <p className="text-xs text-muted-foreground">Settles ₹{amountInfo.settlementAmount.toLocaleString()}</p>
+                          )}
                         </TableCell>
-                        <TableCell className="text-right text-muted-foreground">{sym}{(tx.fee || 0).toLocaleString()}</TableCell>
+                        <TableCell className="text-right text-muted-foreground">{amountInfo.feeSymbol}{(tx.fee || 0).toLocaleString()}</TableCell>
                         <TableCell><StatusBadge status={tx.status} /></TableCell>
                         <TableCell>{tx.bank_name || '-'}</TableCell>
                         <TableCell className="text-muted-foreground">
