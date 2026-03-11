@@ -438,7 +438,7 @@ const MerchantWithdrawal = () => {
   };
 
   const fee = form.amount ? (parseFloat(form.amount) * (merchantData?.payout_fee || 0)) / 100 : 0;
-  const netAmount = form.amount ? parseFloat(form.amount) - fee : 0;
+  const totalDeduction = form.amount ? parseFloat(form.amount) + fee : 0;
 
   const getMethodLabel = (method: string) => {
     const found = availableMethods.find(m => m.value === method);
