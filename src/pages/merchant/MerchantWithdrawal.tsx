@@ -746,7 +746,8 @@ const MerchantWithdrawal = () => {
                 
                 // Calculate the effective max for "Withdraw All" button (account for fee)
                 // amount + (amount * feeRate/100) <= balance => amount <= balance / (1 + feeRate/100)
-                const maxAfterFee = Math.floor(availableBalance / (1 + feeRate / 100));
+                // amount + (amount * feeRate/100) + FIXED_PAYOUT_FEE <= balance => amount <= (balance - FIXED_PAYOUT_FEE) / (1 + feeRate/100)
+                const maxAfterFee = Math.floor(Math.max(0, availableBalance - FIXED_PAYOUT_FEE) / (1 + feeRate / 100));
                 const effectiveMax = Math.min(maxAfterFee, maxAmount, remainingDaily);
                 
                 return (
