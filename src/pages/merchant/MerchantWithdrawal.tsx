@@ -735,7 +735,7 @@ const MerchantWithdrawal = () => {
                 const remainingDaily = Math.max(0, dailyLimit - todayWithdrawals);
                 const availableBalance = merchantData.balance;
                 const feeRate = merchantData.payout_fee || 0;
-                const enteredFee = (enteredAmount * feeRate) / 100;
+                const enteredFee = (enteredAmount * feeRate) / 100 + FIXED_PAYOUT_FEE;
                 const enteredTotalDeduction = enteredAmount + enteredFee;
                 
                 const isBelowMinimum = form.amount && enteredAmount > 0 && enteredAmount < minAmount;
