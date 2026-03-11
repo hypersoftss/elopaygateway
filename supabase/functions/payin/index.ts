@@ -275,7 +275,9 @@ Deno.serve(async (req) => {
     const feeRate = isUsdtTrade ? 4 : merchant.payin_fee
     const fee = amountNum * (feeRate / 100)
     const netAmount = amountNum - fee
-    console.log('Fee calculation:', { isUsdtTrade, feeRate, fee, netAmount })
+    // For USDT, the currency is USDT (dollar-based), not INR
+    const transactionCurrency = isUsdtTrade ? 'USDT' : 'INR'
+    console.log('Fee calculation:', { isUsdtTrade, feeRate, fee, netAmount, currency: transactionCurrency })
     const orderNo = generateOrderNo()
 
     // Create internal callback URL
