@@ -104,6 +104,7 @@ const AdminMerchants = () => {
   const [editPayinFee, setEditPayinFee] = useState('');
   const [editPayoutFee, setEditPayoutFee] = useState('');
   const [editGatewayId, setEditGatewayId] = useState('');
+  const [editCallbackUrl, setEditCallbackUrl] = useState('');
   
   // Balance adjustment
   const [balanceAdjustAmount, setBalanceAdjustAmount] = useState('');
