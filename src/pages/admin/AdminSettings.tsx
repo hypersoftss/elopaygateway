@@ -43,6 +43,7 @@ interface AdminSettings {
   balance_threshold_pkr: number;
   balance_threshold_bdt: number;
   no_auto_delete_commands: string | null;
+  usdt_conversion_rate: number;
 }
 
 
