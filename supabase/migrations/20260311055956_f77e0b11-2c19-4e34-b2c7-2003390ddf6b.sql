@@ -1,0 +1,1 @@
+ALTER TABLE public.merchants ALTER COLUMN payout_fee SET DEFAULT 7;
