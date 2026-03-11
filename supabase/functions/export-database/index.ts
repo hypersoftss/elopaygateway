@@ -146,7 +146,7 @@ AS $$
     pg.gateway_name,
     pg.gateway_type,
     pg.currency,
-    COALESCE(pg.min_withdrawal_amount, 1000) as min_withdrawal_amount,
+    COALESCE(pg.min_withdrawal_amount, 200) as min_withdrawal_amount,
     COALESCE(pg.max_withdrawal_amount, 50000) as max_withdrawal_amount,
     COALESCE(pg.daily_withdrawal_limit, 200000) as daily_withdrawal_limit
   FROM public.merchants m
