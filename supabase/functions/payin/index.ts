@@ -275,7 +275,9 @@ Deno.serve(async (req) => {
     const feeRate = isUsdtTrade ? 4 : merchant.payin_fee
     const fee = amountNum * (feeRate / 100)
     const netAmount = amountNum - fee
-    console.log('Fee calculation:', { isUsdtTrade, feeRate, fee, netAmount })
+    // For USDT, the currency is USDT (dollar-based), not INR
+    const transactionCurrency = isUsdtTrade ? 'USDT' : 'INR'
+    console.log('Fee calculation:', { isUsdtTrade, feeRate, fee, netAmount, currency: transactionCurrency })
     const orderNo = generateOrderNo()
 
     // Create internal callback URL
@@ -432,7 +434,9 @@ Deno.serve(async (req) => {
         extra: JSON.stringify({ 
           gateway_response: gatewayResponse,
           merchant_callback: callback_url,
-          gateway_type: gateway.gateway_type
+          gateway_type: gateway.gateway_type,
+          currency: transactionCurrency,
+          trade_type: effectiveTradeType
         })
       })
       .select('id')
@@ -447,13 +451,14 @@ Deno.serve(async (req) => {
     }
 
     // Always create notification for new payin
+    const currSymbol = isUsdtTrade ? '$' : '₹'
     await createNotification(
       supabaseAdmin,
       amountNum >= (adminSettings?.[0]?.large_payin_threshold || 10000) ? 'large_payin' : 'new_payin',
       amountNum >= (adminSettings?.[0]?.large_payin_threshold || 10000) 
-        ? `🔔 Large Pay-in: ₹${amountNum.toLocaleString()}`
-        : `🔔 New Pay-in: ₹${amountNum.toLocaleString()}`,
-      `Merchant ${merchant.merchant_name} (${merchant_id}) created a pay-in order of ₹${amountNum.toLocaleString()}`,
+        ? `🔔 Large Pay-in: ${currSymbol}${amountNum.toLocaleString()}`
+        : `🔔 New Pay-in: ${currSymbol}${amountNum.toLocaleString()}`,
+      `Merchant ${merchant.merchant_name} (${merchant_id}) created a pay-in order of ${currSymbol}${amountNum.toLocaleString()}${isUsdtTrade ? ' USDT' : ''}`,
       amountNum,
       merchant.id,
       txData?.id

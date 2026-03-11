@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-const CURRENCY_SYMBOLS: Record<string, string> = { INR: '₹', PKR: 'Rs.', BDT: '৳' };
+const CURRENCY_SYMBOLS: Record<string, string> = { INR: '₹', PKR: 'Rs.', BDT: '৳', USDT: '$' };
 const getCurrencySymbol = (currency?: string | null) => CURRENCY_SYMBOLS[currency || 'INR'] || '₹';
 
 interface Transaction {
@@ -41,6 +41,7 @@ interface Transaction {
   created_at: string;
   merchant_id: string;
   gateway_id: string | null;
+  extra: string | null;
   merchants: { merchant_name: string; account_number: string; balance: number; gateway_id: string | null } | null;
   payment_gateways: { currency: string } | null;
 }
@@ -164,6 +165,13 @@ const AdminPayinOrders = () => {
   );
 
   const getTxCurrency = (tx: Transaction) => {
+    // Check extra field for USDT currency
+    if (tx.extra) {
+      try {
+        const extraData = typeof tx.extra === 'string' ? JSON.parse(tx.extra) : tx.extra;
+        if (extraData?.currency === 'USDT' || extraData?.trade_type === 'usdt') return 'USDT';
+      } catch {}
+    }
     if (tx.payment_gateways?.currency) return tx.payment_gateways.currency;
     if (tx.merchants?.gateway_id && merchantGatewayCurrencies[tx.merchants.gateway_id]) return merchantGatewayCurrencies[tx.merchants.gateway_id];
     return 'INR';
@@ -412,7 +420,10 @@ const AdminPayinOrders = () => {
                             <p className="text-xs text-muted-foreground">{tx.merchants?.account_number}</p>
                           </div>
                         </TableCell>
-                        <TableCell className="text-right font-semibold">{sym}{tx.amount.toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-semibold">
+                          {sym}{tx.amount.toLocaleString()}
+                          {getTxCurrency(tx) === 'USDT' && <span className="text-xs text-muted-foreground ml-1">USDT</span>}
+                        </TableCell>
                         <TableCell className="text-right text-muted-foreground">{sym}{(tx.fee || 0).toLocaleString()}</TableCell>
                         <TableCell><StatusBadge status={tx.status} /></TableCell>
                         <TableCell>{tx.bank_name || '-'}</TableCell>
