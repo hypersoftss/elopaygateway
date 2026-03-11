@@ -808,8 +808,8 @@ const MerchantWithdrawal = () => {
                         </svg>
                         <span>
                           {language === 'zh' 
-                            ? `余额不足，可用余额为 ${currencySymbol}${availableBalance.toLocaleString()}` 
-                            : `Insufficient balance. Available: ${currencySymbol}${availableBalance.toLocaleString()}`}
+                            ? `余额不足。需要 ${currencySymbol}${enteredTotalDeduction.toLocaleString()}（含手续费），可用: ${currencySymbol}${availableBalance.toLocaleString()}` 
+                            : `Insufficient balance. Need ${currencySymbol}${enteredTotalDeduction.toLocaleString()} (incl. fee). Available: ${currencySymbol}${availableBalance.toLocaleString()}`}
                         </span>
                       </div>
                     )}
