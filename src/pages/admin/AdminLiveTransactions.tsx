@@ -32,6 +32,19 @@ interface Transaction {
   merchants?: { merchant_name: string; account_number: string } | null;
 }
 
+let CACHED_USDT_RATE_LIVE = 90;
+const fetchUsdtRateLive = async () => {
+  try {
+    const { data } = await (await import('@/integrations/supabase/client')).supabase
+      .from('admin_settings')
+      .select('usdt_conversion_rate')
+      .limit(1)
+      .single();
+    if (data?.usdt_conversion_rate) CACHED_USDT_RATE_LIVE = Number(data.usdt_conversion_rate);
+  } catch {}
+};
+fetchUsdtRateLive();
+
 function getPayinDisplayInfo(tx: Transaction) {
   if (!tx.extra) {
     return { amount: tx.amount, symbol: '₹', isUsdt: false, settlementAmount: null as number | null };
@@ -45,8 +58,7 @@ function getPayinDisplayInfo(tx: Transaction) {
       return { amount: tx.amount, symbol: '₹', isUsdt: false, settlementAmount: null as number | null };
     }
 
-    // Fetch from admin_settings cache or fallback
-    const rate = Number(extraData?.conversion_rate) || 90;
+    const rate = Number(extraData?.conversion_rate) || CACHED_USDT_RATE_LIVE;
     const amount = Number(extraData?.display_amount ?? extraData?.original_amount ?? (rate > 0 ? tx.amount / rate : tx.amount));
     const settlementAmount = Number(extraData?.settlement_amount ?? tx.amount);
     return { amount, symbol: '$', isUsdt: true, settlementAmount };
