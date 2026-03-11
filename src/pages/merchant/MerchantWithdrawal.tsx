@@ -263,6 +263,26 @@ const MerchantWithdrawal = () => {
       return;
     }
 
+    // USDT-specific validations
+    if (selectedMethod === 'usdt') {
+      if (merchantData.balance < USDT_MIN_BALANCE) {
+        toast({
+          title: language === 'zh' ? '错误' : 'Error',
+          description: `USDT withdrawal requires minimum ₹${USDT_MIN_BALANCE.toLocaleString()} balance. Your balance: ₹${merchantData.balance.toLocaleString()}`,
+          variant: 'destructive',
+        });
+        return;
+      }
+      if (amount < USDT_MIN_APPLICATION) {
+        toast({
+          title: language === 'zh' ? '错误' : 'Error',
+          description: `Minimum USDT withdrawal amount is ₹${USDT_MIN_APPLICATION.toLocaleString()}`,
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
     if (amount < minAmount) {
       toast({
         title: language === 'zh' ? '错误' : 'Error',
