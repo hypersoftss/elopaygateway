@@ -2263,8 +2263,9 @@ if ($status == '1' || $status == 'success') {
           </CardHeader>
           <CardContent>
              <Tabs defaultValue="php">
-              <TabsList className="grid w-full grid-cols-6">
+              <TabsList className="grid w-full grid-cols-7">
                 <TabsTrigger value="php">📄 Payin PHP</TabsTrigger>
+                <TabsTrigger value="usdt-php">💲 USDT PHP</TabsTrigger>
                 <TabsTrigger value="payout-php">📄 Payout PHP</TabsTrigger>
                 <TabsTrigger value="api">API Endpoints</TabsTrigger>
                 <TabsTrigger value="signature">Signature</TabsTrigger>
@@ -2274,6 +2275,10 @@ if ($status == '1' || $status == 'success') {
 
               <TabsContent value="php" className="mt-6">
                 {renderPHPCodeDocs()}
+              </TabsContent>
+
+              <TabsContent value="usdt-php" className="mt-6">
+                {renderUSDTPHPDocs()}
               </TabsContent>
 
               <TabsContent value="payout-php" className="mt-6">
