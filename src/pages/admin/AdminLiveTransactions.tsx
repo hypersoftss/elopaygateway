@@ -28,7 +28,18 @@ interface Transaction {
   transaction_type: 'payin' | 'payout';
   created_at: string;
   merchant_id: string;
+  extra: string | null;
   merchants?: { merchant_name: string; account_number: string } | null;
+}
+
+// Helper to detect USDT from extra field
+function getTransactionCurrency(tx: Transaction): string {
+  if (!tx.extra) return '₹';
+  try {
+    const extraData = typeof tx.extra === 'string' ? JSON.parse(tx.extra) : tx.extra;
+    if (extraData?.currency === 'USDT' || extraData?.trade_type === 'usdt') return '$';
+  } catch {}
+  return '₹';
 }
 
 // Notification sound URL (simple beep)
