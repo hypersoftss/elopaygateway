@@ -170,10 +170,10 @@ export default function AdminLiveTransactions() {
           playNotificationSound();
           showDesktopNotification(txWithMerchant);
           
-          const sym = getTransactionCurrency(txWithMerchant);
+          const isUsdt = isUsdtTransaction(txWithMerchant);
           toast({
             title: newTx.transaction_type === 'payin' ? '🔔 New Pay-in' : '🔔 New Payout',
-            description: `${newTx.order_no} - ${sym}${newTx.amount.toLocaleString()}`,
+            description: `${newTx.order_no} - ₹${newTx.amount.toLocaleString()}${isUsdt ? ' (USDT)' : ''}`,
           });
         }
       )
