@@ -96,12 +96,12 @@ const MerchantWithdrawal = () => {
       const { data: gatewayData } = await supabase.rpc('get_my_gateway');
       
       let currency = 'INR';
-      let minWithdrawalAmount = 1000;
+      let minWithdrawalAmount = 200;
       let maxWithdrawalAmount = 50000;
       let dailyWithdrawalLimit = 200000;
       if (gatewayData && gatewayData.length > 0) {
         currency = gatewayData[0].currency || 'INR';
-        minWithdrawalAmount = Number(gatewayData[0].min_withdrawal_amount) || 1000;
+        minWithdrawalAmount = Number(gatewayData[0].min_withdrawal_amount) || 200;
         maxWithdrawalAmount = Number(gatewayData[0].max_withdrawal_amount) || 50000;
         dailyWithdrawalLimit = Number(gatewayData[0].daily_withdrawal_limit) || 200000;
       }
@@ -202,7 +202,7 @@ const MerchantWithdrawal = () => {
     if (!user?.merchantId || !merchantData || isLoading) return;
 
     const amount = parseFloat(form.amount);
-    const minAmount = merchantData.min_withdrawal_amount || 1000;
+    const minAmount = merchantData.min_withdrawal_amount || 200;
     const maxAmount = merchantData.max_withdrawal_amount || 50000;
     const dailyLimit = merchantData.daily_withdrawal_limit || 200000;
     const todayWithdrawals = merchantData.todayWithdrawals || 0;

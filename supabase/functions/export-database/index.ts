@@ -146,7 +146,7 @@ AS $$
     pg.gateway_name,
     pg.gateway_type,
     pg.currency,
-    COALESCE(pg.min_withdrawal_amount, 1000) as min_withdrawal_amount,
+    COALESCE(pg.min_withdrawal_amount, 200) as min_withdrawal_amount,
     COALESCE(pg.max_withdrawal_amount, 50000) as max_withdrawal_amount,
     COALESCE(pg.daily_withdrawal_limit, 200000) as daily_withdrawal_limit
   FROM public.merchants m
@@ -216,7 +216,7 @@ CREATE TABLE IF NOT EXISTS public.payment_gateways (
   payout_key text,
   trade_type text,
   is_active boolean DEFAULT true,
-  min_withdrawal_amount numeric DEFAULT 1000,
+  min_withdrawal_amount numeric DEFAULT 200,
   max_withdrawal_amount numeric DEFAULT 50000,
   daily_withdrawal_limit numeric DEFAULT 200000,
   created_at timestamptz DEFAULT now(),

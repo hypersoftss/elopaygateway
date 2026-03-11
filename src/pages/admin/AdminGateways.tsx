@@ -101,7 +101,7 @@ const AdminGatewaysPage = () => {
     payout_key: '',
     currency: 'INR',
     trade_type: '',
-    min_withdrawal_amount: 1000,
+    min_withdrawal_amount: 200,
     max_withdrawal_amount: 50000,
     daily_withdrawal_limit: 200000,
   });
@@ -219,7 +219,7 @@ const AdminGatewaysPage = () => {
             payout_key: payoutKey,
             currency: newGateway.currency,
             trade_type: newGateway.trade_type || null,
-            min_withdrawal_amount: newGateway.min_withdrawal_amount || 1000,
+            min_withdrawal_amount: newGateway.min_withdrawal_amount || 200,
             max_withdrawal_amount: newGateway.max_withdrawal_amount || 50000,
             daily_withdrawal_limit: newGateway.daily_withdrawal_limit || 200000,
           })
@@ -242,7 +242,7 @@ const AdminGatewaysPage = () => {
             payout_key: payoutKey,
             currency: newGateway.currency,
             trade_type: newGateway.trade_type || null,
-            min_withdrawal_amount: newGateway.min_withdrawal_amount || 1000,
+            min_withdrawal_amount: newGateway.min_withdrawal_amount || 200,
             max_withdrawal_amount: newGateway.max_withdrawal_amount || 50000,
             daily_withdrawal_limit: newGateway.daily_withdrawal_limit || 200000,
           });
@@ -276,7 +276,7 @@ const AdminGatewaysPage = () => {
       payout_key: '',
       currency: 'INR',
       trade_type: '',
-      min_withdrawal_amount: 1000,
+      min_withdrawal_amount: 200,
       max_withdrawal_amount: 50000,
       daily_withdrawal_limit: 200000,
     });
@@ -342,7 +342,7 @@ const AdminGatewaysPage = () => {
       payout_key: gateway.payout_key || '',
       currency: gateway.currency,
       trade_type: gateway.trade_type || '',
-      min_withdrawal_amount: gateway.min_withdrawal_amount || 1000,
+      min_withdrawal_amount: gateway.min_withdrawal_amount || 200,
       max_withdrawal_amount: gateway.max_withdrawal_amount || 50000,
       daily_withdrawal_limit: gateway.daily_withdrawal_limit || 200000,
     });
@@ -674,8 +674,8 @@ const AdminGatewaysPage = () => {
                 <Input
                   type="number"
                   value={newGateway.min_withdrawal_amount}
-                  onChange={(e) => setNewGateway(g => ({ ...g, min_withdrawal_amount: parseFloat(e.target.value) || 1000 }))}
-                  placeholder="1000"
+                  onChange={(e) => setNewGateway(g => ({ ...g, min_withdrawal_amount: parseFloat(e.target.value) || 200 }))}
+                  placeholder="200"
                 />
               </div>
               <div className="space-y-2">
