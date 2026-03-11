@@ -513,6 +513,7 @@ const MerchantWithdrawal = () => {
                 <div>
                   <p className="text-sm text-muted-foreground">{language === 'zh' ? '提现费率' : 'Withdrawal Fee'}</p>
                   <p className="text-2xl font-bold text-primary">{merchantData.payout_fee}%</p>
+                  <p className="text-xs text-muted-foreground mt-1">+ {currencySymbol}{FIXED_PAYOUT_FEE} {language === 'zh' ? '每笔' : 'per payout'}</p>
                 </div>
                 <div className="p-3 rounded-full bg-primary/10">
                   <Sparkles className="h-5 w-5 text-primary" />
