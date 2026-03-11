@@ -22,6 +22,7 @@ interface MerchantData {
   max_withdrawal_amount: number;
   daily_withdrawal_limit: number;
   todayWithdrawals: number;
+  hasPendingWithdrawal: boolean;
 }
 
 // Currency symbols
