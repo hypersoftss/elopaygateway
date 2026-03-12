@@ -185,26 +185,13 @@ const AdminPayoutOrders = () => {
     setProcessingId(tx.id);
     try {
       const { data, error } = await supabase.functions.invoke('process-payout', {
-        body: { transaction_id: tx.id, action: 'approve' },
+        body: { transaction_id: tx.id, action: 'manual_success' },
       });
 
       if (error) throw error;
-      if (!data?.success) throw new Error(data?.message || 'Gateway processing failed');
+      if (!data?.success) throw new Error(data?.message || 'Manual success failed');
 
-      await supabase
-        .from('transactions')
-        .update({
-          status: 'success' as any,
-          callback_data: { 
-            manual_approval: true, 
-            approved_at: new Date().toISOString(), 
-            approved_by: 'admin',
-            gateway_response: data.gateway_response 
-          } as any,
-        })
-        .eq('id', tx.id);
-
-      toast({ title: '✅ Success', description: `Payout processed through gateway & marked as success.` });
+      toast({ title: '✅ Success', description: `Payout manually marked as success. Frozen balance released.` });
       fetchTransactions();
     } catch (error: any) {
       toast({ title: t('common.error'), description: error.message, variant: 'destructive' });

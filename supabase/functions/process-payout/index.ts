@@ -117,6 +117,39 @@ Deno.serve(async (req) => {
       )
     }
 
+    if (action === 'manual_success') {
+      // Manual success - mark as success and release frozen balance WITHOUT calling gateway
+      await supabaseAdmin
+        .from('transactions')
+        .update({ 
+          status: 'success',
+          callback_data: { 
+            manual_approval: true, 
+            approved_at: new Date().toISOString(),
+            approved_by: 'admin',
+            note: 'Manually marked as success without gateway API call'
+          }
+        })
+        .eq('id', transaction_id)
+
+      if (merchant) {
+        const frozenTotal = transaction.amount + (transaction.fee || 0)
+        await supabaseAdmin
+          .from('merchants')
+          .update({
+            frozen_balance: Math.max(0, (merchant.frozen_balance || 0) - frozenTotal),
+          })
+          .eq('id', merchant.id)
+      }
+
+      console.log('Payout manually marked as success (no gateway call):', transaction_id)
+
+      return new Response(
+        JSON.stringify({ success: true, message: 'Payout manually marked as success' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     if (action === 'approve') {
       // Get gateway configuration - try transaction's gateway_id first, then merchant's gateway_id
       let gateway = null
