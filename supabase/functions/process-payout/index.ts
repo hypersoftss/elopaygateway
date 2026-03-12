@@ -266,9 +266,11 @@ Deno.serve(async (req) => {
       }
 
       // Check if gateway accepted the payout
+      const statusStr = String(gatewayResponse?.status || '').toLowerCase()
       const isGatewaySuccess = gatewayResponse && (
         gatewayResponse.status === 1 || 
         gatewayResponse.status === '1' || 
+        statusStr === 'success' ||
         gatewayResponse.code === 200 || 
         gatewayResponse.code === '200' ||
         gatewayResponse.success === true
