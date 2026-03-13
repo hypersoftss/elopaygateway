@@ -474,7 +474,7 @@ const MerchantWithdrawal = () => {
       setMerchantData({
         ...merchantData,
         balance: newBalance,
-        frozen_balance: newFrozen,
+        frozen_balance: 0,
         todayWithdrawals: (merchantData.todayWithdrawals || 0) + amount,
         hasPendingWithdrawal: true,
       });
