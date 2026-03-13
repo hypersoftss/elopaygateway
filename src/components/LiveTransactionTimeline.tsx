@@ -104,9 +104,9 @@ export const LiveTransactionTimeline = () => {
               amount: tx.amount,
               status: tx.status,
               oldStatus: old.status,
-              eventType: 'update',
+              eventType: 'update' as const,
               timestamp: tx.updated_at || new Date().toISOString(),
-            }, ...prev].slice(0, 50));
+            } satisfies TimelineEvent, ...prev].slice(0, 50));
           }
         }
       )
