@@ -86,9 +86,9 @@ export const LiveTransactionTimeline = () => {
             order_no: tx.order_no,
             amount: tx.amount,
             status: tx.status || 'pending',
-            eventType: 'insert',
+            eventType: 'insert' as const,
             timestamp: tx.created_at || new Date().toISOString(),
-          }, ...prev].slice(0, 50));
+          } satisfies TimelineEvent, ...prev].slice(0, 50));
         }
       )
       .on(
