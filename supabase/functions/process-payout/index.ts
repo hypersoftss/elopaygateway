@@ -117,7 +117,18 @@ Deno.serve(async (req) => {
       )
     }
 
-    if (transaction.status !== 'pending' && !(action === 'manual_success' && transaction.status === 'processing')) {
+    const existingCallbackData = (transaction.callback_data && typeof transaction.callback_data === 'object')
+      ? transaction.callback_data
+      : {}
+    const balanceMode = getPayoutBalanceMode(existingCallbackData)
+    const totalDeduction = getTotalDeduction(transaction)
+
+    const isValidAction =
+      (action === 'approve' && transaction.status === 'pending') ||
+      (action === 'reject' && (transaction.status === 'pending' || transaction.status === 'processing')) ||
+      (action === 'manual_success' && (transaction.status === 'pending' || transaction.status === 'processing'))
+
+    if (!isValidAction) {
       return new Response(
         JSON.stringify({ success: false, message: 'Transaction is not in a valid state for this action' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
