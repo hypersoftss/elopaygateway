@@ -138,28 +138,26 @@ Deno.serve(async (req) => {
     const merchant = transaction.merchants
 
     if (action === 'reject') {
-      // Reject - update status and unfreeze balance (amount + fee back to merchant)
+      // Reject - mark failed and refund deducted amount
       await supabaseAdmin
         .from('transactions')
-        .update({ status: 'failed' })
+        .update({
+          status: 'failed',
+          callback_data: {
+            ...existingCallbackData,
+            rejected_at: new Date().toISOString(),
+            rejected_by: 'admin',
+            reject_reason: 'Manually rejected by admin',
+          },
+        })
         .eq('id', transaction_id)
 
-      if (merchant) {
-        // Return full frozen amount (amount + fee) to available balance
-        const frozenTotal = transaction.amount + (transaction.fee || 0)
-        await supabaseAdmin
-          .from('merchants')
-          .update({
-            balance: merchant.balance + frozenTotal,
-            frozen_balance: Math.max(0, (merchant.frozen_balance || 0) - frozenTotal),
-          })
-          .eq('id', merchant.id)
-      }
+      await refundMerchant(supabaseAdmin, merchant, totalDeduction, balanceMode)
 
-      console.log('Payout rejected and balance unfrozen:', transaction_id)
+      console.log('Payout rejected and amount refunded:', transaction_id)
 
       return new Response(
-        JSON.stringify({ success: true, message: 'Payout rejected' }),
+        JSON.stringify({ success: true, message: 'Payout rejected and refunded' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
