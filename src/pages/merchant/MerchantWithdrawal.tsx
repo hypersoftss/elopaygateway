@@ -359,11 +359,11 @@ const MerchantWithdrawal = () => {
     setIsLoading(true);
 
     try {
-      // Re-fetch fresh balance and check for any pending withdrawal
+      // Re-fetch fresh balance and check for any in-flight withdrawal
       const [{ data: freshMerchant, error: fetchErr }, { count: pendingCount }] = await Promise.all([
         supabase
           .from('merchants')
-          .select('balance, frozen_balance')
+          .select('balance')
           .eq('id', user.merchantId)
           .single(),
         supabase
@@ -371,16 +371,16 @@ const MerchantWithdrawal = () => {
           .select('*', { count: 'exact', head: true })
           .eq('merchant_id', user.merchantId)
           .eq('transaction_type', 'payout')
-          .eq('status', 'pending'),
+          .in('status', ['pending', 'processing']),
       ]);
 
       if (fetchErr || !freshMerchant) throw new Error('Failed to verify balance');
 
-      // Block if there's already ANY pending withdrawal
+      // Block if there's already ANY pending/processing withdrawal
       if (pendingCount && pendingCount > 0) {
         toast({
           title: language === 'zh' ? '请稍等' : 'Please Wait',
-          description: language === 'zh' ? '您已有一笔提现正在处理中，请等待审核完成' : 'You already have a pending withdrawal. Please wait for it to be processed first.',
+          description: language === 'zh' ? '您已有一笔提现正在处理中，请等待审核完成' : 'You already have a withdrawal in progress. Please wait for it to complete first.',
           variant: 'destructive',
         });
         setIsLoading(false);
@@ -389,7 +389,6 @@ const MerchantWithdrawal = () => {
       }
 
       const freshBalance = Number(freshMerchant.balance) || 0;
-      const freshFrozen = Number(freshMerchant.frozen_balance) || 0;
 
       // Total deduction = amount (goes to bank) + fee (platform charge)
       const totalDeduction = amount + fee;
@@ -401,24 +400,22 @@ const MerchantWithdrawal = () => {
           variant: 'destructive',
         });
         setIsLoading(false);
-        setMerchantData({ ...merchantData, balance: freshBalance, frozen_balance: freshFrozen });
+        setMerchantData({ ...merchantData, balance: freshBalance });
         return;
       }
 
       const orderNo = `WD_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
       // Build transaction data
-      // amount = what bank receives (full withdrawal amount)
-      // fee = platform charge (deducted separately from merchant balance)
-      // net_amount = amount (full amount sent to bank/wallet)
       const transactionData: any = {
         merchant_id: user.merchantId,
         order_no: orderNo,
         transaction_type: 'payout',
         amount: amount,
         fee: fee,
-        net_amount: amount, // Full amount goes to bank
+        net_amount: amount,
         status: 'pending',
+        callback_data: { balance_mode: 'deducted' },
         extra: JSON.stringify({ withdrawal: true, method: selectedMethod, currency }),
       };
 
@@ -450,14 +447,12 @@ const MerchantWithdrawal = () => {
 
       if (error) throw error;
 
-      // Freeze amount + fee from merchant balance
+      // Deduct amount + fee immediately from wallet balance
       const newBalance = freshBalance - totalDeduction;
-      const newFrozen = freshFrozen + totalDeduction;
       await supabase
         .from('merchants')
         .update({
           balance: newBalance,
-          frozen_balance: newFrozen,
         })
         .eq('id', user.merchantId);
 
