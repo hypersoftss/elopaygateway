@@ -81,9 +81,9 @@ Deno.serve(async (req) => {
       )
     }
 
-    if (transaction.status !== 'pending') {
+    if (transaction.status !== 'pending' && !(action === 'manual_success' && transaction.status === 'processing')) {
       return new Response(
-        JSON.stringify({ success: false, message: 'Transaction is not pending' }),
+        JSON.stringify({ success: false, message: 'Transaction is not in a valid state for this action' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
