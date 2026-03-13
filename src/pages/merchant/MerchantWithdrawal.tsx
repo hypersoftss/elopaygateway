@@ -616,8 +616,8 @@ const MerchantWithdrawal = () => {
                 <p className="font-semibold text-sm">{language === 'zh' ? '安全提现' : 'Secure Withdrawal'}</p>
                 <p className="text-xs text-muted-foreground">
                   {language === 'zh'
-                    ? '所有提现请求需要管理员审核批准后才会处理。资金在审核期间将被冻结。'
-                    : 'All withdrawal requests require admin approval. Funds will be frozen during review.'}
+                    ? '所有提现请求需要管理员审核。提交后会立即从可用余额扣款，失败时自动退回。'
+                    : 'All withdrawal requests require admin approval. Amount is deducted immediately from available balance and refunded automatically if failed.'}
                 </p>
               </div>
             </div>
