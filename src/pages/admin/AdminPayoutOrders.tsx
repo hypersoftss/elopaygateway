@@ -157,9 +157,9 @@ const AdminPayoutOrders = () => {
       if (error) throw error;
 
       if (data.auto_updated) {
-        toast({
-          title: '✅ Gateway Verified & Updated!',
-          description: `Payout ${data.gateway_status}. Frozen balance adjusted for ${data.merchant}.`,
+          toast({
+            title: '✅ Gateway Verified & Updated!',
+            description: `Payout ${data.gateway_status}. Status synced for ${data.merchant}.`,
         });
         fetchTransactions();
       } else {

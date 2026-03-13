@@ -153,7 +153,7 @@ const AdminWithdrawals = () => {
         .order('created_at', { ascending: false });
 
       if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter as 'pending' | 'success' | 'failed');
+        query = query.eq('status', statusFilter as 'pending' | 'processing' | 'success' | 'failed');
       }
       if (dateFrom) {
         query = query.gte('created_at', dateFrom);
