@@ -432,6 +432,9 @@ const AdminWithdrawals = () => {
           </CardContent>
         </Card>
 
+        {/* Live Transaction Timeline */}
+        <LiveTransactionTimeline />
+
         {/* Table */}
         <Card>
           <CardHeader className="pb-2 px-4">
