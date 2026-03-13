@@ -196,6 +196,25 @@ const AdminPayoutOrders = () => {
     }
   };
 
+  const handleApprovePayout = async (tx: Transaction) => {
+    if (tx.status !== 'pending') return;
+    if (!confirm(`Send this payout to gateway?\n${tx.account_holder_name || ''} - ${tx.bank_name || ''}\nAccount: ${tx.account_number || ''}\nAmount: ₹${tx.amount.toLocaleString()}`)) return;
+    setProcessingId(tx.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('process-payout', {
+        body: { transaction_id: tx.id, action: 'approve' },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.message || 'Approve failed');
+      toast({ title: '✅ Sent to Gateway', description: 'Payout is now processing. Status will auto-update on gateway callback.' });
+      fetchTransactions();
+    } catch (error: any) {
+      toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   const exportToCSV = () => {
     const headers = ['Order Number', 'Merchant', 'Amount', 'Fee', 'Currency', 'Status', 'Bank Name', 'Created At'];
     const csvData = filteredTransactions.map(tx => [
