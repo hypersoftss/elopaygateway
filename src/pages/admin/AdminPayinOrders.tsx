@@ -338,9 +338,34 @@ const AdminPayinOrders = () => {
   const handleDeleteTransaction = async (txId: string) => {
     if (!confirm('Are you sure you want to delete this transaction?')) return;
     try {
+      // First fetch the transaction to check if it's a successful payin
+      const { data: tx, error: fetchErr } = await supabase
+        .from('transactions')
+        .select('id, status, amount, net_amount, merchant_id')
+        .eq('id', txId)
+        .single();
+      if (fetchErr || !tx) throw fetchErr || new Error('Transaction not found');
+
+      // If it's a success payin, deduct net_amount from merchant balance
+      if (tx.status === 'success') {
+        const { data: merchant, error: mErr } = await supabase
+          .from('merchants')
+          .select('id, balance')
+          .eq('id', tx.merchant_id)
+          .single();
+        if (mErr || !merchant) throw mErr || new Error('Merchant not found');
+
+        const deductAmount = tx.net_amount ?? tx.amount;
+        const { error: balErr } = await supabase
+          .from('merchants')
+          .update({ balance: Math.max(0, (merchant.balance || 0) - deductAmount) })
+          .eq('id', merchant.id);
+        if (balErr) throw balErr;
+      }
+
       const { error } = await supabase.from('transactions').delete().eq('id', txId);
       if (error) throw error;
-      toast({ title: t('common.success'), description: 'Transaction deleted' });
+      toast({ title: t('common.success'), description: tx.status === 'success' ? 'Transaction deleted & amount deducted from merchant' : 'Transaction deleted' });
       fetchTransactions();
     } catch (error: any) {
       toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
