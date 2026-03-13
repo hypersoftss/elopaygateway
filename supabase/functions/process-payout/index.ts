@@ -339,47 +339,56 @@ Deno.serve(async (req) => {
       // Check if gateway accepted the payout
       const statusStr = String(gatewayResponse?.status || '').toLowerCase()
       const isGatewaySuccess = gatewayResponse && (
-        gatewayResponse.status === 1 || 
-        gatewayResponse.status === '1' || 
+        gatewayResponse.status === 1 ||
+        gatewayResponse.status === '1' ||
         statusStr === 'success' ||
-        gatewayResponse.code === 200 || 
+        gatewayResponse.code === 200 ||
         gatewayResponse.code === '200' ||
         gatewayResponse.success === true
       )
 
-      // Update transaction status to 'processing' - frozen balance stays until callback confirms
-      await supabaseAdmin
-        .from('transactions')
-        .update({ 
-          status: 'processing',
-          callback_data: { 
-            gateway_response: gatewayResponse, 
-            approved_at: new Date().toISOString(),
-            gateway_accepted: isGatewaySuccess
-          }
-        })
-        .eq('id', transaction_id)
-
       if (!isGatewaySuccess) {
-        // Gateway rejected - revert status to pending
+        // Gateway rejected immediately - mark failed and refund merchant
         await supabaseAdmin
           .from('transactions')
-          .update({ status: 'pending' })
+          .update({
+            status: 'failed',
+            callback_data: {
+              ...existingCallbackData,
+              gateway_response: gatewayResponse,
+              approved_at: new Date().toISOString(),
+              gateway_accepted: false,
+              failed_at: new Date().toISOString(),
+            },
+          })
           .eq('id', transaction_id)
+
+        await refundMerchant(supabaseAdmin, merchant, totalDeduction, balanceMode)
 
         console.error('Gateway rejected payout:', gatewayResponse?.msg || gatewayResponse?.message || 'Unknown error')
         return new Response(
-          JSON.stringify({ 
-            success: false, 
+          JSON.stringify({
+            success: false,
             message: `Gateway rejected: ${gatewayResponse?.msg || gatewayResponse?.message || 'Unknown error'}`,
-            gateway_response: gatewayResponse
+            gateway_response: gatewayResponse,
           }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
 
-      // Gateway accepted - status is now 'processing', frozen balance stays
-      // Callback handler will update to 'success'/'failed' and release frozen balance
+      // Gateway accepted - move to processing and wait callback for final success/failed
+      await supabaseAdmin
+        .from('transactions')
+        .update({
+          status: 'processing',
+          callback_data: {
+            ...existingCallbackData,
+            gateway_response: gatewayResponse,
+            approved_at: new Date().toISOString(),
+            gateway_accepted: true,
+          },
+        })
+        .eq('id', transaction_id)
 
       console.log('Payout approved and sent to gateway (processing):', transaction_id)
 
