@@ -115,7 +115,7 @@ const MerchantWithdrawal = () => {
       // Fetch merchant data
       const { data } = await supabase
         .from('merchants')
-        .select('balance, frozen_balance, payout_fee, withdrawal_password_hash, withdrawal_password')
+        .select('balance, payout_fee, withdrawal_password_hash, withdrawal_password')
         .eq('id', user.merchantId)
         .single();
 
@@ -133,7 +133,7 @@ const MerchantWithdrawal = () => {
         dailyWithdrawalLimit = Number(gatewayData[0].daily_withdrawal_limit) || 200000;
       }
 
-      // Calculate today's total withdrawal requests (pending + success)
+      // Calculate today's total withdrawal requests (pending + processing + success)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const todayISO = today.toISOString();
@@ -144,14 +144,14 @@ const MerchantWithdrawal = () => {
           .select('amount')
           .eq('merchant_id', user.merchantId)
           .eq('transaction_type', 'payout')
-          .in('status', ['pending', 'success'])
+          .in('status', ['pending', 'processing', 'success'])
           .gte('created_at', todayISO),
         supabase
           .from('transactions')
           .select('*', { count: 'exact', head: true })
           .eq('merchant_id', user.merchantId)
           .eq('transaction_type', 'payout')
-          .eq('status', 'pending'),
+          .in('status', ['pending', 'processing']),
       ]);
 
       const todayWithdrawals = todayTransactions?.reduce((sum, tx) => sum + Number(tx.amount), 0) || 0;
@@ -159,7 +159,7 @@ const MerchantWithdrawal = () => {
       if (data) {
         setMerchantData({
           balance: Number(data.balance) || 0,
-          frozen_balance: Number(data.frozen_balance) || 0,
+          frozen_balance: 0,
           payout_fee: Number(data.payout_fee) || 0,
           currency,
           hasWithdrawalPassword: !!(data.withdrawal_password_hash || data.withdrawal_password),
