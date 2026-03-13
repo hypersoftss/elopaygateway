@@ -525,7 +525,7 @@ Deno.serve(async (req) => {
       }
 
       if (transaction.transaction_type === 'payout') {
-        const unfreezeAmount = transaction.amount + (transaction.fee || 0)
+        await applyPayoutBalanceUpdate(supabaseAdmin, transaction, newStatus)
         
         // Get admin settings for large transaction threshold
         const { data: payoutSettings } = await supabaseAdmin
@@ -537,13 +537,6 @@ Deno.serve(async (req) => {
         const largePayoutThreshold = payoutSettings?.large_payout_threshold || 50000
         
         if (newStatus === 'success') {
-          await supabaseAdmin
-            .from('merchants')
-            .update({
-              frozen_balance: Math.max(0, (transaction.merchants.frozen_balance || 0) - unfreezeAmount)
-            })
-            .eq('id', transaction.merchant_id)
-
           if (transaction.amount >= largePayoutThreshold) {
             await sendTelegramNotification(supabaseAdmin, 'large_payout_success', transaction.merchant_id, {
               orderNo: transaction.order_no,
@@ -558,14 +551,6 @@ Deno.serve(async (req) => {
             })
           }
         } else if (newStatus === 'failed') {
-          await supabaseAdmin
-            .from('merchants')
-            .update({
-              balance: (transaction.merchants.balance || 0) + unfreezeAmount,
-              frozen_balance: Math.max(0, (transaction.merchants.frozen_balance || 0) - unfreezeAmount)
-            })
-            .eq('id', transaction.merchant_id)
-
           await sendTelegramNotification(supabaseAdmin, 'payout_failed', transaction.merchant_id, {
             orderNo: transaction.order_no,
             amount: transaction.amount,
