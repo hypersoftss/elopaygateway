@@ -670,15 +670,8 @@ Deno.serve(async (req) => {
         })
         .eq('id', transaction.id)
 
-      const unfreezeAmount = transaction.amount + (transaction.fee || 0)
-      
       if (newStatus === 'success') {
-        await supabaseAdmin
-          .from('merchants')
-          .update({
-            frozen_balance: Math.max(0, (transaction.merchants.frozen_balance || 0) - unfreezeAmount)
-          })
-          .eq('id', transaction.merchant_id)
+        await applyPayoutBalanceUpdate(supabaseAdmin, transaction, 'success')
 
         await sendTelegramNotification(supabaseAdmin, 'payout_success', transaction.merchant_id, {
           orderNo: transaction.order_no,
@@ -686,13 +679,7 @@ Deno.serve(async (req) => {
           bankName: transaction.bank_name,
         })
       } else if (newStatus === 'failed') {
-        await supabaseAdmin
-          .from('merchants')
-          .update({
-            balance: (transaction.merchants.balance || 0) + unfreezeAmount,
-            frozen_balance: Math.max(0, (transaction.merchants.frozen_balance || 0) - unfreezeAmount)
-          })
-          .eq('id', transaction.merchant_id)
+        await applyPayoutBalanceUpdate(supabaseAdmin, transaction, 'failed')
 
         await sendTelegramNotification(supabaseAdmin, 'payout_failed', transaction.merchant_id, {
           orderNo: transaction.order_no,
