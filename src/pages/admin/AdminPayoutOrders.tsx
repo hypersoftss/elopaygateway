@@ -187,7 +187,7 @@ const AdminPayoutOrders = () => {
       if (error) throw error;
       if (!data?.success) throw new Error(data?.message || 'Manual success failed');
 
-      toast({ title: '✅ Success', description: `Payout manually marked as success. Frozen balance released.` });
+      toast({ title: '✅ Success', description: `Payout manually marked as success.` });
       fetchTransactions();
     } catch (error: any) {
       toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
