@@ -50,6 +50,53 @@ function isCallbackProcessed(callbackData: any): boolean {
   return callbackData?.processed === true
 }
 
+function getPayoutBalanceMode(callbackData: any): 'frozen' | 'deducted' {
+  return callbackData?.balance_mode === 'deducted' ? 'deducted' : 'frozen'
+}
+
+async function applyPayoutBalanceUpdate(
+  supabaseAdmin: any,
+  transaction: any,
+  newStatus: 'success' | 'failed' | 'pending' | 'processing'
+) {
+  if (transaction.transaction_type !== 'payout') return
+  if (newStatus !== 'success' && newStatus !== 'failed') return
+
+  const merchant = transaction.merchants
+  if (!merchant) return
+
+  const amountToSettle = Number(transaction.amount || 0) + Number(transaction.fee || 0)
+  if (amountToSettle <= 0) return
+
+  const balanceMode = getPayoutBalanceMode(transaction.callback_data)
+
+  if (newStatus === 'success') {
+    if (balanceMode !== 'frozen') return
+
+    await supabaseAdmin
+      .from('merchants')
+      .update({
+        frozen_balance: Math.max(0, (merchant.frozen_balance || 0) - amountToSettle),
+      })
+      .eq('id', transaction.merchant_id)
+
+    return
+  }
+
+  const updates: Record<string, number> = {
+    balance: (merchant.balance || 0) + amountToSettle,
+  }
+
+  if (balanceMode === 'frozen') {
+    updates.frozen_balance = Math.max(0, (merchant.frozen_balance || 0) - amountToSettle)
+  }
+
+  await supabaseAdmin
+    .from('merchants')
+    .update(updates)
+    .eq('id', transaction.merchant_id)
+}
+
 // Retry helper function with exponential backoff
 async function sendWebhookWithRetry(
   url: string, 
