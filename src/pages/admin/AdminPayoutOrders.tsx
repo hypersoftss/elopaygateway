@@ -28,7 +28,7 @@ interface Transaction {
   amount: number;
   fee: number;
   net_amount: number;
-  status: 'pending' | 'success' | 'failed';
+  status: 'pending' | 'processing' | 'success' | 'failed';
   bank_name: string | null;
   account_number: string | null;
   account_holder_name: string | null;
@@ -177,7 +177,7 @@ const AdminPayoutOrders = () => {
   };
 
   const handleManualSuccess = async (tx: Transaction) => {
-    if (tx.status !== 'pending') return;
+    if (tx.status !== 'pending' && tx.status !== 'processing') return;
     setProcessingId(tx.id);
     try {
       const { data, error } = await supabase.functions.invoke('process-payout', {
@@ -188,6 +188,25 @@ const AdminPayoutOrders = () => {
       if (!data?.success) throw new Error(data?.message || 'Manual success failed');
 
       toast({ title: '✅ Success', description: `Payout manually marked as success. Frozen balance released.` });
+      fetchTransactions();
+    } catch (error: any) {
+      toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleApprovePayout = async (tx: Transaction) => {
+    if (tx.status !== 'pending') return;
+    if (!confirm(`Send this payout to gateway?\n${tx.account_holder_name || ''} - ${tx.bank_name || ''}\nAccount: ${tx.account_number || ''}\nAmount: ₹${tx.amount.toLocaleString()}`)) return;
+    setProcessingId(tx.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('process-payout', {
+        body: { transaction_id: tx.id, action: 'approve' },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.message || 'Approve failed');
+      toast({ title: '✅ Sent to Gateway', description: 'Payout is now processing. Status will auto-update on gateway callback.' });
       fetchTransactions();
     } catch (error: any) {
       toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
@@ -337,6 +356,7 @@ const AdminPayoutOrders = () => {
                   <SelectContent>
                     <SelectItem value="all">{t('common.all')}</SelectItem>
                     <SelectItem value="pending">{t('status.pending')}</SelectItem>
+                    <SelectItem value="processing">Processing</SelectItem>
                     <SelectItem value="success">{t('status.success')}</SelectItem>
                     <SelectItem value="failed">{t('status.failed')}</SelectItem>
                   </SelectContent>
@@ -403,16 +423,34 @@ const AdminPayoutOrders = () => {
                           <TableCell>
                             <TooltipProvider>
                               <div className="flex items-center justify-center gap-1">
-                                {tx.status === 'pending' && (
+                                {(tx.status === 'pending' || tx.status === 'processing') && (
                                   <>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950" onClick={() => handleCheckGateway(tx)} disabled={checkingId === tx.id}>
-                                          {checkingId === tx.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>Check Gateway Status</TooltipContent>
-                                    </Tooltip>
+                                    {tx.status === 'pending' && (
+                                      <>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950" onClick={() => handleCheckGateway(tx)} disabled={checkingId === tx.id}>
+                                              {checkingId === tx.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>Check Gateway Status</TooltipContent>
+                                        </Tooltip>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              className="h-8 w-8 text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-950"
+                                              onClick={() => handleApprovePayout(tx)}
+                                              disabled={processingId === tx.id}
+                                            >
+                                              {processingId === tx.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUpFromLine className="h-4 w-4" />}
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>Approve (Send to Gateway)</TooltipContent>
+                                        </Tooltip>
+                                      </>
+                                    )}
                                     <Tooltip>
                                       <TooltipTrigger asChild>
                                         <Button
@@ -427,24 +465,26 @@ const AdminPayoutOrders = () => {
                                       </TooltipTrigger>
                                       <TooltipContent>Manual Success (No Gateway Call)</TooltipContent>
                                     </Tooltip>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button 
-                                          variant="ghost" 
-                                          size="icon" 
-                                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" 
-                                          onClick={() => {
-                                            if (confirm(`Reject this payout? ₹${(tx.amount + (tx.fee || 0)).toLocaleString()} will be returned to ${tx.merchants?.merchant_name || 'merchant'}'s balance.`)) {
-                                              handleRejectPayout(tx);
-                                            }
-                                          }}
-                                          disabled={processingId === tx.id}
-                                        >
-                                          <XCircle className="h-4 w-4" />
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>Reject & Return Balance</TooltipContent>
-                                    </Tooltip>
+                                    {tx.status === 'pending' && (
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" 
+                                            onClick={() => {
+                                              if (confirm(`Reject this payout? ₹${(tx.amount + (tx.fee || 0)).toLocaleString()} will be returned to ${tx.merchants?.merchant_name || 'merchant'}'s balance.`)) {
+                                                handleRejectPayout(tx);
+                                              }
+                                            }}
+                                            disabled={processingId === tx.id}
+                                          >
+                                            <XCircle className="h-4 w-4" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Reject & Return Balance</TooltipContent>
+                                      </Tooltip>
+                                    )}
                                   </>
                                 )}
                                 {/* Edit button - available for all statuses */}
@@ -501,6 +541,7 @@ const AdminPayoutOrders = () => {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="processing">Processing</SelectItem>
                     <SelectItem value="success">Success</SelectItem>
                     <SelectItem value="failed">Failed</SelectItem>
                   </SelectContent>

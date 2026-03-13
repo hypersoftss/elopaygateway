@@ -8,7 +8,7 @@ interface Transaction {
   order_no: string;
   transaction_type: 'payin' | 'payout';
   amount: number;
-  status: 'pending' | 'success' | 'failed';
+  status: 'pending' | 'processing' | 'success' | 'failed';
   merchant_id: string;
   created_at: string;
 }

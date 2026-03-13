@@ -81,9 +81,9 @@ Deno.serve(async (req) => {
       )
     }
 
-    if (transaction.status !== 'pending') {
+    if (transaction.status !== 'pending' && !(action === 'manual_success' && transaction.status === 'processing')) {
       return new Response(
-        JSON.stringify({ success: false, message: 'Transaction is not pending' }),
+        JSON.stringify({ success: false, message: 'Transaction is not in a valid state for this action' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -309,10 +309,11 @@ Deno.serve(async (req) => {
         gatewayResponse.success === true
       )
 
-      // Update transaction with gateway response
+      // Update transaction status to 'processing' - frozen balance stays until callback confirms
       await supabaseAdmin
         .from('transactions')
         .update({ 
+          status: 'processing',
           callback_data: { 
             gateway_response: gatewayResponse, 
             approved_at: new Date().toISOString(),
@@ -322,7 +323,12 @@ Deno.serve(async (req) => {
         .eq('id', transaction_id)
 
       if (!isGatewaySuccess) {
-        // Gateway rejected - do NOT deduct frozen balance, keep transaction pending
+        // Gateway rejected - revert status to pending
+        await supabaseAdmin
+          .from('transactions')
+          .update({ status: 'pending' })
+          .eq('id', transaction_id)
+
         console.error('Gateway rejected payout:', gatewayResponse?.msg || gatewayResponse?.message || 'Unknown error')
         return new Response(
           JSON.stringify({ 
@@ -334,17 +340,10 @@ Deno.serve(async (req) => {
         )
       }
 
-      // Gateway accepted - remove from frozen balance
-      if (merchant) {
-        await supabaseAdmin
-          .from('merchants')
-          .update({
-            frozen_balance: Math.max(0, (merchant.frozen_balance || 0) - transaction.amount - (transaction.fee || 0)),
-          })
-          .eq('id', merchant.id)
-      }
+      // Gateway accepted - status is now 'processing', frozen balance stays
+      // Callback handler will update to 'success'/'failed' and release frozen balance
 
-      console.log('Payout approved and sent to gateway:', transaction_id)
+      console.log('Payout approved and sent to gateway (processing):', transaction_id)
 
       return new Response(
         JSON.stringify({ 
