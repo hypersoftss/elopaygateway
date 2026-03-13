@@ -19,7 +19,7 @@ interface Transaction {
   order_no: string;
   amount: number;
   fee: number;
-  status: 'pending' | 'success' | 'failed';
+  status: 'pending' | 'processing' | 'success' | 'failed';
   bank_name: string | null;
   created_at: string;
 }
