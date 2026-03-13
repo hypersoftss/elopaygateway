@@ -89,7 +89,7 @@ interface Transaction {
   amount: number;
   fee: number;
   net_amount: number;
-  status: 'pending' | 'success' | 'failed';
+  status: 'pending' | 'processing' | 'success' | 'failed';
   bank_name: string | null;
   created_at: string;
   merchant_id: string;
