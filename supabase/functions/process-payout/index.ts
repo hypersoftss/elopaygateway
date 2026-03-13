@@ -6,6 +6,42 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+const getPayoutBalanceMode = (callbackData: any): 'frozen' | 'deducted' => {
+  return callbackData?.balance_mode === 'deducted' ? 'deducted' : 'frozen'
+}
+
+const getTotalDeduction = (transaction: any): number => {
+  return Number(transaction.amount || 0) + Number(transaction.fee || 0)
+}
+
+const releaseFrozenIfNeeded = async (supabaseAdmin: any, merchant: any, amount: number, mode: 'frozen' | 'deducted') => {
+  if (!merchant || mode !== 'frozen') return
+
+  await supabaseAdmin
+    .from('merchants')
+    .update({
+      frozen_balance: Math.max(0, (merchant.frozen_balance || 0) - amount),
+    })
+    .eq('id', merchant.id)
+}
+
+const refundMerchant = async (supabaseAdmin: any, merchant: any, amount: number, mode: 'frozen' | 'deducted') => {
+  if (!merchant) return
+
+  const updates: Record<string, number> = {
+    balance: (merchant.balance || 0) + amount,
+  }
+
+  if (mode === 'frozen') {
+    updates.frozen_balance = Math.max(0, (merchant.frozen_balance || 0) - amount)
+  }
+
+  await supabaseAdmin
+    .from('merchants')
+    .update(updates)
+    .eq('id', merchant.id)
+}
+
 // HYPER PAY payout signature
 function generateHyperPayPayoutSignature(
   accountNumber: string, 
