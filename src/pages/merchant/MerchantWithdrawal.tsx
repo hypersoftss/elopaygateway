@@ -526,7 +526,7 @@ const MerchantWithdrawal = () => {
         </div>
 
         {/* Balance Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card className="premium-card bg-gradient-to-br from-[hsl(var(--success))]/10 to-transparent border-[hsl(var(--success))]/20">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -538,22 +538,6 @@ const MerchantWithdrawal = () => {
                 </div>
                 <div className="p-3 rounded-full bg-[hsl(var(--success))]/10">
                   <Wallet className="h-5 w-5 text-[hsl(var(--success))]" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="premium-card bg-gradient-to-br from-[hsl(var(--warning))]/10 to-transparent border-[hsl(var(--warning))]/20">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">{currencyFlag} {language === 'zh' ? '冻结余额' : 'Frozen Balance'}</p>
-                  <p className="text-2xl font-bold text-[hsl(var(--warning))]">
-                    {currencySymbol}{merchantData.frozen_balance.toLocaleString()}
-                  </p>
-                </div>
-                <div className="p-3 rounded-full bg-[hsl(var(--warning))]/10">
-                  <Shield className="h-5 w-5 text-[hsl(var(--warning))]" />
                 </div>
               </div>
             </CardContent>
