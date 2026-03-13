@@ -19,7 +19,7 @@ interface Transaction {
   order_no: string;
   amount: number;
   fee: number;
-  status: 'pending' | 'success' | 'failed';
+  status: 'pending' | 'processing' | 'success' | 'failed';
   bank_name: string | null;
   created_at: string;
 }
@@ -48,7 +48,7 @@ const MerchantPayoutOrders = () => {
         .order('created_at', { ascending: false });
 
       if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter as 'pending' | 'success' | 'failed');
+        query = query.eq('status', statusFilter as 'pending' | 'processing' | 'success' | 'failed');
       }
 
       if (startDate) {
@@ -127,6 +127,7 @@ const MerchantPayoutOrders = () => {
             <SelectContent>
               <SelectItem value="all">All</SelectItem>
               <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="processing">Processing</SelectItem>
               <SelectItem value="success">Success</SelectItem>
               <SelectItem value="failed">Failed</SelectItem>
             </SelectContent>
@@ -210,10 +211,12 @@ const MerchantPayoutOrders = () => {
                         <Badge 
                           variant="outline"
                           className={
-                            tx.status === 'success' 
-                              ? 'bg-[hsl(var(--success))]/10 text-[hsl(var(--success))] border-0' 
-                              : tx.status === 'pending' 
-                              ? 'bg-[hsl(var(--warning))]/10 text-[hsl(var(--warning))] border-0' 
+                            tx.status === 'success'
+                              ? 'bg-[hsl(var(--success))]/10 text-[hsl(var(--success))] border-0'
+                              : tx.status === 'processing'
+                              ? 'bg-primary/10 text-primary border-0'
+                              : tx.status === 'pending'
+                              ? 'bg-[hsl(var(--warning))]/10 text-[hsl(var(--warning))] border-0'
                               : 'bg-destructive/10 text-destructive border-0'
                           }
                         >

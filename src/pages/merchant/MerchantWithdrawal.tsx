@@ -115,7 +115,7 @@ const MerchantWithdrawal = () => {
       // Fetch merchant data
       const { data } = await supabase
         .from('merchants')
-        .select('balance, frozen_balance, payout_fee, withdrawal_password_hash, withdrawal_password')
+        .select('balance, payout_fee, withdrawal_password_hash, withdrawal_password')
         .eq('id', user.merchantId)
         .single();
 
@@ -133,7 +133,7 @@ const MerchantWithdrawal = () => {
         dailyWithdrawalLimit = Number(gatewayData[0].daily_withdrawal_limit) || 200000;
       }
 
-      // Calculate today's total withdrawal requests (pending + success)
+      // Calculate today's total withdrawal requests (pending + processing + success)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const todayISO = today.toISOString();
@@ -144,14 +144,14 @@ const MerchantWithdrawal = () => {
           .select('amount')
           .eq('merchant_id', user.merchantId)
           .eq('transaction_type', 'payout')
-          .in('status', ['pending', 'success'])
+          .in('status', ['pending', 'processing', 'success'])
           .gte('created_at', todayISO),
         supabase
           .from('transactions')
           .select('*', { count: 'exact', head: true })
           .eq('merchant_id', user.merchantId)
           .eq('transaction_type', 'payout')
-          .eq('status', 'pending'),
+          .in('status', ['pending', 'processing']),
       ]);
 
       const todayWithdrawals = todayTransactions?.reduce((sum, tx) => sum + Number(tx.amount), 0) || 0;
@@ -159,7 +159,7 @@ const MerchantWithdrawal = () => {
       if (data) {
         setMerchantData({
           balance: Number(data.balance) || 0,
-          frozen_balance: Number(data.frozen_balance) || 0,
+          frozen_balance: 0,
           payout_fee: Number(data.payout_fee) || 0,
           currency,
           hasWithdrawalPassword: !!(data.withdrawal_password_hash || data.withdrawal_password),
@@ -359,11 +359,11 @@ const MerchantWithdrawal = () => {
     setIsLoading(true);
 
     try {
-      // Re-fetch fresh balance and check for any pending withdrawal
+      // Re-fetch fresh balance and check for any in-flight withdrawal
       const [{ data: freshMerchant, error: fetchErr }, { count: pendingCount }] = await Promise.all([
         supabase
           .from('merchants')
-          .select('balance, frozen_balance')
+          .select('balance')
           .eq('id', user.merchantId)
           .single(),
         supabase
@@ -371,16 +371,16 @@ const MerchantWithdrawal = () => {
           .select('*', { count: 'exact', head: true })
           .eq('merchant_id', user.merchantId)
           .eq('transaction_type', 'payout')
-          .eq('status', 'pending'),
+          .in('status', ['pending', 'processing']),
       ]);
 
       if (fetchErr || !freshMerchant) throw new Error('Failed to verify balance');
 
-      // Block if there's already ANY pending withdrawal
+      // Block if there's already ANY pending/processing withdrawal
       if (pendingCount && pendingCount > 0) {
         toast({
           title: language === 'zh' ? '请稍等' : 'Please Wait',
-          description: language === 'zh' ? '您已有一笔提现正在处理中，请等待审核完成' : 'You already have a pending withdrawal. Please wait for it to be processed first.',
+          description: language === 'zh' ? '您已有一笔提现正在处理中，请等待审核完成' : 'You already have a withdrawal in progress. Please wait for it to complete first.',
           variant: 'destructive',
         });
         setIsLoading(false);
@@ -389,7 +389,6 @@ const MerchantWithdrawal = () => {
       }
 
       const freshBalance = Number(freshMerchant.balance) || 0;
-      const freshFrozen = Number(freshMerchant.frozen_balance) || 0;
 
       // Total deduction = amount (goes to bank) + fee (platform charge)
       const totalDeduction = amount + fee;
@@ -401,24 +400,22 @@ const MerchantWithdrawal = () => {
           variant: 'destructive',
         });
         setIsLoading(false);
-        setMerchantData({ ...merchantData, balance: freshBalance, frozen_balance: freshFrozen });
+        setMerchantData({ ...merchantData, balance: freshBalance });
         return;
       }
 
       const orderNo = `WD_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
       // Build transaction data
-      // amount = what bank receives (full withdrawal amount)
-      // fee = platform charge (deducted separately from merchant balance)
-      // net_amount = amount (full amount sent to bank/wallet)
       const transactionData: any = {
         merchant_id: user.merchantId,
         order_no: orderNo,
         transaction_type: 'payout',
         amount: amount,
         fee: fee,
-        net_amount: amount, // Full amount goes to bank
+        net_amount: amount,
         status: 'pending',
+        callback_data: { balance_mode: 'deducted' },
         extra: JSON.stringify({ withdrawal: true, method: selectedMethod, currency }),
       };
 
@@ -450,14 +447,12 @@ const MerchantWithdrawal = () => {
 
       if (error) throw error;
 
-      // Freeze amount + fee from merchant balance
+      // Deduct amount + fee immediately from wallet balance
       const newBalance = freshBalance - totalDeduction;
-      const newFrozen = freshFrozen + totalDeduction;
       await supabase
         .from('merchants')
         .update({
           balance: newBalance,
-          frozen_balance: newFrozen,
         })
         .eq('id', user.merchantId);
 
@@ -479,7 +474,7 @@ const MerchantWithdrawal = () => {
       setMerchantData({
         ...merchantData,
         balance: newBalance,
-        frozen_balance: newFrozen,
+        frozen_balance: 0,
         todayWithdrawals: (merchantData.todayWithdrawals || 0) + amount,
         hasPendingWithdrawal: true,
       });
@@ -531,7 +526,7 @@ const MerchantWithdrawal = () => {
         </div>
 
         {/* Balance Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card className="premium-card bg-gradient-to-br from-[hsl(var(--success))]/10 to-transparent border-[hsl(var(--success))]/20">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -543,22 +538,6 @@ const MerchantWithdrawal = () => {
                 </div>
                 <div className="p-3 rounded-full bg-[hsl(var(--success))]/10">
                   <Wallet className="h-5 w-5 text-[hsl(var(--success))]" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="premium-card bg-gradient-to-br from-[hsl(var(--warning))]/10 to-transparent border-[hsl(var(--warning))]/20">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">{currencyFlag} {language === 'zh' ? '冻结余额' : 'Frozen Balance'}</p>
-                  <p className="text-2xl font-bold text-[hsl(var(--warning))]">
-                    {currencySymbol}{merchantData.frozen_balance.toLocaleString()}
-                  </p>
-                </div>
-                <div className="p-3 rounded-full bg-[hsl(var(--warning))]/10">
-                  <Shield className="h-5 w-5 text-[hsl(var(--warning))]" />
                 </div>
               </div>
             </CardContent>
@@ -637,8 +616,8 @@ const MerchantWithdrawal = () => {
                 <p className="font-semibold text-sm">{language === 'zh' ? '安全提现' : 'Secure Withdrawal'}</p>
                 <p className="text-xs text-muted-foreground">
                   {language === 'zh'
-                    ? '所有提现请求需要管理员审核批准后才会处理。资金在审核期间将被冻结。'
-                    : 'All withdrawal requests require admin approval. Funds will be frozen during review.'}
+                    ? '所有提现请求需要管理员审核。提交后会立即从可用余额扣款，失败时自动退回。'
+                    : 'All withdrawal requests require admin approval. Amount is deducted immediately from available balance and refunded automatically if failed.'}
                 </p>
               </div>
             </div>

@@ -249,7 +249,7 @@ Deno.serve(async (req) => {
         account_number,
         account_holder_name: name,
         ifsc_code: ifsc || null,
-        callback_data: { merchant_callback: callback_url },
+        callback_data: { merchant_callback: callback_url, balance_mode: 'deducted' },
         extra: JSON.stringify({ trade_type: merchant.trade_type })
       })
       .select('id')
@@ -263,12 +263,11 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Deduct balance and freeze - will be processed when admin approves
+    // Deduct amount + fee immediately from available balance (no freeze stage)
     const { error: balanceError } = await supabaseAdmin
       .from('merchants')
       .update({
         balance: merchant.balance - totalDeduction,
-        frozen_balance: (merchant.frozen_balance || 0) + totalDeduction,
       })
       .eq('id', merchant.id)
 

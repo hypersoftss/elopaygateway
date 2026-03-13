@@ -50,6 +50,53 @@ function isCallbackProcessed(callbackData: any): boolean {
   return callbackData?.processed === true
 }
 
+function getPayoutBalanceMode(callbackData: any): 'frozen' | 'deducted' {
+  return callbackData?.balance_mode === 'deducted' ? 'deducted' : 'frozen'
+}
+
+async function applyPayoutBalanceUpdate(
+  supabaseAdmin: any,
+  transaction: any,
+  newStatus: 'success' | 'failed' | 'pending' | 'processing'
+) {
+  if (transaction.transaction_type !== 'payout') return
+  if (newStatus !== 'success' && newStatus !== 'failed') return
+
+  const merchant = transaction.merchants
+  if (!merchant) return
+
+  const amountToSettle = Number(transaction.amount || 0) + Number(transaction.fee || 0)
+  if (amountToSettle <= 0) return
+
+  const balanceMode = getPayoutBalanceMode(transaction.callback_data)
+
+  if (newStatus === 'success') {
+    if (balanceMode !== 'frozen') return
+
+    await supabaseAdmin
+      .from('merchants')
+      .update({
+        frozen_balance: Math.max(0, (merchant.frozen_balance || 0) - amountToSettle),
+      })
+      .eq('id', transaction.merchant_id)
+
+    return
+  }
+
+  const updates: Record<string, number> = {
+    balance: (merchant.balance || 0) + amountToSettle,
+  }
+
+  if (balanceMode === 'frozen') {
+    updates.frozen_balance = Math.max(0, (merchant.frozen_balance || 0) - amountToSettle)
+  }
+
+  await supabaseAdmin
+    .from('merchants')
+    .update(updates)
+    .eq('id', transaction.merchant_id)
+}
+
 // Retry helper function with exponential backoff
 async function sendWebhookWithRetry(
   url: string, 
@@ -280,7 +327,8 @@ Deno.serve(async (req) => {
           amount: transaction.amount,
         })
       } else if (transaction.transaction_type === 'payout') {
-        const unfreezeAmount = transaction.amount + (transaction.fee || 0)
+        // Settle merchant balance based on final payout status
+        await applyPayoutBalanceUpdate(supabaseAdmin, transaction, newStatus)
         
         // Get admin settings for large transaction threshold
         const { data: payoutSettings } = await supabaseAdmin
@@ -292,13 +340,6 @@ Deno.serve(async (req) => {
         const largePayoutThreshold = payoutSettings?.large_payout_threshold || 50000
         
         if (newStatus === 'success') {
-          await supabaseAdmin
-            .from('merchants')
-            .update({
-              frozen_balance: Math.max(0, (transaction.merchants.frozen_balance || 0) - unfreezeAmount)
-            })
-            .eq('id', transaction.merchant_id)
-
           // Send appropriate notification based on amount
           if (transaction.amount >= largePayoutThreshold) {
             await sendTelegramNotification(supabaseAdmin, 'large_payout_success', transaction.merchant_id, {
@@ -314,14 +355,6 @@ Deno.serve(async (req) => {
             })
           }
         } else if (newStatus === 'failed') {
-          await supabaseAdmin
-            .from('merchants')
-            .update({
-              balance: (transaction.merchants.balance || 0) + unfreezeAmount,
-              frozen_balance: Math.max(0, (transaction.merchants.frozen_balance || 0) - unfreezeAmount)
-            })
-            .eq('id', transaction.merchant_id)
-
           await sendTelegramNotification(supabaseAdmin, 'payout_failed', transaction.merchant_id, {
             orderNo: transaction.order_no,
             amount: transaction.amount,
@@ -332,7 +365,7 @@ Deno.serve(async (req) => {
 
       // Forward callback to merchant with retry logic
       const extraData = transaction.extra ? JSON.parse(transaction.extra) : {}
-      const merchantCallbackUrl = extraData.merchant_callback || transaction.merchants?.callback_url
+      const merchantCallbackUrl = extraData.merchant_callback || transaction.callback_data?.merchant_callback || transaction.merchants?.callback_url
       if (merchantCallbackUrl) {
         const webhookPayload = {
           status: newStatus,
@@ -492,7 +525,7 @@ Deno.serve(async (req) => {
       }
 
       if (transaction.transaction_type === 'payout') {
-        const unfreezeAmount = transaction.amount + (transaction.fee || 0)
+        await applyPayoutBalanceUpdate(supabaseAdmin, transaction, newStatus)
         
         // Get admin settings for large transaction threshold
         const { data: payoutSettings } = await supabaseAdmin
@@ -504,13 +537,6 @@ Deno.serve(async (req) => {
         const largePayoutThreshold = payoutSettings?.large_payout_threshold || 50000
         
         if (newStatus === 'success') {
-          await supabaseAdmin
-            .from('merchants')
-            .update({
-              frozen_balance: Math.max(0, (transaction.merchants.frozen_balance || 0) - unfreezeAmount)
-            })
-            .eq('id', transaction.merchant_id)
-
           if (transaction.amount >= largePayoutThreshold) {
             await sendTelegramNotification(supabaseAdmin, 'large_payout_success', transaction.merchant_id, {
               orderNo: transaction.order_no,
@@ -525,14 +551,6 @@ Deno.serve(async (req) => {
             })
           }
         } else if (newStatus === 'failed') {
-          await supabaseAdmin
-            .from('merchants')
-            .update({
-              balance: (transaction.merchants.balance || 0) + unfreezeAmount,
-              frozen_balance: Math.max(0, (transaction.merchants.frozen_balance || 0) - unfreezeAmount)
-            })
-            .eq('id', transaction.merchant_id)
-
           await sendTelegramNotification(supabaseAdmin, 'payout_failed', transaction.merchant_id, {
             orderNo: transaction.order_no,
             amount: transaction.amount,
@@ -542,7 +560,7 @@ Deno.serve(async (req) => {
       }
 
       const extraData = transaction.extra ? JSON.parse(transaction.extra) : {}
-      const merchantCallbackUrl = extraData.merchant_callback || transaction.merchants?.callback_url
+      const merchantCallbackUrl = extraData.merchant_callback || transaction.callback_data?.merchant_callback || transaction.merchants?.callback_url
       
       if (merchantCallbackUrl) {
         const webhookPayload = {
@@ -652,15 +670,8 @@ Deno.serve(async (req) => {
         })
         .eq('id', transaction.id)
 
-      const unfreezeAmount = transaction.amount + (transaction.fee || 0)
-      
       if (newStatus === 'success') {
-        await supabaseAdmin
-          .from('merchants')
-          .update({
-            frozen_balance: Math.max(0, (transaction.merchants.frozen_balance || 0) - unfreezeAmount)
-          })
-          .eq('id', transaction.merchant_id)
+        await applyPayoutBalanceUpdate(supabaseAdmin, transaction, 'success')
 
         await sendTelegramNotification(supabaseAdmin, 'payout_success', transaction.merchant_id, {
           orderNo: transaction.order_no,
@@ -668,13 +679,7 @@ Deno.serve(async (req) => {
           bankName: transaction.bank_name,
         })
       } else if (newStatus === 'failed') {
-        await supabaseAdmin
-          .from('merchants')
-          .update({
-            balance: (transaction.merchants.balance || 0) + unfreezeAmount,
-            frozen_balance: Math.max(0, (transaction.merchants.frozen_balance || 0) - unfreezeAmount)
-          })
-          .eq('id', transaction.merchant_id)
+        await applyPayoutBalanceUpdate(supabaseAdmin, transaction, 'failed')
 
         await sendTelegramNotification(supabaseAdmin, 'payout_failed', transaction.merchant_id, {
           orderNo: transaction.order_no,
@@ -684,7 +689,7 @@ Deno.serve(async (req) => {
       }
 
       const extraData = transaction.extra ? JSON.parse(transaction.extra) : {}
-      const merchantCallbackUrl = extraData.merchant_callback || transaction.merchants?.callback_url
+      const merchantCallbackUrl = extraData.merchant_callback || transaction.callback_data?.merchant_callback || transaction.merchants?.callback_url
       if (merchantCallbackUrl) {
         const webhookPayload = {
           status: newStatus,

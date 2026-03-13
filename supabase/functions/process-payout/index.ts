@@ -6,6 +6,42 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+const getPayoutBalanceMode = (callbackData: any): 'frozen' | 'deducted' => {
+  return callbackData?.balance_mode === 'deducted' ? 'deducted' : 'frozen'
+}
+
+const getTotalDeduction = (transaction: any): number => {
+  return Number(transaction.amount || 0) + Number(transaction.fee || 0)
+}
+
+const releaseFrozenIfNeeded = async (supabaseAdmin: any, merchant: any, amount: number, mode: 'frozen' | 'deducted') => {
+  if (!merchant || mode !== 'frozen') return
+
+  await supabaseAdmin
+    .from('merchants')
+    .update({
+      frozen_balance: Math.max(0, (merchant.frozen_balance || 0) - amount),
+    })
+    .eq('id', merchant.id)
+}
+
+const refundMerchant = async (supabaseAdmin: any, merchant: any, amount: number, mode: 'frozen' | 'deducted') => {
+  if (!merchant) return
+
+  const updates: Record<string, number> = {
+    balance: (merchant.balance || 0) + amount,
+  }
+
+  if (mode === 'frozen') {
+    updates.frozen_balance = Math.max(0, (merchant.frozen_balance || 0) - amount)
+  }
+
+  await supabaseAdmin
+    .from('merchants')
+    .update(updates)
+    .eq('id', merchant.id)
+}
+
 // HYPER PAY payout signature
 function generateHyperPayPayoutSignature(
   accountNumber: string, 
@@ -81,7 +117,18 @@ Deno.serve(async (req) => {
       )
     }
 
-    if (transaction.status !== 'pending' && !(action === 'manual_success' && transaction.status === 'processing')) {
+    const existingCallbackData = (transaction.callback_data && typeof transaction.callback_data === 'object')
+      ? transaction.callback_data
+      : {}
+    const balanceMode = getPayoutBalanceMode(existingCallbackData)
+    const totalDeduction = getTotalDeduction(transaction)
+
+    const isValidAction =
+      (action === 'approve' && transaction.status === 'pending') ||
+      (action === 'reject' && (transaction.status === 'pending' || transaction.status === 'processing')) ||
+      (action === 'manual_success' && (transaction.status === 'pending' || transaction.status === 'processing'))
+
+    if (!isValidAction) {
       return new Response(
         JSON.stringify({ success: false, message: 'Transaction is not in a valid state for this action' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -91,56 +138,47 @@ Deno.serve(async (req) => {
     const merchant = transaction.merchants
 
     if (action === 'reject') {
-      // Reject - update status and unfreeze balance (amount + fee back to merchant)
+      // Reject - mark failed and refund deducted amount
       await supabaseAdmin
         .from('transactions')
-        .update({ status: 'failed' })
+        .update({
+          status: 'failed',
+          callback_data: {
+            ...existingCallbackData,
+            rejected_at: new Date().toISOString(),
+            rejected_by: 'admin',
+            reject_reason: 'Manually rejected by admin',
+          },
+        })
         .eq('id', transaction_id)
 
-      if (merchant) {
-        // Return full frozen amount (amount + fee) to available balance
-        const frozenTotal = transaction.amount + (transaction.fee || 0)
-        await supabaseAdmin
-          .from('merchants')
-          .update({
-            balance: merchant.balance + frozenTotal,
-            frozen_balance: Math.max(0, (merchant.frozen_balance || 0) - frozenTotal),
-          })
-          .eq('id', merchant.id)
-      }
+      await refundMerchant(supabaseAdmin, merchant, totalDeduction, balanceMode)
 
-      console.log('Payout rejected and balance unfrozen:', transaction_id)
+      console.log('Payout rejected and amount refunded:', transaction_id)
 
       return new Response(
-        JSON.stringify({ success: true, message: 'Payout rejected' }),
+        JSON.stringify({ success: true, message: 'Payout rejected and refunded' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     if (action === 'manual_success') {
-      // Manual success - mark as success and release frozen balance WITHOUT calling gateway
+      // Manual success - mark success without gateway call
       await supabaseAdmin
         .from('transactions')
-        .update({ 
+        .update({
           status: 'success',
-          callback_data: { 
-            manual_approval: true, 
+          callback_data: {
+            ...existingCallbackData,
+            manual_approval: true,
             approved_at: new Date().toISOString(),
             approved_by: 'admin',
-            note: 'Manually marked as success without gateway API call'
-          }
+            note: 'Manually marked as success without gateway API call',
+          },
         })
         .eq('id', transaction_id)
 
-      if (merchant) {
-        const frozenTotal = transaction.amount + (transaction.fee || 0)
-        await supabaseAdmin
-          .from('merchants')
-          .update({
-            frozen_balance: Math.max(0, (merchant.frozen_balance || 0) - frozenTotal),
-          })
-          .eq('id', merchant.id)
-      }
+      await releaseFrozenIfNeeded(supabaseAdmin, merchant, totalDeduction, balanceMode)
 
       console.log('Payout manually marked as success (no gateway call):', transaction_id)
 
@@ -301,47 +339,56 @@ Deno.serve(async (req) => {
       // Check if gateway accepted the payout
       const statusStr = String(gatewayResponse?.status || '').toLowerCase()
       const isGatewaySuccess = gatewayResponse && (
-        gatewayResponse.status === 1 || 
-        gatewayResponse.status === '1' || 
+        gatewayResponse.status === 1 ||
+        gatewayResponse.status === '1' ||
         statusStr === 'success' ||
-        gatewayResponse.code === 200 || 
+        gatewayResponse.code === 200 ||
         gatewayResponse.code === '200' ||
         gatewayResponse.success === true
       )
 
-      // Update transaction status to 'processing' - frozen balance stays until callback confirms
-      await supabaseAdmin
-        .from('transactions')
-        .update({ 
-          status: 'processing',
-          callback_data: { 
-            gateway_response: gatewayResponse, 
-            approved_at: new Date().toISOString(),
-            gateway_accepted: isGatewaySuccess
-          }
-        })
-        .eq('id', transaction_id)
-
       if (!isGatewaySuccess) {
-        // Gateway rejected - revert status to pending
+        // Gateway rejected immediately - mark failed and refund merchant
         await supabaseAdmin
           .from('transactions')
-          .update({ status: 'pending' })
+          .update({
+            status: 'failed',
+            callback_data: {
+              ...existingCallbackData,
+              gateway_response: gatewayResponse,
+              approved_at: new Date().toISOString(),
+              gateway_accepted: false,
+              failed_at: new Date().toISOString(),
+            },
+          })
           .eq('id', transaction_id)
+
+        await refundMerchant(supabaseAdmin, merchant, totalDeduction, balanceMode)
 
         console.error('Gateway rejected payout:', gatewayResponse?.msg || gatewayResponse?.message || 'Unknown error')
         return new Response(
-          JSON.stringify({ 
-            success: false, 
+          JSON.stringify({
+            success: false,
             message: `Gateway rejected: ${gatewayResponse?.msg || gatewayResponse?.message || 'Unknown error'}`,
-            gateway_response: gatewayResponse
+            gateway_response: gatewayResponse,
           }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
 
-      // Gateway accepted - status is now 'processing', frozen balance stays
-      // Callback handler will update to 'success'/'failed' and release frozen balance
+      // Gateway accepted - move to processing and wait callback for final success/failed
+      await supabaseAdmin
+        .from('transactions')
+        .update({
+          status: 'processing',
+          callback_data: {
+            ...existingCallbackData,
+            gateway_response: gatewayResponse,
+            approved_at: new Date().toISOString(),
+            gateway_accepted: true,
+          },
+        })
+        .eq('id', transaction_id)
 
       console.log('Payout approved and sent to gateway (processing):', transaction_id)
 
