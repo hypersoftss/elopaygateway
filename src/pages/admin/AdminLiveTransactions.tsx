@@ -24,7 +24,7 @@ interface Transaction {
   amount: number;
   fee: number | null;
   net_amount: number | null;
-  status: 'pending' | 'success' | 'failed';
+  status: 'pending' | 'processing' | 'success' | 'failed';
   transaction_type: 'payin' | 'payout';
   created_at: string;
   merchant_id: string;

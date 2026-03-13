@@ -28,7 +28,7 @@ interface Transaction {
   amount: number;
   fee: number;
   net_amount: number;
-  status: 'pending' | 'success' | 'failed';
+  status: 'pending' | 'processing' | 'success' | 'failed';
   bank_name: string | null;
   account_number: string | null;
   account_holder_name: string | null;
