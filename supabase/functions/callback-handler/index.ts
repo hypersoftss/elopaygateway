@@ -365,7 +365,7 @@ Deno.serve(async (req) => {
 
       // Forward callback to merchant with retry logic
       const extraData = transaction.extra ? JSON.parse(transaction.extra) : {}
-      const merchantCallbackUrl = extraData.merchant_callback || transaction.merchants?.callback_url
+      const merchantCallbackUrl = extraData.merchant_callback || transaction.callback_data?.merchant_callback || transaction.merchants?.callback_url
       if (merchantCallbackUrl) {
         const webhookPayload = {
           status: newStatus,
