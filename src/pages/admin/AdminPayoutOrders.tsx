@@ -14,11 +14,7 @@ import { Search, Download, ArrowUpFromLine, Trash2, CheckCircle2, XCircle, Refre
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -417,37 +413,20 @@ const AdminPayoutOrders = () => {
                                       </TooltipTrigger>
                                       <TooltipContent>Check Gateway Status</TooltipContent>
                                     </Tooltip>
-                                    <AlertDialog>
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <AlertDialogTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950" disabled={processingId === tx.id}>
-                                              <CheckCircle2 className="h-4 w-4" />
-                                            </Button>
-                                          </AlertDialogTrigger>
-                                        </TooltipTrigger>
-                                        <TooltipContent>Manual Success</TooltipContent>
-                                      </Tooltip>
-                                      <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                          <AlertDialogTitle>⚠️ Confirm Gateway Payout?</AlertDialogTitle>
-                                          <AlertDialogDescription className="space-y-3">
-                                            <p>This will <strong>process the payout through the payment gateway</strong> and send <strong>{sym}{tx.amount.toLocaleString()}</strong> to:</p>
-                                            <div className="rounded-md bg-muted p-3 text-sm space-y-1">
-                                              <p><strong>Name:</strong> {tx.account_holder_name || tx.merchants?.merchant_name || 'N/A'}</p>
-                                              <p><strong>Account:</strong> {tx.account_number || 'N/A'}</p>
-                                              <p><strong>Bank/Wallet:</strong> {tx.bank_name || 'N/A'}</p>
-                                            </div>
-                                            <p className="text-destructive font-semibold">⚠️ Real money will be sent via gateway API. This action cannot be undone!</p>
-                                            <p className="text-xs text-muted-foreground">Frozen balance of {sym}{(tx.amount + (tx.fee || 0)).toLocaleString()} will be released.</p>
-                                          </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                          <AlertDialogAction onClick={() => handleManualSuccess(tx)} className="bg-green-600 hover:bg-green-700">Confirm Success</AlertDialogAction>
-                                        </AlertDialogFooter>
-                                      </AlertDialogContent>
-                                    </AlertDialog>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950"
+                                          onClick={() => handleManualSuccess(tx)}
+                                          disabled={processingId === tx.id}
+                                        >
+                                          {processingId === tx.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Manual Success (No Gateway Call)</TooltipContent>
+                                    </Tooltip>
                                     <Tooltip>
                                       <TooltipTrigger asChild>
                                         <Button 
