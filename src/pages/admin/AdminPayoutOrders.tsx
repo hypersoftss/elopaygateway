@@ -177,7 +177,7 @@ const AdminPayoutOrders = () => {
   };
 
   const handleManualSuccess = async (tx: Transaction) => {
-    if (tx.status !== 'pending') return;
+    if (tx.status !== 'pending' && tx.status !== 'processing') return;
     setProcessingId(tx.id);
     try {
       const { data, error } = await supabase.functions.invoke('process-payout', {
