@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { LiveTransactionTimeline } from '@/components/LiveTransactionTimeline';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { useTranslation } from '@/lib/i18n';
 import { supabase } from '@/integrations/supabase/client';
@@ -430,6 +431,9 @@ const AdminWithdrawals = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Live Transaction Timeline */}
+        <LiveTransactionTimeline />
 
         {/* Table */}
         <Card>
