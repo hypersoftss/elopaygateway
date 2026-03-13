@@ -211,10 +211,12 @@ const MerchantPayoutOrders = () => {
                         <Badge 
                           variant="outline"
                           className={
-                            tx.status === 'success' 
-                              ? 'bg-[hsl(var(--success))]/10 text-[hsl(var(--success))] border-0' 
-                              : tx.status === 'pending' 
-                              ? 'bg-[hsl(var(--warning))]/10 text-[hsl(var(--warning))] border-0' 
+                            tx.status === 'success'
+                              ? 'bg-[hsl(var(--success))]/10 text-[hsl(var(--success))] border-0'
+                              : tx.status === 'processing'
+                              ? 'bg-primary/10 text-primary border-0'
+                              : tx.status === 'pending'
+                              ? 'bg-[hsl(var(--warning))]/10 text-[hsl(var(--warning))] border-0'
                               : 'bg-destructive/10 text-destructive border-0'
                           }
                         >

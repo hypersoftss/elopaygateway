@@ -56,7 +56,8 @@ export const useRealtimeTransactions = ({
       const statusLabels: Record<string, { en: string; zh: string }> = {
         success: { en: '✅ Transaction Successful', zh: '交易成功' },
         failed: { en: '❌ Transaction Failed', zh: '交易失败' },
-        pending: { en: '⏳ Transaction Pending', zh: '交易处理中' },
+        processing: { en: '🔄 Transaction Processing', zh: '交易处理中' },
+        pending: { en: '⏳ Transaction Pending', zh: '交易待处理' },
       };
 
       const statusLabel = statusLabels[updatedTx.status] || statusLabels.pending;

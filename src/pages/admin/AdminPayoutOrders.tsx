@@ -119,7 +119,7 @@ const AdminPayoutOrders = () => {
     tx.account_holder_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const pendingTransactions = filteredTransactions.filter(tx => tx.status === 'pending');
+  const pendingTransactions = filteredTransactions.filter(tx => tx.status === 'pending' || tx.status === 'processing');
 
   const handleBulkCheck = async () => {
     if (pendingTransactions.length === 0) {
