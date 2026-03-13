@@ -404,6 +404,7 @@ const AdminWithdrawals = () => {
                 <SelectContent>
                   <SelectItem value="all">{t('common.all')}</SelectItem>
                   <SelectItem value="pending">{t('status.pending')}</SelectItem>
+                  <SelectItem value="processing">Processing</SelectItem>
                   <SelectItem value="success">{t('status.success')}</SelectItem>
                   <SelectItem value="failed">{t('status.failed')}</SelectItem>
                 </SelectContent>

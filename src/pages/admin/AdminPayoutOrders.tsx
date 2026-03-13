@@ -275,7 +275,7 @@ const AdminPayoutOrders = () => {
       if (error) throw error;
       if (!data?.success) throw new Error(data?.message || 'Reject failed');
 
-      toast({ title: '✅ Rejected', description: 'Payout rejected. Frozen balance returned to merchant.' });
+      toast({ title: '✅ Rejected', description: 'Payout rejected. Amount refunded to merchant balance.' });
       fetchTransactions();
     } catch (error: any) {
       toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
