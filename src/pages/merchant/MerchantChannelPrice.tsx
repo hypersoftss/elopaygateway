@@ -124,8 +124,8 @@ const MerchantChannelPrice = () => {
               ) : (
                 <>
                   <div className="text-center mb-6">
-                    <p className="text-5xl font-bold text-[hsl(var(--warning))]">{fees.payout_fee} %</p>
-                    <p className="text-sm text-muted-foreground mt-2">Added to each withdrawal request</p>
+                    <p className="text-5xl font-bold text-[hsl(var(--warning))]">{currencySymbol}10</p>
+                    <p className="text-sm text-muted-foreground mt-2">Flat fee per withdrawal</p>
                   </div>
 
                   <div className="bg-muted/50 rounded-lg p-4 space-y-2">
