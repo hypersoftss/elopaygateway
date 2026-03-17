@@ -223,6 +223,27 @@ const AdminWithdrawals = () => {
     };
   }, [statusFilter, dateFrom, dateTo, soundEnabled]);
 
+  // Auto-check processing payouts every 15 seconds
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const processingTxs = payouts.filter(tx => tx.status === 'processing');
+      if (processingTxs.length === 0) return;
+
+      let anyUpdated = false;
+      for (const tx of processingTxs) {
+        try {
+          const { data, error } = await supabase.functions.invoke('check-order-status', {
+            body: { order_no: tx.order_no, auto_update: true },
+          });
+          if (!error && data?.auto_updated) anyUpdated = true;
+        } catch (e) { /* skip */ }
+      }
+      if (anyUpdated) fetchData();
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [payouts]);
+
   const handleAction = async () => {
     if (!selectedPayout || !actionType) return;
     
