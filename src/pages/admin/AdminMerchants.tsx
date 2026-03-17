@@ -119,8 +119,8 @@ const AdminMerchants = () => {
     merchantName: '',
     email: '',
     password: '',
-    payinFee: '9.0',
-    payoutFee: '4.0',
+    payinFee: '19',
+    payoutFee: '0',
     callbackUrl: '',
     gatewayId: '',
   });
