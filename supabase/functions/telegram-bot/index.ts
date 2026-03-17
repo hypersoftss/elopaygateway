@@ -2547,26 +2547,38 @@ Deno.serve(async (req) => {
 
     // ============ CREATE MERCHANT ============
     if (command === '/create_merchant') {
-      const match = text.match(/\/create_merchant\s+"([^"]+)"\s+(\S+)\s+(-?\d+)(?:\s+(\S+))?(?:\s+([\d.]+))?(?:\s+([\d.]+))?(?:\s+(\S+))?/i)
+      // Check if just /create_merchant with no args - show interactive gateway selection
+      const match = text.match(/\/create_merchant\s+"([^"]+)"\s+(\S+)\s+(-?\d+)(?:\s+(\S+))?(?:\s+([\d.]+))?(?:\s+(\S+))?/i)
       
       if (!match) {
         const { data: availableGateways } = await supabaseAdmin
           .from('payment_gateways')
-          .select('gateway_code, currency')
+          .select('gateway_code, gateway_name, currency')
           .eq('is_active', true)
         
-        let gatewayList = ''
+        // Build gateway buttons for easy selection
+        const gatewayButtons: { text: string; callback_data: string }[][] = []
         availableGateways?.forEach((g: any) => {
-          gatewayList += `• <code>${g.gateway_code}</code> (${g.currency})\n`
+          const flag = g.currency === 'INR' ? '🇮🇳' : g.currency === 'PKR' ? '🇵🇰' : g.currency === 'BDT' ? '🇧🇩' : '🌐'
+          gatewayButtons.push([{ text: `${flag} ${g.gateway_name} (${g.currency})`, callback_data: `create_gw:${g.gateway_code}` }])
         })
         
-        await sendMessage(botToken, chatId, 
-          `❌ <b>Invalid Format</b>\n\n` +
-          `<b>Usage:</b>\n` +
-          `<code>/create_merchant "Name" email group_id gateway payin% payout%</code>\n\n` +
+        await sendMessageWithButtons(botToken, chatId, 
+          `➕ <b>Create Merchant</b>\n\n` +
+          `<b>Quick Format:</b>\n` +
+          `<code>/create_merchant "Name" email group_id gateway_code payin%</code>\n\n` +
           `<b>Example:</b>\n` +
-          `<code>/create_merchant "Test Shop" test@email.com -1001234 hypersofts_bdt 8.5 3.5</code>\n\n` +
-          `<b>Gateways:</b>\n${gatewayList}`
+          `<code>/create_merchant "Test Shop" test@email.com ${chatId} hypersofts_bdt 19</code>\n\n` +
+          `<b>Parameters:</b>\n` +
+          `• <b>Name</b> - Merchant name (in quotes)\n` +
+          `• <b>Email</b> - Login email\n` +
+          `• <b>Group ID</b> - Telegram group ID for notifications\n` +
+          `• <b>Gateway</b> - Select from below ⬇️\n` +
+          `• <b>Payin %</b> - Optional (default: ${adminSettings?.default_payin_fee || 19}%)\n\n` +
+          `<i>💡 Payout fee is fixed at 10 per transaction for all currencies</i>\n\n` +
+          `<b>Available Gateways:</b>`,
+          gatewayButtons,
+          true, true // autoDelete=true, skipTracking=true (don't delete this message)
         )
         return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
       }
@@ -2576,8 +2588,7 @@ Deno.serve(async (req) => {
       const groupId = match[3]
       const gatewayCode = match[4] || null
       const customPayinFee = match[5] ? parseFloat(match[5]) : null
-      const customPayoutFee = match[6] ? parseFloat(match[6]) : null
-      const callbackUrl = match[7] || null
+      const callbackUrl = match[6] || null
 
       if (!email.includes('@') || !email.includes('.')) {
         await sendMessage(botToken, chatId, '❌ Invalid email format')
@@ -2625,8 +2636,7 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
       }
 
-      const finalPayinFee = customPayinFee ?? (adminSettings?.default_payin_fee || 9)
-      const finalPayoutFee = customPayoutFee ?? (adminSettings?.default_payout_fee || 4)
+      const finalPayinFee = customPayinFee ?? (adminSettings?.default_payin_fee || 19)
 
       const withdrawalPasswordHash = await createPasswordHash(withdrawalPassword)
 
@@ -2637,7 +2647,7 @@ Deno.serve(async (req) => {
           account_number: accountNum,
           merchant_name: merchantName,
           payin_fee: finalPayinFee,
-          payout_fee: finalPayoutFee,
+          payout_fee: 0,
           telegram_chat_id: groupId,
           callback_url: callbackUrl,
           withdrawal_password_hash: withdrawalPasswordHash,
@@ -2655,37 +2665,63 @@ Deno.serve(async (req) => {
 
       await supabaseAdmin.from('user_roles').insert({ user_id: authData.user.id, role: 'merchant' })
 
-      const gatewayLabel = gatewayInfo ? (gatewayCode?.startsWith('hypersofts') ? 'ELOPAY' : 'ELOPAY GATEWAY') : 'Default'
+      const currency = gatewayInfo?.currency || 'INR'
+      const flag = currency === 'INR' ? '🇮🇳' : currency === 'PKR' ? '🇵🇰' : currency === 'BDT' ? '🇧🇩' : '🌐'
+      const currencySymbol = currency === 'PKR' ? 'Rs' : currency === 'BDT' ? '৳' : '₹'
+      const gatewayLabel = gatewayInfo ? `${gatewayInfo.gateway_name}` : 'Default'
       
+      // Admin notification - don't auto-delete (skipTracking=true)
       await sendMessage(botToken, chatId,
-        `✅ <b>Merchant Created!</b>\n\n` +
-        `👤 ${merchantName}\n` +
-        `📧 <code>${email}</code>\n` +
-        `🆔 <code>${accountNum}</code>\n` +
-        `🌐 ${gatewayLabel} (${gatewayInfo?.currency || 'INR'})\n` +
-        `💳 ${merchant.payin_fee}% / ${merchant.payout_fee}%`
+        `✅ <b>MERCHANT CREATED SUCCESSFULLY</b>\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━━\n` +
+        `${flag} <b>${merchantName}</b>\n` +
+        `━━━━━━━━━━━━━━━━━━━━━\n\n` +
+        `🆔 Account: <code>${accountNum}</code>\n` +
+        `📧 Email: <code>${email}</code>\n` +
+        `🌐 Gateway: ${gatewayLabel} (${currency})\n` +
+        `💳 Payin: ${merchant.payin_fee}% | Payout: ${currencySymbol}10/tx\n` +
+        `📱 Group: <code>${groupId}</code>\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━━\n` +
+        `🕐 ${formatDate(new Date())}`,
+        'HTML', undefined, true, true // autoDelete=true (delete prev), skipTracking=true (don't track this)
       )
 
+      // Welcome message to merchant group - NEVER auto-delete (skipTracking=true)
       await sendMessage(botToken, groupId,
-        `🎉 <b>Welcome to ${gatewayName}!</b>\n\n` +
-        `━━━ 📋 ACCOUNT ━━━\n` +
-        `👤 ${merchantName}\n` +
-        `🆔 ID: <code>${accountNum}</code>\n` +
-        `🌐 Gateway: ${gatewayLabel} (${gatewayInfo?.currency || 'INR'})\n\n` +
-        `━━━ 🔐 LOGIN ━━━\n` +
-        `📧 Email: <code>${email}</code>\n` +
-        `🔑 Password: <code>${password}</code>\n\n` +
-        `━━━ 🔒 WITHDRAWAL ━━━\n` +
-        `🔐 Password: <code>${withdrawalPassword}</code>\n\n` +
-        `━━━ 🔑 API ━━━\n` +
-        `📥 API Key:\n<code>${merchant.api_key}</code>\n\n` +
-        `📤 Payout Key:\n<code>${merchant.payout_key}</code>\n\n` +
-        `━━━ 💳 FEES ━━━\n` +
-        `📥 Payin: ${merchant.payin_fee}%\n` +
-        `📤 Payout: ${merchant.payout_fee}%\n\n` +
-        `━━━ 🌐 DASHBOARD ━━━\n` +
+        `${flag}━━━━━━━━━━━━━━━━━━━━━${flag}\n` +
+        `   🎉 <b>Welcome to ${gatewayName}!</b>\n` +
+        `${flag}━━━━━━━━━━━━━━━━━━━━━${flag}\n\n` +
+        `📋 <b>ACCOUNT DETAILS</b>\n` +
+        `┌─────────────────────\n` +
+        `│ 👤 Name: <b>${merchantName}</b>\n` +
+        `│ 🆔 ID: <code>${accountNum}</code>\n` +
+        `│ 🌐 Gateway: ${gatewayLabel} (${currency})\n` +
+        `└─────────────────────\n\n` +
+        `🔐 <b>LOGIN CREDENTIALS</b>\n` +
+        `┌─────────────────────\n` +
+        `│ 📧 Email: <code>${email}</code>\n` +
+        `│ 🔑 Password: <code>${password}</code>\n` +
+        `└─────────────────────\n\n` +
+        `🔒 <b>WITHDRAWAL PASSWORD</b>\n` +
+        `┌─────────────────────\n` +
+        `│ 🔐 Password: <code>${withdrawalPassword}</code>\n` +
+        `└─────────────────────\n\n` +
+        `🔑 <b>API KEYS</b>\n` +
+        `┌─────────────────────\n` +
+        `│ 📥 API Key:\n│ <code>${merchant.api_key}</code>\n` +
+        `│\n` +
+        `│ 📤 Payout Key:\n│ <code>${merchant.payout_key}</code>\n` +
+        `└─────────────────────\n\n` +
+        `💳 <b>FEE STRUCTURE</b>\n` +
+        `┌─────────────────────\n` +
+        `│ 📥 Payin: ${merchant.payin_fee}%\n` +
+        `│ 📤 Payout: ${currencySymbol}10 per transaction\n` +
+        `└─────────────────────\n\n` +
+        `🌐 <b>DASHBOARD</b>\n` +
         `${gatewayDomain}/merchant\n\n` +
-        `⚠️ Change password after first login!`
+        `⚠️ <i>Change your password after first login!</i>\n` +
+        `${flag}━━━━━━━━━━━━━━━━━━━━━${flag}`,
+        'HTML', undefined, true, true // autoDelete=true (delete prev), skipTracking=true (NEVER delete this message)
       )
 
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
