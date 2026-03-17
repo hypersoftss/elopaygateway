@@ -579,7 +579,7 @@ const AdminMerchants = () => {
       m.balance.toString(),
       m.frozen_balance.toString(),
       `${m.payin_fee}%`,
-      `${m.payout_fee}%`,
+      '₹10/tx',
       m.is_active ? 'Active' : 'Inactive',
       m.is_2fa_enabled ? 'Enabled' : 'Disabled',
       format(new Date(m.created_at), 'yyyy-MM-dd HH:mm:ss')
