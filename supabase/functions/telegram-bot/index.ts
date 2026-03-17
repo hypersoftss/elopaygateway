@@ -1634,7 +1634,7 @@ Deno.serve(async (req) => {
         { command: 'today', description: '📊 Today\'s summary' },
         { command: 'history', description: '📋 Transaction history' },
         { command: 'status', description: '🔍 Order status' },
-        { command: 'set_fee', description: '💳 Set merchant fees' },
+        { command: 'set_fee', description: '💳 Set merchant payin fee' },
         { command: 'set_gateway', description: '🌐 Assign gateway' },
         { command: 'set_telegram', description: '📱 Set Telegram group' },
         { command: 'toggle', description: '🔄 Enable/disable merchant' },
