@@ -2733,23 +2733,27 @@ Deno.serve(async (req) => {
         'HTML', undefined, true, true // autoDelete=true (delete prev), skipTracking=true (don't track this)
       )
 
-      // Welcome message to merchant group - clean, user-friendly, only essential info
+      // Welcome message to merchant group - bilingual (Chinese + English), with official channel
       // NEVER auto-delete (skipTracking=true)
       await sendMessage(botToken, groupId,
+        `🎉 <b>欢迎加入 ${gatewayName}！</b>\n` +
         `🎉 <b>Welcome to ${gatewayName}!</b>\n\n` +
+        `你好 <b>${merchantName}</b>，您的账户已创建成功。\n` +
         `Hello <b>${merchantName}</b>, your account is ready.\n\n` +
         `━━━━━━━━━━━━━━━━━━━\n` +
-        `🆔 <b>Account ID:</b> <code>${accountNum}</code>\n` +
+        `🆔 <b>账户ID / Account ID:</b>\n<code>${accountNum}</code>\n` +
         `━━━━━━━━━━━━━━━━━━━\n\n` +
-        `🔐 <b>Login Credentials</b>\n` +
-        `📧 Email: <code>${email}</code>\n` +
-        `🔑 Password: <code>${password}</code>\n\n` +
-        `🔒 <b>Withdrawal Password</b>\n` +
+        `🔐 <b>登录凭证 / Login Credentials</b>\n` +
+        `📧 邮箱 / Email: <code>${email}</code>\n` +
+        `🔑 密码 / Password: <code>${password}</code>\n\n` +
+        `🔒 <b>提现密码 / Withdrawal Password</b>\n` +
         `🔐 <code>${withdrawalPassword}</code>\n\n` +
-        `💳 <b>Fee Structure</b>\n` +
-        `📥 Payin: <b>${merchant.payin_fee}%</b>\n` +
-        `📤 Payout: <b>${currencySymbol}10</b> per request\n\n` +
-        `🌐 <b>Dashboard:</b> ${gatewayDomain}/merchant\n\n` +
+        `💳 <b>费率结构 / Fee Structure</b>\n` +
+        `📥 代收 / Payin: <b>${merchant.payin_fee}%</b>\n` +
+        `📤 代付 / Payout: <b>${currencySymbol}10</b> 每笔 / per request\n\n` +
+        `🌐 <b>控制台 / Dashboard:</b>\n${gatewayDomain}/merchant\n\n` +
+        `📢 <b>官方频道 / Official Channel:</b>\n<a href="https://t.me/EloPayGatewayOfficial">@EloPayGatewayOfficial</a>\n\n` +
+        `⚠️ <i>请首次登录后修改密码！</i>\n` +
         `⚠️ <i>Please change your password after first login!</i>`,
         'HTML', undefined, true, true
       )
