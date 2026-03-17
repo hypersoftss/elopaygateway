@@ -136,7 +136,7 @@ const MerchantChannelPrice = () => {
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Fee:</span>
-                      <span className="text-[hsl(var(--success))]">+{formatCurrency(payoutFeeAmount, currencySymbol)}</span>
+                      <span className="text-[hsl(var(--success))]">+{formatCurrency(payoutFee, currencySymbol)}</span>
                     </div>
                     <div className="flex justify-between text-sm pt-2 border-t border-border">
                       <span className="font-medium text-[hsl(var(--warning))]">Total Deduction:</span>
