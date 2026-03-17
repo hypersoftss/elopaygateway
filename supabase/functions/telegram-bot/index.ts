@@ -1507,6 +1507,53 @@ Deno.serve(async (req) => {
         }
       }
       
+      // ============ CREATE GATEWAY SELECTION CALLBACK ============
+      else if (action === 'create_gw') {
+        const gwCode = params[0]
+        const { data: gateway } = await supabaseAdmin
+          .from('payment_gateways')
+          .select('gateway_code, gateway_name, currency')
+          .eq('gateway_code', gwCode)
+          .maybeSingle()
+        
+        if (gateway) {
+          const flag = gateway.currency === 'INR' ? '🇮🇳' : gateway.currency === 'PKR' ? '🇵🇰' : gateway.currency === 'BDT' ? '🇧🇩' : '🌐'
+          const defaultFee = adminSettings?.default_payin_fee || 19
+          
+          await editMessage(botToken, chatId, messageId, 
+            `${flag} <b>Create Merchant - ${gateway.gateway_name} (${gateway.currency})</b>\n\n` +
+            `Copy and fill this command:\n\n` +
+            `<code>/create_merchant "MerchantName" email@example.com ${chatId} ${gwCode} ${defaultFee}</code>\n\n` +
+            `<b>Replace:</b>\n` +
+            `• <b>MerchantName</b> → Actual name\n` +
+            `• <b>email@example.com</b> → Merchant email\n` +
+            `• <b>${chatId}</b> → Merchant group ID\n` +
+            `• <b>${defaultFee}</b> → Payin % (optional)\n\n` +
+            `<i>💡 Use /tg_id in merchant group to get their group ID</i>`, {
+            inline_keyboard: [[{ text: '« Back', callback_data: 'create_merchant_menu' }]],
+          })
+        }
+      }
+      
+      // ============ CREATE MERCHANT MENU CALLBACK ============
+      else if (action === 'create_merchant_menu') {
+        const { data: availableGateways } = await supabaseAdmin
+          .from('payment_gateways')
+          .select('gateway_code, gateway_name, currency')
+          .eq('is_active', true)
+        
+        const gatewayButtons: { text: string; callback_data: string }[][] = []
+        availableGateways?.forEach((g: any) => {
+          const flag = g.currency === 'INR' ? '🇮🇳' : g.currency === 'PKR' ? '🇵🇰' : g.currency === 'BDT' ? '🇧🇩' : '🌐'
+          gatewayButtons.push([{ text: `${flag} ${g.gateway_name} (${g.currency})`, callback_data: `create_gw:${g.gateway_code}` }])
+        })
+        
+        await editMessage(botToken, chatId, messageId,
+          `➕ <b>Create Merchant</b>\n\n` +
+          `Select a gateway to get the command template:`,
+          { inline_keyboard: gatewayButtons })
+      }
+      
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
