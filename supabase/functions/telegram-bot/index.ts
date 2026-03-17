@@ -2733,28 +2733,50 @@ Deno.serve(async (req) => {
         'HTML', undefined, true, true // autoDelete=true (delete prev), skipTracking=true (don't track this)
       )
 
-      // Welcome message to merchant group - bilingual (Chinese + English), with official channel
+      // Welcome message to merchant group - premium bilingual UI
       // NEVER auto-delete (skipTracking=true)
       await sendMessage(botToken, groupId,
-        `🎉 <b>欢迎加入 ${gatewayName}！</b>\n` +
-        `🎉 <b>Welcome to ${gatewayName}!</b>\n\n` +
-        `你好 <b>${merchantName}</b>，您的账户已创建成功。\n` +
-        `Hello <b>${merchantName}</b>, your account is ready.\n\n` +
-        `━━━━━━━━━━━━━━━━━━━\n` +
-        `🆔 <b>账户ID / Account ID:</b>\n<code>${accountNum}</code>\n` +
-        `━━━━━━━━━━━━━━━━━━━\n\n` +
-        `🔐 <b>登录凭证 / Login Credentials</b>\n` +
-        `📧 邮箱 / Email: <code>${email}</code>\n` +
-        `🔑 密码 / Password: <code>${password}</code>\n\n` +
-        `🔒 <b>提现密码 / Withdrawal Password</b>\n` +
-        `🔐 <code>${withdrawalPassword}</code>\n\n` +
-        `💳 <b>费率结构 / Fee Structure</b>\n` +
-        `📥 代收 / Payin: <b>${merchant.payin_fee}%</b>\n` +
-        `📤 代付 / Payout: <b>${currencySymbol}10</b> 每笔 / per request\n\n` +
-        `🌐 <b>控制台 / Dashboard:</b>\n${gatewayDomain}/merchant\n\n` +
-        `📢 <b>官方频道 / Official Channel:</b>\n<a href="https://t.me/EloPayGatewayOfficial">@EloPayGatewayOfficial</a>\n\n` +
-        `⚠️ <i>请首次登录后修改密码！</i>\n` +
-        `⚠️ <i>Please change your password after first login!</i>`,
+        `╔══════════════════════════════╗\n` +
+        `     💎 <b>${gatewayName.toUpperCase()}</b> 💎\n` +
+        `     <i>Premium Payment Gateway</i>\n` +
+        `╚══════════════════════════════╝\n\n` +
+
+        `✅ <b>账户创建成功 / Account Created</b>\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+
+        `👤 <b>商户 / Merchant:</b> ${merchantName}\n` +
+        `🆔 <b>账户 / Account:</b> <code>${accountNum}</code>\n\n` +
+
+        `┌─────────────────────────────┐\n` +
+        `│  🔐 <b>登录信息 / Login Info</b>          │\n` +
+        `├─────────────────────────────┤\n` +
+        `│  📧 <code>${email}</code>\n` +
+        `│  🔑 <code>${password}</code>\n` +
+        `└─────────────────────────────┘\n\n` +
+
+        `┌─────────────────────────────┐\n` +
+        `│  🔒 <b>提现密码 / Withdrawal PIN</b>    │\n` +
+        `├─────────────────────────────┤\n` +
+        `│  🛡️ <code>${withdrawalPassword}</code>\n` +
+        `└─────────────────────────────┘\n\n` +
+
+        `┌─────────────────────────────┐\n` +
+        `│  💰 <b>费率 / Fee Structure</b>           │\n` +
+        `├─────────────────────────────┤\n` +
+        `│  📥 代收 Payin  ➜  <b>${merchant.payin_fee}%</b>\n` +
+        `│  📤 代付 Payout ➜  <b>${currencySymbol}10 / txn</b>\n` +
+        `└─────────────────────────────┘\n\n` +
+
+        `🌐 <b>Dashboard:</b> <a href="${gatewayDomain}/merchant">${gatewayDomain}/merchant</a>\n\n` +
+
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `📢 <a href="https://t.me/EloPayGatewayOfficial">官方频道 Official Channel</a>\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+
+        `⚠️ <i>请首次登录后立即修改密码</i>\n` +
+        `⚠️ <i>Change password after first login</i>\n\n` +
+
+        `🕐 ${formatDate(new Date())}`,
         'HTML', undefined, true, true
       )
 
