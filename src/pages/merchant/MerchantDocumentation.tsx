@@ -2872,11 +2872,13 @@ Route::post('/elopay/callback/payout', [EloPayController::class, 'payoutCallback
           </CardHeader>
           <CardContent>
              <Tabs defaultValue="php">
-              <TabsList className="grid w-full grid-cols-7">
-                <TabsTrigger value="php">📄 Payin PHP</TabsTrigger>
-                <TabsTrigger value="usdt-php">💲 USDT PHP</TabsTrigger>
-                <TabsTrigger value="payout-php">📄 Payout PHP</TabsTrigger>
-                <TabsTrigger value="api">API Endpoints</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-9">
+                <TabsTrigger value="php">📄 Payin</TabsTrigger>
+                <TabsTrigger value="usdt-php">💲 USDT</TabsTrigger>
+                <TabsTrigger value="payout-php">📤 Payout</TabsTrigger>
+                <TabsTrigger value="laravel" className="text-red-500">🔥 Laravel</TabsTrigger>
+                <TabsTrigger value="whmcs" className="text-blue-500">🌐 WHMCS</TabsTrigger>
+                <TabsTrigger value="api">API</TabsTrigger>
                 <TabsTrigger value="signature">Signature</TabsTrigger>
                 <TabsTrigger value="callback">Callback</TabsTrigger>
                 <TabsTrigger value="sdk">SDK</TabsTrigger>
@@ -2892,6 +2894,14 @@ Route::post('/elopay/callback/payout', [EloPayController::class, 'payoutCallback
 
               <TabsContent value="payout-php" className="mt-6">
                 {renderPayoutPHPCodeDocs()}
+              </TabsContent>
+
+              <TabsContent value="laravel" className="mt-6">
+                {renderLaravelDocs()}
+              </TabsContent>
+
+              <TabsContent value="whmcs" className="mt-6">
+                {renderWHMCSDocs()}
               </TabsContent>
 
               <TabsContent value="api" className="mt-6">
