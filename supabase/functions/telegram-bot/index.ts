@@ -2821,7 +2821,7 @@ Deno.serve(async (req) => {
         `🌐 Gateway: ${gatewayType} (${currency})\n\n` +
         `💰 Balance: ${formatAmount(merchant.balance || 0, currency)}\n` +
         `🧊 Frozen: ${formatAmount(merchant.frozen_balance || 0, currency)}\n\n` +
-        `💳 Fees: ${merchant.payin_fee}% / ${merchant.payout_fee}%\n` +
+        `💳 Payin: ${merchant.payin_fee}% | Payout: ${(merchant.payment_gateways as any)?.currency === 'PKR' ? 'Rs' : (merchant.payment_gateways as any)?.currency === 'BDT' ? '৳' : '₹'}10/tx\n` +
         `📱 TG: <code>${merchant.telegram_chat_id || 'N/A'}</code>`,
         [
           [
