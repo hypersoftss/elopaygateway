@@ -464,12 +464,7 @@ Deno.serve(async (req) => {
       txData?.id
     )
 
-    // Send Telegram notification for payin created
-    await sendTelegramNotification('payin_created', merchant.id, {
-      orderNo,
-      merchantOrderNo: merchant_order_no,
-      amount: amountNum,
-    })
+    // NOTE: No Telegram notification for payin created - only send on success/failed via callback
 
     // Send LARGE TRANSACTION ALERT to admin if threshold exceeded
     const largePayinThreshold = adminSettings?.[0]?.large_payin_threshold || 100000
