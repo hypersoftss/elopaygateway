@@ -2423,26 +2423,25 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // ============ /set_fee [account_no] [payin%] [payout%] ============
+    // ============ /set_fee [account_no] [payin%] ============
     if (command === '/set_fee' || command === '/setfee') {
-      if (args.length < 3) {
-        await sendMessage(botToken, chatId, '❌ Usage: <code>/set_fee [account_no] [payin%] [payout%]</code>\n\nExample: /set_fee 100000001 8.5 3.5')
+      if (args.length < 2) {
+        await sendMessage(botToken, chatId, '❌ Usage: <code>/set_fee [account_no] [payin%]</code>\n\nExample: /set_fee 100000001 19\n\n<i>Payout fee is fixed at 10 per transaction</i>')
         return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
       }
 
       const payinFee = parseFloat(args[1])
-      const payoutFee = parseFloat(args[2])
       
-      if (isNaN(payinFee) || isNaN(payoutFee) || payinFee < 0 || payoutFee < 0) {
-        await sendMessage(botToken, chatId, '❌ Invalid fee values')
+      if (isNaN(payinFee) || payinFee < 0) {
+        await sendMessage(botToken, chatId, '❌ Invalid fee value')
         return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
       }
 
       const { data: merchant, error } = await supabaseAdmin
         .from('merchants')
-        .update({ payin_fee: payinFee, payout_fee: payoutFee })
+        .update({ payin_fee: payinFee })
         .eq('account_number', args[0])
-        .select('merchant_name, telegram_chat_id')
+        .select('merchant_name, telegram_chat_id, payment_gateways(currency)')
         .maybeSingle()
       
       if (error || !merchant) {
@@ -2450,17 +2449,20 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
       }
 
+      const mCurrency = (merchant as any).payment_gateways?.currency || 'INR'
+      const mSymbol = mCurrency === 'PKR' ? 'Rs' : mCurrency === 'BDT' ? '৳' : '₹'
+
       await sendMessage(botToken, chatId, 
         `✅ Fees updated for <b>${merchant.merchant_name}</b>\n\n` +
         `📥 Payin: ${payinFee}%\n` +
-        `📤 Payout: ${payoutFee}%`
+        `📤 Payout: ${mSymbol}10 flat per payout`
       )
       
       if (merchant.telegram_chat_id) {
         await sendMessage(botToken, merchant.telegram_chat_id,
           `💳 <b>Fee Structure Updated</b>\n\n` +
           `📥 Payin Fee: ${payinFee}%\n` +
-          `📤 Payout Fee: ${payoutFee}%`
+          `📤 Payout Fee: ${mSymbol}10 flat per payout`
         )
       }
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
