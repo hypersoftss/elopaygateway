@@ -1172,7 +1172,7 @@ const AdminMerchants = () => {
                             IN {merchant.payin_fee}%
                           </Badge>
                           <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-600 border-orange-500/20">
-                            OUT {merchant.payout_fee}%
+                            OUT ₹10/tx
                           </Badge>
                         </div>
                       </TableCell>
