@@ -891,13 +891,15 @@ const AdminMerchants = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>{t('merchants.payoutFee')} (%)</Label>
-                    <Input
-                      type="number"
-                      step="0.1"
-                      value={newMerchant.payoutFee}
-                      onChange={(e) => setNewMerchant({ ...newMerchant, payoutFee: e.target.value })}
-                    />
+                    <Label>{t('merchants.payoutFee')}</Label>
+                    <div className="h-10 px-3 rounded-md border border-input bg-muted/50 flex items-center text-sm font-medium">
+                      {(() => {
+                        const selGw = gateways.find(g => g.id === newMerchant.gatewayId);
+                        const sym = getCurrencySymbol(selGw?.currency);
+                        return `${sym}10 / per payout`;
+                      })()}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Fixed flat fee per payout request</p>
                   </div>
                 </div>
                 <div className="space-y-2">
