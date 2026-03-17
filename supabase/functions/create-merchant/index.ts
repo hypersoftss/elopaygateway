@@ -99,8 +99,8 @@ Deno.serve(async (req) => {
       .select('default_payin_fee, default_payout_fee')
       .limit(1)
 
-    const defaultPayinFee = settings?.[0]?.default_payin_fee || 9.0
-    const defaultPayoutFee = settings?.[0]?.default_payout_fee || 4.0
+    const defaultPayinFee = settings?.[0]?.default_payin_fee || 17.0
+    const defaultPayoutFee = settings?.[0]?.default_payout_fee || 0
 
     // Get gateway info for response
     let gatewayInfo = null
