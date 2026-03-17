@@ -251,7 +251,7 @@ const MerchantWithdrawal = () => {
     const dailyLimit = merchantData.daily_withdrawal_limit || 200000;
     const todayWithdrawals = merchantData.todayWithdrawals || 0;
     const remainingDaily = dailyLimit - todayWithdrawals;
-    const fee = (amount * merchantData.payout_fee) / 100 + FIXED_PAYOUT_FEE;
+    const fee = FIXED_PAYOUT_FEE;
     const totalDeduction = amount + fee;
     
     if (amount <= 0) {
