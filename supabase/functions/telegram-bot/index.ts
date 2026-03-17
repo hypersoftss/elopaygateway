@@ -1728,14 +1728,20 @@ Deno.serve(async (req) => {
 
       // /fees - View fee rates
       if (command === '/fees' || command === '/rate' || command === '/rates') {
+        const currencySymbol = currency === 'PKR' ? 'Rs' : currency === 'BDT' ? '৳' : '₹'
+        const fixedPayoutFee = 10
+        
         const msg = `💳 <b>${m.merchant_name} - Fees</b>\n\n` +
           `━━━ FEE STRUCTURE ━━━\n` +
           `📥 Payin Fee: <b>${m.payin_fee}%</b>\n` +
-          `📤 Payout Fee: <b>${m.payout_fee}%</b>\n\n` +
+          `📤 Payout Fee: <b>${currencySymbol}${fixedPayoutFee} per payout</b>\n\n` +
           `━━━ EXAMPLE ━━━\n` +
           `For ${formatAmount(10000, currency)} payin:\n` +
           `• Fee: ${formatAmount(10000 * m.payin_fee / 100, currency)}\n` +
-          `• You receive: ${formatAmount(10000 - (10000 * m.payin_fee / 100), currency)}`
+          `• You receive: ${formatAmount(10000 - (10000 * m.payin_fee / 100), currency)}\n\n` +
+          `For ${formatAmount(10000, currency)} payout:\n` +
+          `• Fee: ${formatAmount(fixedPayoutFee, currency)}\n` +
+          `• Total deducted: ${formatAmount(10000 + fixedPayoutFee, currency)}`
         
         await sendMessage(botToken, chatId, msg)
         return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
