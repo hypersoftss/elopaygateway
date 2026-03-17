@@ -1507,6 +1507,53 @@ Deno.serve(async (req) => {
         }
       }
       
+      // ============ CREATE GATEWAY SELECTION CALLBACK ============
+      else if (action === 'create_gw') {
+        const gwCode = params[0]
+        const { data: gateway } = await supabaseAdmin
+          .from('payment_gateways')
+          .select('gateway_code, gateway_name, currency')
+          .eq('gateway_code', gwCode)
+          .maybeSingle()
+        
+        if (gateway) {
+          const flag = gateway.currency === 'INR' ? '🇮🇳' : gateway.currency === 'PKR' ? '🇵🇰' : gateway.currency === 'BDT' ? '🇧🇩' : '🌐'
+          const defaultFee = adminSettings?.default_payin_fee || 19
+          
+          await editMessage(botToken, chatId, messageId, 
+            `${flag} <b>Create Merchant - ${gateway.gateway_name} (${gateway.currency})</b>\n\n` +
+            `Copy and fill this command:\n\n` +
+            `<code>/create_merchant "MerchantName" email@example.com ${chatId} ${gwCode} ${defaultFee}</code>\n\n` +
+            `<b>Replace:</b>\n` +
+            `• <b>MerchantName</b> → Actual name\n` +
+            `• <b>email@example.com</b> → Merchant email\n` +
+            `• <b>${chatId}</b> → Merchant group ID\n` +
+            `• <b>${defaultFee}</b> → Payin % (optional)\n\n` +
+            `<i>💡 Use /tg_id in merchant group to get their group ID</i>`, {
+            inline_keyboard: [[{ text: '« Back', callback_data: 'create_merchant_menu' }]],
+          })
+        }
+      }
+      
+      // ============ CREATE MERCHANT MENU CALLBACK ============
+      else if (action === 'create_merchant_menu') {
+        const { data: availableGateways } = await supabaseAdmin
+          .from('payment_gateways')
+          .select('gateway_code, gateway_name, currency')
+          .eq('is_active', true)
+        
+        const gatewayButtons: { text: string; callback_data: string }[][] = []
+        availableGateways?.forEach((g: any) => {
+          const flag = g.currency === 'INR' ? '🇮🇳' : g.currency === 'PKR' ? '🇵🇰' : g.currency === 'BDT' ? '🇧🇩' : '🌐'
+          gatewayButtons.push([{ text: `${flag} ${g.gateway_name} (${g.currency})`, callback_data: `create_gw:${g.gateway_code}` }])
+        })
+        
+        await editMessage(botToken, chatId, messageId,
+          `➕ <b>Create Merchant</b>\n\n` +
+          `Select a gateway to get the command template:`,
+          { inline_keyboard: gatewayButtons })
+      }
+      
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
@@ -1587,7 +1634,7 @@ Deno.serve(async (req) => {
         { command: 'today', description: '📊 Today\'s summary' },
         { command: 'history', description: '📋 Transaction history' },
         { command: 'status', description: '🔍 Order status' },
-        { command: 'set_fee', description: '💳 Set merchant fees' },
+        { command: 'set_fee', description: '💳 Set merchant payin fee' },
         { command: 'set_gateway', description: '🌐 Assign gateway' },
         { command: 'set_telegram', description: '📱 Set Telegram group' },
         { command: 'toggle', description: '🔄 Enable/disable merchant' },
@@ -1728,14 +1775,20 @@ Deno.serve(async (req) => {
 
       // /fees - View fee rates
       if (command === '/fees' || command === '/rate' || command === '/rates') {
+        const currencySymbol = currency === 'PKR' ? 'Rs' : currency === 'BDT' ? '৳' : '₹'
+        const fixedPayoutFee = 10
+        
         const msg = `💳 <b>${m.merchant_name} - Fees</b>\n\n` +
           `━━━ FEE STRUCTURE ━━━\n` +
           `📥 Payin Fee: <b>${m.payin_fee}%</b>\n` +
-          `📤 Payout Fee: <b>${m.payout_fee}%</b>\n\n` +
+          `📤 Payout Fee: <b>${currencySymbol}${fixedPayoutFee} per payout</b>\n\n` +
           `━━━ EXAMPLE ━━━\n` +
           `For ${formatAmount(10000, currency)} payin:\n` +
           `• Fee: ${formatAmount(10000 * m.payin_fee / 100, currency)}\n` +
-          `• You receive: ${formatAmount(10000 - (10000 * m.payin_fee / 100), currency)}`
+          `• You receive: ${formatAmount(10000 - (10000 * m.payin_fee / 100), currency)}\n\n` +
+          `For ${formatAmount(10000, currency)} payout:\n` +
+          `• Fee: ${formatAmount(fixedPayoutFee, currency)}\n` +
+          `• Total deducted: ${formatAmount(10000 + fixedPayoutFee, currency)}`
         
         await sendMessage(botToken, chatId, msg)
         return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
@@ -1987,7 +2040,7 @@ Deno.serve(async (req) => {
         `/add_balance [id] [amt] - Add\n` +
         `/deduct_balance [id] [amt] - Deduct\n\n` +
         `━━━ ⚙️ SETTINGS ━━━\n` +
-        `/set_fee [id] [in%] [out%] - Set fees\n` +
+        `/set_fee [id] [payin%] - Set payin fee\n` +
         `/set_gateway [id] [code] - Assign gateway\n` +
         `/set_telegram [id] [group] - Set TG group\n\n` +
         `━━━ 🔐 SECURITY ━━━\n` +
@@ -2417,26 +2470,25 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // ============ /set_fee [account_no] [payin%] [payout%] ============
+    // ============ /set_fee [account_no] [payin%] ============
     if (command === '/set_fee' || command === '/setfee') {
-      if (args.length < 3) {
-        await sendMessage(botToken, chatId, '❌ Usage: <code>/set_fee [account_no] [payin%] [payout%]</code>\n\nExample: /set_fee 100000001 8.5 3.5')
+      if (args.length < 2) {
+        await sendMessage(botToken, chatId, '❌ Usage: <code>/set_fee [account_no] [payin%]</code>\n\nExample: /set_fee 100000001 19\n\n<i>Payout fee is fixed at 10 per transaction</i>')
         return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
       }
 
       const payinFee = parseFloat(args[1])
-      const payoutFee = parseFloat(args[2])
       
-      if (isNaN(payinFee) || isNaN(payoutFee) || payinFee < 0 || payoutFee < 0) {
-        await sendMessage(botToken, chatId, '❌ Invalid fee values')
+      if (isNaN(payinFee) || payinFee < 0) {
+        await sendMessage(botToken, chatId, '❌ Invalid fee value')
         return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
       }
 
       const { data: merchant, error } = await supabaseAdmin
         .from('merchants')
-        .update({ payin_fee: payinFee, payout_fee: payoutFee })
+        .update({ payin_fee: payinFee })
         .eq('account_number', args[0])
-        .select('merchant_name, telegram_chat_id')
+        .select('merchant_name, telegram_chat_id, payment_gateways(currency)')
         .maybeSingle()
       
       if (error || !merchant) {
@@ -2444,17 +2496,20 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
       }
 
+      const mCurrency = (merchant as any).payment_gateways?.currency || 'INR'
+      const mSymbol = mCurrency === 'PKR' ? 'Rs' : mCurrency === 'BDT' ? '৳' : '₹'
+
       await sendMessage(botToken, chatId, 
         `✅ Fees updated for <b>${merchant.merchant_name}</b>\n\n` +
         `📥 Payin: ${payinFee}%\n` +
-        `📤 Payout: ${payoutFee}%`
+        `📤 Payout: ${mSymbol}10 flat per payout`
       )
       
       if (merchant.telegram_chat_id) {
         await sendMessage(botToken, merchant.telegram_chat_id,
           `💳 <b>Fee Structure Updated</b>\n\n` +
           `📥 Payin Fee: ${payinFee}%\n` +
-          `📤 Payout Fee: ${payoutFee}%`
+          `📤 Payout Fee: ${mSymbol}10 flat per payout`
         )
       }
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
@@ -2539,26 +2594,38 @@ Deno.serve(async (req) => {
 
     // ============ CREATE MERCHANT ============
     if (command === '/create_merchant') {
-      const match = text.match(/\/create_merchant\s+"([^"]+)"\s+(\S+)\s+(-?\d+)(?:\s+(\S+))?(?:\s+([\d.]+))?(?:\s+([\d.]+))?(?:\s+(\S+))?/i)
+      // Check if just /create_merchant with no args - show interactive gateway selection
+      const match = text.match(/\/create_merchant\s+"([^"]+)"\s+(\S+)\s+(-?\d+)(?:\s+(\S+))?(?:\s+([\d.]+))?(?:\s+(\S+))?/i)
       
       if (!match) {
         const { data: availableGateways } = await supabaseAdmin
           .from('payment_gateways')
-          .select('gateway_code, currency')
+          .select('gateway_code, gateway_name, currency')
           .eq('is_active', true)
         
-        let gatewayList = ''
+        // Build gateway buttons for easy selection
+        const gatewayButtons: { text: string; callback_data: string }[][] = []
         availableGateways?.forEach((g: any) => {
-          gatewayList += `• <code>${g.gateway_code}</code> (${g.currency})\n`
+          const flag = g.currency === 'INR' ? '🇮🇳' : g.currency === 'PKR' ? '🇵🇰' : g.currency === 'BDT' ? '🇧🇩' : '🌐'
+          gatewayButtons.push([{ text: `${flag} ${g.gateway_name} (${g.currency})`, callback_data: `create_gw:${g.gateway_code}` }])
         })
         
-        await sendMessage(botToken, chatId, 
-          `❌ <b>Invalid Format</b>\n\n` +
-          `<b>Usage:</b>\n` +
-          `<code>/create_merchant "Name" email group_id gateway payin% payout%</code>\n\n` +
+        await sendMessageWithButtons(botToken, chatId, 
+          `➕ <b>Create Merchant</b>\n\n` +
+          `<b>Quick Format:</b>\n` +
+          `<code>/create_merchant "Name" email group_id gateway_code payin%</code>\n\n` +
           `<b>Example:</b>\n` +
-          `<code>/create_merchant "Test Shop" test@email.com -1001234 hypersofts_bdt 8.5 3.5</code>\n\n` +
-          `<b>Gateways:</b>\n${gatewayList}`
+          `<code>/create_merchant "Test Shop" test@email.com ${chatId} hypersofts_bdt 19</code>\n\n` +
+          `<b>Parameters:</b>\n` +
+          `• <b>Name</b> - Merchant name (in quotes)\n` +
+          `• <b>Email</b> - Login email\n` +
+          `• <b>Group ID</b> - Telegram group ID for notifications\n` +
+          `• <b>Gateway</b> - Select from below ⬇️\n` +
+          `• <b>Payin %</b> - Optional (default: ${adminSettings?.default_payin_fee || 19}%)\n\n` +
+          `<i>💡 Payout fee is fixed at 10 per transaction for all currencies</i>\n\n` +
+          `<b>Available Gateways:</b>`,
+          gatewayButtons,
+          true, true // autoDelete=true, skipTracking=true (don't delete this message)
         )
         return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
       }
@@ -2568,8 +2635,7 @@ Deno.serve(async (req) => {
       const groupId = match[3]
       const gatewayCode = match[4] || null
       const customPayinFee = match[5] ? parseFloat(match[5]) : null
-      const customPayoutFee = match[6] ? parseFloat(match[6]) : null
-      const callbackUrl = match[7] || null
+      const callbackUrl = match[6] || null
 
       if (!email.includes('@') || !email.includes('.')) {
         await sendMessage(botToken, chatId, '❌ Invalid email format')
@@ -2617,8 +2683,7 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
       }
 
-      const finalPayinFee = customPayinFee ?? (adminSettings?.default_payin_fee || 9)
-      const finalPayoutFee = customPayoutFee ?? (adminSettings?.default_payout_fee || 4)
+      const finalPayinFee = customPayinFee ?? (adminSettings?.default_payin_fee || 19)
 
       const withdrawalPasswordHash = await createPasswordHash(withdrawalPassword)
 
@@ -2629,7 +2694,7 @@ Deno.serve(async (req) => {
           account_number: accountNum,
           merchant_name: merchantName,
           payin_fee: finalPayinFee,
-          payout_fee: finalPayoutFee,
+          payout_fee: 0,
           telegram_chat_id: groupId,
           callback_url: callbackUrl,
           withdrawal_password_hash: withdrawalPasswordHash,
@@ -2647,37 +2712,63 @@ Deno.serve(async (req) => {
 
       await supabaseAdmin.from('user_roles').insert({ user_id: authData.user.id, role: 'merchant' })
 
-      const gatewayLabel = gatewayInfo ? (gatewayCode?.startsWith('hypersofts') ? 'ELOPAY' : 'ELOPAY GATEWAY') : 'Default'
+      const currency = gatewayInfo?.currency || 'INR'
+      const flag = currency === 'INR' ? '🇮🇳' : currency === 'PKR' ? '🇵🇰' : currency === 'BDT' ? '🇧🇩' : '🌐'
+      const currencySymbol = currency === 'PKR' ? 'Rs' : currency === 'BDT' ? '৳' : '₹'
+      const gatewayLabel = gatewayInfo ? `${gatewayInfo.gateway_name}` : 'Default'
       
+      // Admin notification - don't auto-delete (skipTracking=true)
       await sendMessage(botToken, chatId,
-        `✅ <b>Merchant Created!</b>\n\n` +
-        `👤 ${merchantName}\n` +
-        `📧 <code>${email}</code>\n` +
-        `🆔 <code>${accountNum}</code>\n` +
-        `🌐 ${gatewayLabel} (${gatewayInfo?.currency || 'INR'})\n` +
-        `💳 ${merchant.payin_fee}% / ${merchant.payout_fee}%`
+        `✅ <b>MERCHANT CREATED SUCCESSFULLY</b>\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━━\n` +
+        `${flag} <b>${merchantName}</b>\n` +
+        `━━━━━━━━━━━━━━━━━━━━━\n\n` +
+        `🆔 Account: <code>${accountNum}</code>\n` +
+        `📧 Email: <code>${email}</code>\n` +
+        `🌐 Gateway: ${gatewayLabel} (${currency})\n` +
+        `💳 Payin: ${merchant.payin_fee}% | Payout: ${currencySymbol}10/tx\n` +
+        `📱 Group: <code>${groupId}</code>\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━━\n` +
+        `🕐 ${formatDate(new Date())}`,
+        'HTML', undefined, true, true // autoDelete=true (delete prev), skipTracking=true (don't track this)
       )
 
+      // Welcome message to merchant group - NEVER auto-delete (skipTracking=true)
       await sendMessage(botToken, groupId,
-        `🎉 <b>Welcome to ${gatewayName}!</b>\n\n` +
-        `━━━ 📋 ACCOUNT ━━━\n` +
-        `👤 ${merchantName}\n` +
-        `🆔 ID: <code>${accountNum}</code>\n` +
-        `🌐 Gateway: ${gatewayLabel} (${gatewayInfo?.currency || 'INR'})\n\n` +
-        `━━━ 🔐 LOGIN ━━━\n` +
-        `📧 Email: <code>${email}</code>\n` +
-        `🔑 Password: <code>${password}</code>\n\n` +
-        `━━━ 🔒 WITHDRAWAL ━━━\n` +
-        `🔐 Password: <code>${withdrawalPassword}</code>\n\n` +
-        `━━━ 🔑 API ━━━\n` +
-        `📥 API Key:\n<code>${merchant.api_key}</code>\n\n` +
-        `📤 Payout Key:\n<code>${merchant.payout_key}</code>\n\n` +
-        `━━━ 💳 FEES ━━━\n` +
-        `📥 Payin: ${merchant.payin_fee}%\n` +
-        `📤 Payout: ${merchant.payout_fee}%\n\n` +
-        `━━━ 🌐 DASHBOARD ━━━\n` +
+        `${flag}━━━━━━━━━━━━━━━━━━━━━${flag}\n` +
+        `   🎉 <b>Welcome to ${gatewayName}!</b>\n` +
+        `${flag}━━━━━━━━━━━━━━━━━━━━━${flag}\n\n` +
+        `📋 <b>ACCOUNT DETAILS</b>\n` +
+        `┌─────────────────────\n` +
+        `│ 👤 Name: <b>${merchantName}</b>\n` +
+        `│ 🆔 ID: <code>${accountNum}</code>\n` +
+        `│ 🌐 Gateway: ${gatewayLabel} (${currency})\n` +
+        `└─────────────────────\n\n` +
+        `🔐 <b>LOGIN CREDENTIALS</b>\n` +
+        `┌─────────────────────\n` +
+        `│ 📧 Email: <code>${email}</code>\n` +
+        `│ 🔑 Password: <code>${password}</code>\n` +
+        `└─────────────────────\n\n` +
+        `🔒 <b>WITHDRAWAL PASSWORD</b>\n` +
+        `┌─────────────────────\n` +
+        `│ 🔐 Password: <code>${withdrawalPassword}</code>\n` +
+        `└─────────────────────\n\n` +
+        `🔑 <b>API KEYS</b>\n` +
+        `┌─────────────────────\n` +
+        `│ 📥 API Key:\n│ <code>${merchant.api_key}</code>\n` +
+        `│\n` +
+        `│ 📤 Payout Key:\n│ <code>${merchant.payout_key}</code>\n` +
+        `└─────────────────────\n\n` +
+        `💳 <b>FEE STRUCTURE</b>\n` +
+        `┌─────────────────────\n` +
+        `│ 📥 Payin: ${merchant.payin_fee}%\n` +
+        `│ 📤 Payout: ${currencySymbol}10 per transaction\n` +
+        `└─────────────────────\n\n` +
+        `🌐 <b>DASHBOARD</b>\n` +
         `${gatewayDomain}/merchant\n\n` +
-        `⚠️ Change password after first login!`
+        `⚠️ <i>Change your password after first login!</i>\n` +
+        `${flag}━━━━━━━━━━━━━━━━━━━━━${flag}`,
+        'HTML', undefined, true, true // autoDelete=true (delete prev), skipTracking=true (NEVER delete this message)
       )
 
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
@@ -2777,7 +2868,7 @@ Deno.serve(async (req) => {
         `🌐 Gateway: ${gatewayType} (${currency})\n\n` +
         `💰 Balance: ${formatAmount(merchant.balance || 0, currency)}\n` +
         `🧊 Frozen: ${formatAmount(merchant.frozen_balance || 0, currency)}\n\n` +
-        `💳 Fees: ${merchant.payin_fee}% / ${merchant.payout_fee}%\n` +
+        `💳 Payin: ${merchant.payin_fee}% | Payout: ${(merchant.payment_gateways as any)?.currency === 'PKR' ? 'Rs' : (merchant.payment_gateways as any)?.currency === 'BDT' ? '৳' : '₹'}10/tx\n` +
         `📱 TG: <code>${merchant.telegram_chat_id || 'N/A'}</code>`,
         [
           [
