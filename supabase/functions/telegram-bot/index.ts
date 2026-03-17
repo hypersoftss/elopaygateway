@@ -2733,42 +2733,25 @@ Deno.serve(async (req) => {
         'HTML', undefined, true, true // autoDelete=true (delete prev), skipTracking=true (don't track this)
       )
 
-      // Welcome message to merchant group - NEVER auto-delete (skipTracking=true)
+      // Welcome message to merchant group - clean, user-friendly, only essential info
+      // NEVER auto-delete (skipTracking=true)
       await sendMessage(botToken, groupId,
-        `${flag}━━━━━━━━━━━━━━━━━━━━━${flag}\n` +
-        `   🎉 <b>Welcome to ${gatewayName}!</b>\n` +
-        `${flag}━━━━━━━━━━━━━━━━━━━━━${flag}\n\n` +
-        `📋 <b>ACCOUNT DETAILS</b>\n` +
-        `┌─────────────────────\n` +
-        `│ 👤 Name: <b>${merchantName}</b>\n` +
-        `│ 🆔 ID: <code>${accountNum}</code>\n` +
-        `│ 🌐 Gateway: ${gatewayLabel} (${currency})\n` +
-        `└─────────────────────\n\n` +
-        `🔐 <b>LOGIN CREDENTIALS</b>\n` +
-        `┌─────────────────────\n` +
-        `│ 📧 Email: <code>${email}</code>\n` +
-        `│ 🔑 Password: <code>${password}</code>\n` +
-        `└─────────────────────\n\n` +
-        `🔒 <b>WITHDRAWAL PASSWORD</b>\n` +
-        `┌─────────────────────\n` +
-        `│ 🔐 Password: <code>${withdrawalPassword}</code>\n` +
-        `└─────────────────────\n\n` +
-        `🔑 <b>API KEYS</b>\n` +
-        `┌─────────────────────\n` +
-        `│ 📥 API Key:\n│ <code>${merchant.api_key}</code>\n` +
-        `│\n` +
-        `│ 📤 Payout Key:\n│ <code>${merchant.payout_key}</code>\n` +
-        `└─────────────────────\n\n` +
-        `💳 <b>FEE STRUCTURE</b>\n` +
-        `┌─────────────────────\n` +
-        `│ 📥 Payin: ${merchant.payin_fee}%\n` +
-        `│ 📤 Payout: ${currencySymbol}10 per transaction\n` +
-        `└─────────────────────\n\n` +
-        `🌐 <b>DASHBOARD</b>\n` +
-        `${gatewayDomain}/merchant\n\n` +
-        `⚠️ <i>Change your password after first login!</i>\n` +
-        `${flag}━━━━━━━━━━━━━━━━━━━━━${flag}`,
-        'HTML', undefined, true, true // autoDelete=true (delete prev), skipTracking=true (NEVER delete this message)
+        `🎉 <b>Welcome to ${gatewayName}!</b>\n\n` +
+        `Hello <b>${merchantName}</b>, your account is ready.\n\n` +
+        `━━━━━━━━━━━━━━━━━━━\n` +
+        `🆔 <b>Account ID:</b> <code>${accountNum}</code>\n` +
+        `━━━━━━━━━━━━━━━━━━━\n\n` +
+        `🔐 <b>Login Credentials</b>\n` +
+        `📧 Email: <code>${email}</code>\n` +
+        `🔑 Password: <code>${password}</code>\n\n` +
+        `🔒 <b>Withdrawal Password</b>\n` +
+        `🔐 <code>${withdrawalPassword}</code>\n\n` +
+        `💳 <b>Fee Structure</b>\n` +
+        `📥 Payin: <b>${merchant.payin_fee}%</b>\n` +
+        `📤 Payout: <b>${currencySymbol}10</b> per request\n\n` +
+        `🌐 <b>Dashboard:</b> ${gatewayDomain}/merchant\n\n` +
+        `⚠️ <i>Please change your password after first login!</i>`,
+        'HTML', undefined, true, true
       )
 
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
