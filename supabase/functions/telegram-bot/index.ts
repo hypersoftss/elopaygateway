@@ -2040,7 +2040,7 @@ Deno.serve(async (req) => {
         `/add_balance [id] [amt] - Add\n` +
         `/deduct_balance [id] [amt] - Deduct\n\n` +
         `━━━ ⚙️ SETTINGS ━━━\n` +
-        `/set_fee [id] [in%] [out%] - Set fees\n` +
+        `/set_fee [id] [payin%] - Set payin fee\n` +
         `/set_gateway [id] [code] - Assign gateway\n` +
         `/set_telegram [id] [group] - Set TG group\n\n` +
         `━━━ 🔐 SECURITY ━━━\n` +
