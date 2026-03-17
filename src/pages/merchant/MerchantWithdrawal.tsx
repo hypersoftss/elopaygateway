@@ -947,19 +947,9 @@ const MerchantWithdrawal = () => {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">
-                    {language === 'zh' ? '手续费' : 'Platform Fee'} ({merchantData.payout_fee}%)
-                  </span>
-                  <span className="font-medium text-destructive">{currencySymbol}{percentFee.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">
-                    {language === 'zh' ? '固定费用' : 'Fixed Charge'} ({language === 'zh' ? '每笔' : 'per payout'})
+                    {language === 'zh' ? '固定费用' : 'Platform Fee'} ({language === 'zh' ? '每笔' : 'per payout'})
                   </span>
                   <span className="font-medium text-destructive">{currencySymbol}{FIXED_PAYOUT_FEE}</span>
-                </div>
-                <div className="border-t border-border pt-2 flex justify-between">
-                  <span className="font-semibold">{language === 'zh' ? '总手续费' : 'Total Fee'}</span>
-                  <span className="font-bold text-destructive">{currencySymbol}{fee.toLocaleString()}</span>
                 </div>
                 <div className="border-t border-border pt-2 flex justify-between">
                   <span className="font-semibold">{language === 'zh' ? '总扣款' : 'Total Deducted from Balance'}</span>
