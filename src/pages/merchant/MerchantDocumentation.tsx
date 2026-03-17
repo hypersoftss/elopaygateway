@@ -1861,6 +1861,356 @@ if ($status == '1' || $status == 'success') {
     );
   };
 
+  // Laravel Integration Docs
+  const renderLaravelDocs = () => (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="p-6 bg-gradient-to-r from-red-500/10 to-orange-500/5 border border-red-500/20 rounded-xl">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-orange-500 rounded-xl flex items-center justify-center text-3xl shadow-lg font-bold text-white">
+            L
+          </div>
+          <div>
+            <h2 className="text-xl font-bold">Laravel Integration Kit</h2>
+            <p className="text-muted-foreground">Service Provider + Controller + Routes — 5 minute setup</p>
+            <div className="flex gap-2 mt-2">
+              <Badge variant="outline" className="bg-red-500/10">Laravel 9+</Badge>
+              <Badge variant="outline" className="bg-orange-500/10">PHP 8.0+</Badge>
+              <Badge variant="outline" className="bg-green-500/10">Ready to Use</Badge>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Setup */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Zap className="h-5 w-5 text-yellow-500" />
+            Quick Setup (5 Minutes)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+            {['Copy Files', 'Add .env', 'Register Provider', 'Add Routes', 'CSRF Exclude'].map((step, i) => (
+              <div key={i} className="p-3 bg-muted rounded-lg text-center">
+                <p className="text-xs text-muted-foreground">Step {i + 1}</p>
+                <p className="font-semibold text-sm">{step}</p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Step 1: .env */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Step 1: Add to .env</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="relative">
+            <pre className="p-4 bg-muted rounded-lg text-sm font-mono overflow-x-auto">
+{`ELOPAY_MERCHANT_ID=${credentials?.accountNumber || 'YOUR_MERCHANT_ID'}
+ELOPAY_API_KEY=${showApiKey ? (credentials?.apiKey || 'YOUR_API_KEY') : 'YOUR_API_KEY'}
+ELOPAY_PAYOUT_KEY=${showPayoutKey ? (credentials?.payoutKey || 'YOUR_PAYOUT_KEY') : 'YOUR_PAYOUT_KEY'}
+ELOPAY_TRADE_TYPE=${credentials?.tradeType || 'INRUPI'}
+ELOPAY_CURRENCY=${credentials?.currency || 'INR'}
+ELOPAY_CALLBACK_URL=https://yourdomain.com/elopay/callback/payin
+ELOPAY_RETURN_URL=https://yourdomain.com/payment/success`}
+            </pre>
+            <Button variant="ghost" size="sm" className="absolute right-2 top-2" onClick={() => copyToClipboard(`ELOPAY_MERCHANT_ID=${credentials?.accountNumber || 'YOUR_MERCHANT_ID'}\nELOPAY_API_KEY=YOUR_API_KEY\nELOPAY_PAYOUT_KEY=YOUR_PAYOUT_KEY\nELOPAY_TRADE_TYPE=${credentials?.tradeType || 'INRUPI'}\nELOPAY_CURRENCY=${credentials?.currency || 'INR'}\nELOPAY_CALLBACK_URL=https://yourdomain.com/elopay/callback/payin\nELOPAY_RETURN_URL=https://yourdomain.com/payment/success`, 'laravel-env')}>
+              {copiedField === 'laravel-env' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Step 2: Register Provider */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Step 2: Register Service Provider</CardTitle>
+          <CardDescription>Add to config/app.php → providers array</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <pre className="p-4 bg-muted rounded-lg text-sm font-mono overflow-x-auto">
+{`// config/app.php
+'providers' => [
+    // ...
+    App\\Providers\\EloPayServiceProvider::class,
+],`}
+          </pre>
+        </CardContent>
+      </Card>
+
+      {/* Step 3: Routes */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Step 3: Add Routes + CSRF Exception</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="relative">
+            <pre className="p-4 bg-muted rounded-lg text-sm font-mono overflow-x-auto">
+{`// routes/web.php
+use App\\Http\\Controllers\\EloPayController;
+
+Route::post('/elopay/payin', [EloPayController::class, 'createPayin']);
+Route::post('/elopay/payout', [EloPayController::class, 'createPayout']);
+Route::post('/elopay/callback/payin', [EloPayController::class, 'payinCallback']);
+Route::post('/elopay/callback/payout', [EloPayController::class, 'payoutCallback']);`}
+            </pre>
+          </div>
+          <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+            <p className="text-sm text-yellow-600">
+              ⚠️ <strong>CSRF Exception Required:</strong> Add callback routes to <code className="bg-yellow-200/50 px-1 rounded">VerifyCsrfToken.php</code>
+            </p>
+            <pre className="mt-2 p-3 bg-muted rounded text-xs font-mono">
+{`protected $except = [
+    'elopay/callback/*',
+];`}
+            </pre>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Step 4: Blade Usage */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Step 4: Use in Blade Template</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <pre className="p-4 bg-muted rounded-lg text-sm font-mono overflow-x-auto">
+{`<!-- resources/views/payment.blade.php -->
+<form action="{{ route('elopay.payin') }}" method="POST">
+    @csrf
+    <input type="hidden" name="order_no" value="ORD_{{ time() }}">
+    <input type="number" name="amount" placeholder="Amount" required min="1">
+    <button type="submit">💎 Pay with ELOPAY</button>
+</form>`}
+          </pre>
+        </CardContent>
+      </Card>
+
+      {/* File Structure */}
+      <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+        <CardHeader>
+          <CardTitle>📁 Laravel File Structure</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <pre className="p-4 bg-muted rounded-lg text-sm font-mono">
+{`your-laravel-project/
+├── app/
+│   ├── Http/Controllers/
+│   │   └── EloPayController.php    ← Handles payin/payout/callbacks
+│   ├── Providers/
+│   │   └── EloPayServiceProvider.php
+│   └── Services/
+│       └── EloPayService.php       ← Core payment logic
+├── config/
+│   └── elopay.php                  ← Gateway configuration
+└── routes/
+    └── web.php                     ← Payment routes`}
+          </pre>
+        </CardContent>
+      </Card>
+
+      {/* Download */}
+      <Card className="border-green-500/20">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-bold text-lg">📦 Download Complete Laravel Kit</h3>
+              <p className="text-sm text-muted-foreground">Includes ServiceProvider, Service, Controller, Config & Routes</p>
+            </div>
+            <div className="flex gap-2">
+              {['EloPayService.php', 'EloPayController.php', 'EloPayServiceProvider.php'].map((file) => (
+                <Button key={file} variant="outline" size="sm" onClick={() => downloadFile(`laravel/${file}`)}>
+                  <Download className="h-4 w-4 mr-1" />{file.replace('.php', '')}
+                </Button>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  // WHMCS Module Docs
+  const renderWHMCSDocs = () => (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="p-6 bg-gradient-to-r from-blue-500/10 to-cyan-500/5 border border-blue-500/20 rounded-xl">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-xl flex items-center justify-center text-2xl shadow-lg font-bold text-white">
+            W
+          </div>
+          <div>
+            <h2 className="text-xl font-bold">WHMCS Payment Module</h2>
+            <p className="text-muted-foreground">Drop-in gateway module — 3 minute setup</p>
+            <div className="flex gap-2 mt-2">
+              <Badge variant="outline" className="bg-blue-500/10">WHMCS 8+</Badge>
+              <Badge variant="outline" className="bg-cyan-500/10">Auto Callback</Badge>
+              <Badge variant="outline" className="bg-green-500/10">No Coding</Badge>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Setup */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Zap className="h-5 w-5 text-yellow-500" />
+            Quick Setup (3 Minutes)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {['Upload 2 Files', 'Activate Module', 'Enter Credentials'].map((step, i) => (
+              <div key={i} className="p-4 bg-muted rounded-lg text-center">
+                <div className="w-8 h-8 bg-primary/20 rounded-full mx-auto mb-2 flex items-center justify-center text-primary font-bold">{i + 1}</div>
+                <p className="font-semibold">{step}</p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Step 1: Upload */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Step 1: Upload Files to WHMCS</CardTitle>
+          <CardDescription>Upload via FTP or File Manager</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <pre className="p-4 bg-muted rounded-lg text-sm font-mono">
+{`whmcs/
+├── modules/
+│   └── gateways/
+│       ├── elopay.php              ← Gateway module
+│       └── callback/
+│           └── elopay.php          ← Callback handler`}
+          </pre>
+          <div className="mt-4 p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+            <p className="text-sm">✅ Only <strong>2 files</strong> needed — that's it!</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Step 2: Activate */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Step 2: Activate in WHMCS Admin</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-2">
+            <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+              <Badge>1</Badge>
+              <span className="text-sm">Go to <strong>Setup → Payment Gateways</strong></span>
+            </div>
+            <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+              <Badge>2</Badge>
+              <span className="text-sm">Click <strong>"All Payment Gateways"</strong> tab</span>
+            </div>
+            <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+              <Badge>3</Badge>
+              <span className="text-sm">Find <strong>"ELOPAY Gateway"</strong> and click <strong>Activate</strong></span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Step 3: Configure */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Step 3: Enter Your Credentials</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border rounded-lg">
+              <thead className="bg-muted">
+                <tr>
+                  <th className="text-left p-3 border-b">Field</th>
+                  <th className="text-left p-3 border-b">Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td className="p-3 border-b font-semibold">Merchant ID</td><td className="p-3 border-b font-mono">{credentials?.accountNumber || 'YOUR_MERCHANT_ID'}</td></tr>
+                <tr><td className="p-3 border-b font-semibold">API Key</td><td className="p-3 border-b font-mono">{showApiKey ? credentials?.apiKey : '••••••••'}</td></tr>
+                <tr><td className="p-3 border-b font-semibold">API URL</td><td className="p-3 border-b font-mono">{apiBaseUrl}</td></tr>
+                <tr><td className="p-3 border-b font-semibold">Trade Type</td><td className="p-3 border-b">{credentials?.tradeType || 'INRUPI'}</td></tr>
+                <tr><td className="p-3 font-semibold">Currency</td><td className="p-3">{credentials?.currency || 'INR'}</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Callback Info */}
+      <Card className="border-blue-500/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Globe className="h-5 w-5" />
+            Callback URL (Auto-configured)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="p-4 bg-muted rounded-lg font-mono text-sm">
+            https://your-whmcs-domain.com/modules/gateways/callback/elopay.php
+          </div>
+          <p className="mt-3 text-sm text-muted-foreground">
+            ✅ Callback URL is automatically set. No manual configuration needed.
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Supported Methods */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Supported Payment Methods</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="p-4 border rounded-lg text-center">
+              <p className="text-2xl mb-2">🇮🇳</p>
+              <p className="font-semibold">INR</p>
+              <p className="text-xs text-muted-foreground">UPI, USDT</p>
+            </div>
+            <div className="p-4 border rounded-lg text-center">
+              <p className="text-2xl mb-2">🇧🇩</p>
+              <p className="font-semibold">BDT</p>
+              <p className="text-xs text-muted-foreground">bKash, Nagad, USDT</p>
+            </div>
+            <div className="p-4 border rounded-lg text-center">
+              <p className="text-2xl mb-2">🇵🇰</p>
+              <p className="font-semibold">PKR</p>
+              <p className="text-xs text-muted-foreground">Easypaisa, JazzCash</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Download */}
+      <Card className="border-green-500/20">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div>
+              <h3 className="font-bold text-lg">📦 Download WHMCS Module</h3>
+              <p className="text-sm text-muted-foreground">Gateway module + Callback handler</p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => downloadFile('whmcs/modules/gateways/elopay.php')}>
+                <Download className="h-4 w-4 mr-1" />Gateway Module
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => downloadFile('whmcs/modules/gateways/callback/elopay.php')}>
+                <Download className="h-4 w-4 mr-1" />Callback Handler
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
   // SDK Download Section
   const renderSDKDocs = () => (
     <div className="space-y-6">
@@ -2522,11 +2872,13 @@ if ($status == '1' || $status == 'success') {
           </CardHeader>
           <CardContent>
              <Tabs defaultValue="php">
-              <TabsList className="grid w-full grid-cols-7">
-                <TabsTrigger value="php">📄 Payin PHP</TabsTrigger>
-                <TabsTrigger value="usdt-php">💲 USDT PHP</TabsTrigger>
-                <TabsTrigger value="payout-php">📄 Payout PHP</TabsTrigger>
-                <TabsTrigger value="api">API Endpoints</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-9">
+                <TabsTrigger value="php">📄 Payin</TabsTrigger>
+                <TabsTrigger value="usdt-php">💲 USDT</TabsTrigger>
+                <TabsTrigger value="payout-php">📤 Payout</TabsTrigger>
+                <TabsTrigger value="laravel" className="text-red-500">🔥 Laravel</TabsTrigger>
+                <TabsTrigger value="whmcs" className="text-blue-500">🌐 WHMCS</TabsTrigger>
+                <TabsTrigger value="api">API</TabsTrigger>
                 <TabsTrigger value="signature">Signature</TabsTrigger>
                 <TabsTrigger value="callback">Callback</TabsTrigger>
                 <TabsTrigger value="sdk">SDK</TabsTrigger>
@@ -2542,6 +2894,14 @@ if ($status == '1' || $status == 'success') {
 
               <TabsContent value="payout-php" className="mt-6">
                 {renderPayoutPHPCodeDocs()}
+              </TabsContent>
+
+              <TabsContent value="laravel" className="mt-6">
+                {renderLaravelDocs()}
+              </TabsContent>
+
+              <TabsContent value="whmcs" className="mt-6">
+                {renderWHMCSDocs()}
               </TabsContent>
 
               <TabsContent value="api" className="mt-6">
