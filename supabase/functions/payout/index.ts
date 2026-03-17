@@ -214,6 +214,21 @@ Deno.serve(async (req) => {
     const fee = FIXED_PAYOUT_FEE
     const totalDeduction = amountNum + fee
 
+    // Block duplicate payout: check if merchant has any pending/processing payout
+    const { count: pendingPayouts } = await supabaseAdmin
+      .from('transactions')
+      .select('*', { count: 'exact', head: true })
+      .eq('merchant_id', merchant.id)
+      .eq('transaction_type', 'payout')
+      .in('status', ['pending', 'processing'])
+
+    if (pendingPayouts && pendingPayouts > 0) {
+      return new Response(
+        JSON.stringify({ code: 400, message: 'You already have a pending/processing payout. Please wait for it to complete.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // Check balance
     if (merchant.balance < totalDeduction) {
       return new Response(
