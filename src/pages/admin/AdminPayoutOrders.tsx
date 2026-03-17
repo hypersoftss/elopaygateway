@@ -104,6 +104,27 @@ const AdminPayoutOrders = () => {
 
   useEffect(() => { fetchTransactions(); }, [statusFilter, dateFrom, dateTo]);
 
+  // Auto-check processing payouts every 15 seconds
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const processingTxs = transactions.filter(tx => tx.status === 'processing');
+      if (processingTxs.length === 0) return;
+
+      let anyUpdated = false;
+      for (const tx of processingTxs) {
+        try {
+          const { data, error } = await supabase.functions.invoke('check-order-status', {
+            body: { order_no: tx.order_no, auto_update: true },
+          });
+          if (!error && data?.auto_updated) anyUpdated = true;
+        } catch (e) { /* skip */ }
+      }
+      if (anyUpdated) fetchTransactions();
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [transactions]);
+
   const getTxCurrency = (tx: Transaction) => {
     // Priority: transaction's gateway currency > merchant's gateway currency > INR
     if (tx.payment_gateways?.currency) return tx.payment_gateways.currency;

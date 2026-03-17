@@ -348,31 +348,31 @@ Deno.serve(async (req) => {
       )
 
       if (!isGatewaySuccess) {
-        // Gateway rejected immediately - mark failed and refund merchant
+        // Gateway rejected immediately - keep as processing and let auto-check handle it
+        // Don't auto-fail, just log the initial rejection response
         await supabaseAdmin
           .from('transactions')
           .update({
-            status: 'failed',
+            status: 'processing',
             callback_data: {
               ...existingCallbackData,
               gateway_response: gatewayResponse,
               approved_at: new Date().toISOString(),
               gateway_accepted: false,
-              failed_at: new Date().toISOString(),
+              initial_rejection: true,
+              auto_check_started: new Date().toISOString(),
             },
           })
           .eq('id', transaction_id)
 
-        await refundMerchant(supabaseAdmin, merchant, totalDeduction, balanceMode)
-
-        console.error('Gateway rejected payout:', gatewayResponse?.msg || gatewayResponse?.message || 'Unknown error')
+        console.warn('Gateway initial response not success, keeping as processing for auto-check:', gatewayResponse?.msg || gatewayResponse?.message || 'Unknown')
         return new Response(
           JSON.stringify({
-            success: false,
-            message: `Gateway rejected: ${gatewayResponse?.msg || gatewayResponse?.message || 'Unknown error'}`,
+            success: true,
+            message: `Gateway response pending - auto-checking status. Initial: ${gatewayResponse?.msg || gatewayResponse?.message || 'No response'}`,
             gateway_response: gatewayResponse,
           }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
 

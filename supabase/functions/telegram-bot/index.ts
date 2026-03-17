@@ -713,7 +713,7 @@ Deno.serve(async (req) => {
             `💰 Balance: ${formatAmount(merchant.balance || 0, currency)}\n` +
             `🧊 Frozen: ${formatAmount(merchant.frozen_balance || 0, currency)}\n\n` +
             `💳 Payin Fee: ${merchant.payin_fee}%\n` +
-            `💸 Payout Fee: ${merchant.payout_fee}%`
+            `💸 Payout Fee: ${currency === 'PKR' ? 'Rs' : currency === 'BDT' ? '৳' : '₹'}10 per payout`
           
           await editMessage(botToken, chatId, messageId, msg, {
             inline_keyboard: [
@@ -1487,13 +1487,19 @@ Deno.serve(async (req) => {
         if (merchantByChat) {
           const currency = merchantByChat.payment_gateways?.currency || 'INR'
           
+          const currencySymbol = currency === 'PKR' ? 'Rs' : currency === 'BDT' ? '৳' : '₹'
+          const fixedPayoutFee = 10
+          
           const msg = `💳 <b>${merchantByChat.merchant_name} - Fees</b>\n\n` +
             `📥 Payin Fee: <b>${merchantByChat.payin_fee}%</b>\n` +
-            `📤 Payout Fee: <b>${merchantByChat.payout_fee}%</b>\n\n` +
+            `📤 Payout Fee: <b>${currencySymbol}${fixedPayoutFee} per payout</b>\n\n` +
             `━━━ EXAMPLE ━━━\n` +
             `For ${formatAmount(10000, currency)} payin:\n` +
             `• Fee: ${formatAmount(10000 * merchantByChat.payin_fee / 100, currency)}\n` +
-            `• You receive: ${formatAmount(10000 - (10000 * merchantByChat.payin_fee / 100), currency)}`
+            `• You receive: ${formatAmount(10000 - (10000 * merchantByChat.payin_fee / 100), currency)}\n\n` +
+            `For ${formatAmount(10000, currency)} payout:\n` +
+            `• Fee: ${formatAmount(fixedPayoutFee, currency)}\n` +
+            `• Total deducted: ${formatAmount(10000 + fixedPayoutFee, currency)}`
           
           await editMessage(botToken, chatId, messageId, msg, {
             inline_keyboard: [[{ text: '« Back', callback_data: 'my_dashboard' }]],
@@ -1646,7 +1652,7 @@ Deno.serve(async (req) => {
           `📊 Total: ${formatAmount(total, currency)}\n\n` +
           `━━━ 💳 FEES ━━━\n` +
           `📥 Payin: ${m.payin_fee}%\n` +
-          `📤 Payout: ${m.payout_fee}%\n\n` +
+          `📤 Payout: ${currency === 'PKR' ? 'Rs' : currency === 'BDT' ? '৳' : '₹'}10 per payout\n\n` +
           `🌐 Dashboard: ${gatewayDomain}/merchant`
 
         await sendMessageWithButtons(botToken, chatId, msg, [
