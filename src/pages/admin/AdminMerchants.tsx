@@ -1275,13 +1275,8 @@ const AdminMerchants = () => {
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">{language === 'zh' ? '提款费率 (%)' : 'Payout Fee (%)'}</Label>
-                    <Input
-                      type="number"
-                      step="0.1"
-                      value={editPayoutFee}
-                      onChange={(e) => setEditPayoutFee(e.target.value)}
-                    />
+                    <Label className="text-xs">{language === 'zh' ? '提款费率' : 'Payout Fee'}</Label>
+                    <p className="text-sm text-muted-foreground px-3 py-2 bg-muted/50 rounded-md">Flat ₹10 per payout</p>
                   </div>
                 </div>
                 <Button onClick={handleUpdateFees} disabled={isUpdating} size="sm" className="w-full">
