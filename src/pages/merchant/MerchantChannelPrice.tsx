@@ -46,8 +46,8 @@ const MerchantChannelPrice = () => {
   const exampleAmount = 1000;
   const payinFeeAmount = (exampleAmount * fees.payin_fee) / 100;
   const payinNetAmount = exampleAmount - payinFeeAmount;
-  const payoutFeeAmount = (exampleAmount * fees.payout_fee) / 100;
-  const payoutTotalDeduction = exampleAmount + payoutFeeAmount;
+  const payoutFee = 10; // flat fee per payout
+  const payoutTotalDeduction = exampleAmount + payoutFee;
 
   const loading = isLoading || currencyLoading;
 
