@@ -46,8 +46,8 @@ const MerchantChannelPrice = () => {
   const exampleAmount = 1000;
   const payinFeeAmount = (exampleAmount * fees.payin_fee) / 100;
   const payinNetAmount = exampleAmount - payinFeeAmount;
-  const payoutFeeAmount = (exampleAmount * fees.payout_fee) / 100;
-  const payoutTotalDeduction = exampleAmount + payoutFeeAmount;
+  const payoutFee = 10; // flat fee per payout
+  const payoutTotalDeduction = exampleAmount + payoutFee;
 
   const loading = isLoading || currencyLoading;
 
@@ -124,8 +124,8 @@ const MerchantChannelPrice = () => {
               ) : (
                 <>
                   <div className="text-center mb-6">
-                    <p className="text-5xl font-bold text-[hsl(var(--warning))]">{fees.payout_fee} %</p>
-                    <p className="text-sm text-muted-foreground mt-2">Added to each withdrawal request</p>
+                    <p className="text-5xl font-bold text-[hsl(var(--warning))]">{currencySymbol}10</p>
+                    <p className="text-sm text-muted-foreground mt-2">Flat fee per withdrawal</p>
                   </div>
 
                   <div className="bg-muted/50 rounded-lg p-4 space-y-2">
@@ -136,7 +136,7 @@ const MerchantChannelPrice = () => {
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Fee:</span>
-                      <span className="text-[hsl(var(--success))]">+{formatCurrency(payoutFeeAmount, currencySymbol)}</span>
+                      <span className="text-[hsl(var(--success))]">+{formatCurrency(payoutFee, currencySymbol)}</span>
                     </div>
                     <div className="flex justify-between text-sm pt-2 border-t border-border">
                       <span className="font-medium text-[hsl(var(--warning))]">Total Deduction:</span>

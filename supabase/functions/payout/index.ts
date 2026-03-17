@@ -209,9 +209,9 @@ Deno.serve(async (req) => {
     }
 
     // amountNum already validated above
-    // Fee = percentage fee (7%) + fixed charge (10 per payout)
+    // Fee = flat 10 per payout (no percentage)
     const FIXED_PAYOUT_FEE = 10
-    const fee = (amountNum * (merchant.payout_fee / 100)) + FIXED_PAYOUT_FEE
+    const fee = FIXED_PAYOUT_FEE
     const totalDeduction = amountNum + fee
 
     // Check balance
