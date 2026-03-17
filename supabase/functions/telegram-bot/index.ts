@@ -1652,7 +1652,7 @@ Deno.serve(async (req) => {
           `📊 Total: ${formatAmount(total, currency)}\n\n` +
           `━━━ 💳 FEES ━━━\n` +
           `📥 Payin: ${m.payin_fee}%\n` +
-          `📤 Payout: ${m.payout_fee}%\n\n` +
+          `📤 Payout: ${currency === 'PKR' ? 'Rs' : currency === 'BDT' ? '৳' : '₹'}10 per payout\n\n` +
           `🌐 Dashboard: ${gatewayDomain}/merchant`
 
         await sendMessageWithButtons(botToken, chatId, msg, [
