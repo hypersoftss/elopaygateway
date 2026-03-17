@@ -713,7 +713,7 @@ Deno.serve(async (req) => {
             `💰 Balance: ${formatAmount(merchant.balance || 0, currency)}\n` +
             `🧊 Frozen: ${formatAmount(merchant.frozen_balance || 0, currency)}\n\n` +
             `💳 Payin Fee: ${merchant.payin_fee}%\n` +
-            `💸 Payout Fee: ${merchant.payout_fee}%`
+            `💸 Payout Fee: ${currency === 'PKR' ? 'Rs' : currency === 'BDT' ? '৳' : '₹'}10 per payout`
           
           await editMessage(botToken, chatId, messageId, msg, {
             inline_keyboard: [
